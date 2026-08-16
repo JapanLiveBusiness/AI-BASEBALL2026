@@ -1,0 +1,38 @@
+[
+  {
+    "game_id": "2026-08-15_楽天",
+    "date": "2026-08-15",
+    "opponent": "楽天",
+    "probability": 63.4,
+    "model": "V8 FINAL",
+    "locked": true,
+    "saved_at": "2026-08-15"
+  },
+  {
+    "game_id": "2026-08-15_取得中",
+    "date": "2026-08-15",
+    "opponent": "取得中",
+    "probability": 63.4,
+    "model": "V8 FINAL",
+    "locked": true,
+    "saved_at": "2026-08-15T12:26:34.244606"
+  },
+  {
+    "game_id": "2026-08-16_楽天",
+    "date": "2026-08-16",
+    "opponent": "楽天",
+    "probability": 63.4,
+    "model": "V8 FINAL",
+    "locked": true,
+    "saved_at": "2026-08-15T15:01:06.085844"
+  },
+  {
+    "game_id": "2026-08-16_取得中",
+    "date": "2026-08-16",
+    "opponent": "取得中",
+    "probability": 63.4,
+    "model": "V8 FINAL",
+    "locked": true,
+    "saved_at": "2026-08-16T11:10:09.232229"
+  }
+]

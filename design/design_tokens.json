@@ -1,0 +1,23 @@
+{
+  "name": "HAWKS AI V8 Web Final",
+  "version": "1.0",
+  "colors": {
+    "navy_900": "#07101C",
+    "navy_800": "#0D1B30",
+    "gold_500": "#D9B150",
+    "gold_300": "#F3D97A",
+    "red_600": "#D91F2A",
+    "green_600": "#0D9B50",
+    "surface": "#FFFFFF",
+    "page": "#F7F9FC",
+    "text": "#17233A",
+    "muted": "#7C899A",
+    "border": "#DDE5EE"
+  },
+  "layout": {
+    "content_max_width": "1180px",
+    "mobile_breakpoint": "600px",
+    "radius_large": "18px",
+    "radius_medium": "12px"
+  }
+}

@@ -1,0 +1,2732 @@
+{
+  "model": "hawks_v7_context",
+  "predictions": 272,
+  "correct": 170,
+  "accuracy": 0.625,
+  "always_win": 0.625,
+  "improvement": 0.0,
+  "brier": 0.2367,
+  "auc": 0.4877,
+  "results": [
+    {
+      "date": "2024-08-15",
+      "opponent": "西武",
+      "hawks_starter": "石川 柊太",
+      "opponent_starter": "與座 海人",
+      "probability": 0.5733,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-08-16",
+      "opponent": "ロッテ",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "石川 歩",
+      "probability": 0.6741,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-08-17",
+      "opponent": "ロッテ",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "カイケル",
+      "probability": 0.6904,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-08-18",
+      "opponent": "ロッテ",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "種市 篤暉",
+      "probability": 0.6647,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-08-20",
+      "opponent": "楽天",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "早川 隆久",
+      "probability": 0.614,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-08-21",
+      "opponent": "楽天",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "内 星龍",
+      "probability": 0.6034,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-08-23",
+      "opponent": "日本ハム",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "福島 蓮",
+      "probability": 0.5742,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-08-24",
+      "opponent": "日本ハム",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "北山 亘基",
+      "probability": 0.593,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-08-25",
+      "opponent": "日本ハム",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.5818,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-08-27",
+      "opponent": "オリックス",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "田嶋 大樹",
+      "probability": 0.6478,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-08-28",
+      "opponent": "オリックス",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "山下 舜平大",
+      "probability": 0.6674,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-08-30",
+      "opponent": "ロッテ",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "佐々木 朗希",
+      "probability": 0.5477,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-08-31",
+      "opponent": "ロッテ",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "メルセデス",
+      "probability": 0.5348,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-01",
+      "opponent": "ロッテ",
+      "hawks_starter": "石川 柊太",
+      "opponent_starter": "種市 篤暉",
+      "probability": 0.5554,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-03",
+      "opponent": "日本ハム",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.6781,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-09-04",
+      "opponent": "日本ハム",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "山﨑 福也",
+      "probability": 0.6508,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-09-06",
+      "opponent": "西武",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "渡邉 勇太朗",
+      "probability": 0.6137,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-09-07",
+      "opponent": "西武",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "今井 達也",
+      "probability": 0.6031,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-09-08",
+      "opponent": "西武",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "武内 夏暉",
+      "probability": 0.5899,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-10",
+      "opponent": "楽天",
+      "hawks_starter": "石川 柊太",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.5661,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-11",
+      "opponent": "楽天",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "瀧中 瞭太",
+      "probability": 0.549,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-13",
+      "opponent": "オリックス",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "山下 舜平大",
+      "probability": 0.5611,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-14",
+      "opponent": "オリックス",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "カスティーヨ",
+      "probability": 0.5793,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-16",
+      "opponent": "オリックス",
+      "hawks_starter": "石川 柊太",
+      "opponent_starter": "曽谷 龍平",
+      "probability": 0.599,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-18",
+      "opponent": "日本ハム",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.6564,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-09-20",
+      "opponent": "オリックス",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "田嶋 大樹",
+      "probability": 0.634,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-21",
+      "opponent": "楽天",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "瀧中 瞭太",
+      "probability": 0.6299,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-22",
+      "opponent": "楽天",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "高田 孝一",
+      "probability": 0.6493,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-23",
+      "opponent": "オリックス",
+      "hawks_starter": "石川 柊太",
+      "opponent_starter": "才木 海翔",
+      "probability": 0.6057,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-25",
+      "opponent": "西武",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "隅田 知一郎",
+      "probability": 0.6354,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-26",
+      "opponent": "西武",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "菅井 信也",
+      "probability": 0.6533,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-09-28",
+      "opponent": "日本ハム",
+      "hawks_starter": "東浜 巨",
+      "opponent_starter": "北山 亘基",
+      "probability": 0.5948,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2024-09-29",
+      "opponent": "日本ハム",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "加藤 貴之",
+      "probability": 0.5758,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-09-30",
+      "opponent": "オリックス",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "山下 舜平大",
+      "probability": 0.6219,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-10-01",
+      "opponent": "オリックス",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "田嶋 大樹",
+      "probability": 0.6438,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-10-03",
+      "opponent": "楽天",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.6532,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2024-10-04",
+      "opponent": "ロッテ",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "中森 俊介",
+      "probability": 0.6372,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-03-28",
+      "opponent": "ロッテ",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "小島 和哉",
+      "probability": 0.6486,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-03-29",
+      "opponent": "ロッテ",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "ボス",
+      "probability": 0.6223,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-03-30",
+      "opponent": "ロッテ",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "種市 篤暉",
+      "probability": 0.6093,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-01",
+      "opponent": "日本ハム",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.5129,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-04-02",
+      "opponent": "日本ハム",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "北山 亘基",
+      "probability": 0.5626,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-04",
+      "opponent": "西武",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "今井 達也",
+      "probability": 0.6051,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-05",
+      "opponent": "西武",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "隅田 知一郎",
+      "probability": 0.5719,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-06",
+      "opponent": "西武",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "渡邉 勇太朗",
+      "probability": 0.5601,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-04-08",
+      "opponent": "オリックス",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "椋木 蓮",
+      "probability": 0.5164,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-04-09",
+      "opponent": "オリックス",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "曽谷 龍平",
+      "probability": 0.5354,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-04-11",
+      "opponent": "ロッテ",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "石川 柊太",
+      "probability": 0.5766,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-04-12",
+      "opponent": "ロッテ",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "小島 和哉",
+      "probability": 0.5971,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-04-15",
+      "opponent": "楽天",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "藤井 聖",
+      "probability": 0.6566,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-16",
+      "opponent": "楽天",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "瀧中 瞭太",
+      "probability": 0.6285,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-17",
+      "opponent": "楽天",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "岸 孝之",
+      "probability": 0.6198,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-18",
+      "opponent": "西武",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "今井 達也",
+      "probability": 0.584,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-19",
+      "opponent": "西武",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "隅田 知一郎",
+      "probability": 0.5576,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-20",
+      "opponent": "西武",
+      "hawks_starter": "東浜 巨",
+      "opponent_starter": "渡邉 勇太朗",
+      "probability": 0.5326,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-04-23",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "曽谷 龍平",
+      "probability": 0.5981,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-04-25",
+      "opponent": "楽天",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "早川 隆久",
+      "probability": 0.5639,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-04-26",
+      "opponent": "楽天",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "内 星龍",
+      "probability": 0.5831,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-27",
+      "opponent": "楽天",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "岸 孝之",
+      "probability": 0.5774,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-29",
+      "opponent": "日本ハム",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.5946,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-04-30",
+      "opponent": "日本ハム",
+      "hawks_starter": "東浜 巨",
+      "opponent_starter": "山﨑 福也",
+      "probability": 0.5842,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-05-01",
+      "opponent": "日本ハム",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "古林 睿煬",
+      "probability": 0.5764,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-05-02",
+      "opponent": "ロッテ",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "ボス",
+      "probability": 0.5665,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-03",
+      "opponent": "ロッテ",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "石川 柊太",
+      "probability": 0.5844,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-04",
+      "opponent": "ロッテ",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "小島 和哉",
+      "probability": 0.6138,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-05",
+      "opponent": "西武",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "渡邉 勇太朗",
+      "probability": 0.5843,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-06",
+      "opponent": "西武",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "上田 大河",
+      "probability": 0.5936,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-07",
+      "opponent": "西武",
+      "hawks_starter": "東浜 巨",
+      "opponent_starter": "髙橋 光成",
+      "probability": 0.6256,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-05-09",
+      "opponent": "オリックス",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "エスピノーザ",
+      "probability": 0.5838,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-10",
+      "opponent": "オリックス",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "曽谷 龍平",
+      "probability": 0.5902,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-05-11",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "田嶋 大樹",
+      "probability": 0.571,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-13",
+      "opponent": "西武",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "菅井 信也",
+      "probability": 0.5813,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-14",
+      "opponent": "西武",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "武内 夏暉",
+      "probability": 0.6015,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-05-15",
+      "opponent": "西武",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "髙橋 光成",
+      "probability": 0.5959,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-16",
+      "opponent": "楽天",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "藤井 聖",
+      "probability": 0.6022,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-05-17",
+      "opponent": "楽天",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "内 星龍",
+      "probability": 0.5856,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-18",
+      "opponent": "楽天",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "ヤフーレ",
+      "probability": 0.6058,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-20",
+      "opponent": "日本ハム",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.5704,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-21",
+      "opponent": "日本ハム",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "北山 亘基",
+      "probability": 0.5896,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-05-22",
+      "opponent": "日本ハム",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "古林 睿煬",
+      "probability": 0.5816,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-05-25",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "曽谷 龍平",
+      "probability": 0.6097,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-05-27",
+      "opponent": "日本ハム",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.5809,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-05-28",
+      "opponent": "日本ハム",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "加藤 貴之",
+      "probability": 0.5627,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-01",
+      "opponent": "楽天",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "藤井 聖",
+      "probability": 0.5681,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-06-03",
+      "opponent": "中日",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "涌井 秀章",
+      "probability": 0.609,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-04",
+      "opponent": "中日",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "三浦 瑞樹",
+      "probability": 0.6102,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-05",
+      "opponent": "中日",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "金丸 夢斗",
+      "probability": 0.6248,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-06",
+      "opponent": "ヤクルト",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "山野 太一",
+      "probability": 0.6132,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-06-07",
+      "opponent": "ヤクルト",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "吉村 貢司郎",
+      "probability": 0.589,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-08",
+      "opponent": "ヤクルト",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "高橋 奎二",
+      "probability": 0.5951,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-06-10",
+      "opponent": "巨人",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "井上 温大",
+      "probability": 0.6066,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-11",
+      "opponent": "巨人",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "西舘 勇陽",
+      "probability": 0.6212,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-06-13",
+      "opponent": "DeNA",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "ケイ",
+      "probability": 0.6192,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-14",
+      "opponent": "DeNA",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "大貫 晋一",
+      "probability": 0.6307,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-15",
+      "opponent": "DeNA",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "石田 裕太郎",
+      "probability": 0.6342,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-17",
+      "opponent": "広島",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "玉村 昇悟",
+      "probability": 0.6078,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-18",
+      "opponent": "広島",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "大瀬良 大地",
+      "probability": 0.6178,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-06-19",
+      "opponent": "広島",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "ドミンゲス",
+      "probability": 0.6066,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-20",
+      "opponent": "阪神",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "村上 頌樹",
+      "probability": 0.6055,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-21",
+      "opponent": "阪神",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "大竹 耕太郎",
+      "probability": 0.6054,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-06-22",
+      "opponent": "阪神",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "伊原 陵人",
+      "probability": 0.5929,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-27",
+      "opponent": "ロッテ",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "種市 篤暉",
+      "probability": 0.5794,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-06-28",
+      "opponent": "ロッテ",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "石川 柊太",
+      "probability": 0.5846,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-06-29",
+      "opponent": "ロッテ",
+      "hawks_starter": "東浜 巨",
+      "opponent_starter": "田中 晴也",
+      "probability": 0.5901,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-01",
+      "opponent": "日本ハム",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "北山 亘基",
+      "probability": 0.6152,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-02",
+      "opponent": "日本ハム",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "加藤 貴之",
+      "probability": 0.6069,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-03",
+      "opponent": "日本ハム",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "金村 尚真",
+      "probability": 0.6078,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-04",
+      "opponent": "西武",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "武内 夏暉",
+      "probability": 0.6434,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-07-05",
+      "opponent": "西武",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "今井 達也",
+      "probability": 0.6229,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-06",
+      "opponent": "西武",
+      "hawks_starter": "東浜 巨",
+      "opponent_starter": "隅田 知一郎",
+      "probability": 0.6185,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-08",
+      "opponent": "オリックス",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "エスピノーザ",
+      "probability": 0.6011,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-09",
+      "opponent": "オリックス",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "宮城 大弥",
+      "probability": 0.5949,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-10",
+      "opponent": "オリックス",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "東 晃平",
+      "probability": 0.5836,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-07-11",
+      "opponent": "楽天",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.5943,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-07-12",
+      "opponent": "楽天",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "瀧中 瞭太",
+      "probability": 0.5847,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-07-13",
+      "opponent": "楽天",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "内 星龍",
+      "probability": 0.5919,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-15",
+      "opponent": "ロッテ",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "ボス",
+      "probability": 0.6196,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-16",
+      "opponent": "ロッテ",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "サモンズ",
+      "probability": 0.6144,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-19",
+      "opponent": "西武",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "今井 達也",
+      "probability": 0.5864,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-20",
+      "opponent": "西武",
+      "hawks_starter": "東浜 巨",
+      "opponent_starter": "武内 夏暉",
+      "probability": 0.5762,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-21",
+      "opponent": "西武",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "隅田 知一郎",
+      "probability": 0.5786,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-26",
+      "opponent": "オリックス",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "田嶋 大樹",
+      "probability": 0.6233,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-27",
+      "opponent": "オリックス",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "東松 快征",
+      "probability": 0.6372,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-29",
+      "opponent": "日本ハム",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "山﨑 福也",
+      "probability": 0.6078,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-07-31",
+      "opponent": "日本ハム",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "達 孝太",
+      "probability": 0.593,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-01",
+      "opponent": "楽天",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "瀧中 瞭太",
+      "probability": 0.6267,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-02",
+      "opponent": "楽天",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "ヤフーレ",
+      "probability": 0.6435,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-03",
+      "opponent": "楽天",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "藤井 聖",
+      "probability": 0.6573,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-05",
+      "opponent": "ロッテ",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "種市 篤暉",
+      "probability": 0.6034,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-08-06",
+      "opponent": "ロッテ",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "石川 柊太",
+      "probability": 0.6045,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-07",
+      "opponent": "ロッテ",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "サモンズ",
+      "probability": 0.591,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-09",
+      "opponent": "日本ハム",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "加藤 貴之",
+      "probability": 0.6461,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-10",
+      "opponent": "日本ハム",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.6612,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-11",
+      "opponent": "日本ハム",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "孫 易磊",
+      "probability": 0.6664,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-16",
+      "opponent": "ロッテ",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "小島 和哉",
+      "probability": 0.6667,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-08-17",
+      "opponent": "ロッテ",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "西野 勇士",
+      "probability": 0.6571,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-19",
+      "opponent": "西武",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "渡邉 勇太朗",
+      "probability": 0.6601,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-20",
+      "opponent": "西武",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "松本 航",
+      "probability": 0.6455,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-22",
+      "opponent": "日本ハム",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "北山 亘基",
+      "probability": 0.6144,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-08-23",
+      "opponent": "日本ハム",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "福島 蓮",
+      "probability": 0.6191,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-08-24",
+      "opponent": "日本ハム",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.6064,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-08-26",
+      "opponent": "楽天",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "岸 孝之",
+      "probability": 0.6179,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-08-27",
+      "opponent": "楽天",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.6056,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-29",
+      "opponent": "ロッテ",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "ボス",
+      "probability": 0.602,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-08-30",
+      "opponent": "ロッテ",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "サモンズ",
+      "probability": 0.619,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-08-31",
+      "opponent": "ロッテ",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "小島 和哉",
+      "probability": 0.5991,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-09-02",
+      "opponent": "オリックス",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "宮城 大弥",
+      "probability": 0.6436,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-03",
+      "opponent": "オリックス",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "寺西 成騎",
+      "probability": 0.6497,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-04",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "田嶋 大樹",
+      "probability": 0.6439,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-05",
+      "opponent": "楽天",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.6677,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-06",
+      "opponent": "楽天",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "荘司 康誠",
+      "probability": 0.6666,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-07",
+      "opponent": "楽天",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "藤井 聖",
+      "probability": 0.6708,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-09-09",
+      "opponent": "日本ハム",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.6054,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-09-11",
+      "opponent": "ロッテ",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "種市 篤暉",
+      "probability": 0.5941,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-09-13",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "九里 亜蓮",
+      "probability": 0.5999,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-14",
+      "opponent": "オリックス",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "曽谷 龍平",
+      "probability": 0.6114,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-15",
+      "opponent": "オリックス",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "エスピノーザ",
+      "probability": 0.6113,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-17",
+      "opponent": "西武",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "武内 夏暉",
+      "probability": 0.6686,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-18",
+      "opponent": "日本ハム",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "北山 亘基",
+      "probability": 0.6659,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-20",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "九里 亜蓮",
+      "probability": 0.653,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-09-21",
+      "opponent": "オリックス",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "佐藤 一磨",
+      "probability": 0.6487,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-09-22",
+      "opponent": "オリックス",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "エスピノーザ",
+      "probability": 0.6495,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-09-23",
+      "opponent": "オリックス",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "田嶋 大樹",
+      "probability": 0.6336,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-09-24",
+      "opponent": "楽天",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "ヤフーレ",
+      "probability": 0.6188,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-25",
+      "opponent": "楽天",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "瀧中 瞭太",
+      "probability": 0.6276,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-26",
+      "opponent": "楽天",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.6154,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-27",
+      "opponent": "西武",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "髙橋 光成",
+      "probability": 0.6293,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-09-30",
+      "opponent": "日本ハム",
+      "hawks_starter": "伊藤 優輔",
+      "opponent_starter": "福島 蓮",
+      "probability": 0.6156,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2025-10-03",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "佐藤 一磨",
+      "probability": 0.6331,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2025-10-05",
+      "opponent": "ロッテ",
+      "hawks_starter": "有原 航平",
+      "opponent_starter": "小島 和哉",
+      "probability": 0.5914,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-03-28",
+      "opponent": "日本ハム",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "達 孝太",
+      "probability": 0.6277,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-03-29",
+      "opponent": "日本ハム",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "有原 航平",
+      "probability": 0.6459,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-03-31",
+      "opponent": "楽天",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "前田 健太",
+      "probability": 0.6111,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-01",
+      "opponent": "楽天",
+      "hawks_starter": "徐 若熙",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.5767,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-02",
+      "opponent": "楽天",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "ウレーニャ",
+      "probability": 0.618,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-03",
+      "opponent": "ロッテ",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "毛利 海大",
+      "probability": 0.6159,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-04",
+      "opponent": "ロッテ",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "田中 晴也",
+      "probability": 0.5859,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-05",
+      "opponent": "ロッテ",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "小島 和哉",
+      "probability": 0.5992,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-07",
+      "opponent": "西武",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "隅田 知一郎",
+      "probability": 0.6426,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-08",
+      "opponent": "西武",
+      "hawks_starter": "徐 若熙",
+      "opponent_starter": "髙橋 光成",
+      "probability": 0.6206,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-09",
+      "opponent": "西武",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "菅井 信也",
+      "probability": 0.6484,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-11",
+      "opponent": "日本ハム",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.6255,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-12",
+      "opponent": "日本ハム",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "有原 航平",
+      "probability": 0.6157,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-14",
+      "opponent": "楽天",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "荘司 康誠",
+      "probability": 0.6557,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-15",
+      "opponent": "楽天",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.6508,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-16",
+      "opponent": "楽天",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "藤原 聡大",
+      "probability": 0.6489,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-17",
+      "opponent": "オリックス",
+      "hawks_starter": "徐 若熙",
+      "opponent_starter": "髙島 泰都",
+      "probability": 0.6141,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-18",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "九里 亜蓮",
+      "probability": 0.6629,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-19",
+      "opponent": "オリックス",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "ジェリー",
+      "probability": 0.6579,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-21",
+      "opponent": "西武",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "隅田 知一郎",
+      "probability": 0.6167,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-22",
+      "opponent": "西武",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "髙橋 光成",
+      "probability": 0.6256,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-23",
+      "opponent": "西武",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "菅井 信也",
+      "probability": 0.6267,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-25",
+      "opponent": "ロッテ",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "種市 篤暉",
+      "probability": 0.639,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-04-28",
+      "opponent": "オリックス",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "ジェリー",
+      "probability": 0.6249,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-04-29",
+      "opponent": "オリックス",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "田嶋 大樹",
+      "probability": 0.6219,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-01",
+      "opponent": "楽天",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.6319,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-02",
+      "opponent": "楽天",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "ウレーニャ",
+      "probability": 0.6382,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-03",
+      "opponent": "楽天",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "早川 隆久",
+      "probability": 0.5981,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-04",
+      "opponent": "西武",
+      "hawks_starter": "徐 若熙",
+      "opponent_starter": "菅井 信也",
+      "probability": 0.5805,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-05",
+      "opponent": "西武",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "渡邉 勇太朗",
+      "probability": 0.6146,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-06",
+      "opponent": "西武",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "髙橋 光成",
+      "probability": 0.6264,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-08",
+      "opponent": "ロッテ",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "廣池 康志郎",
+      "probability": 0.6476,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-09",
+      "opponent": "ロッテ",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "田中 晴也",
+      "probability": 0.6556,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-10",
+      "opponent": "ロッテ",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "毛利 海大",
+      "probability": 0.6061,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-12",
+      "opponent": "西武",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "渡邉 勇太朗",
+      "probability": 0.6359,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-13",
+      "opponent": "西武",
+      "hawks_starter": "藤原 大翔",
+      "opponent_starter": "髙橋 光成",
+      "probability": 0.62,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-15",
+      "opponent": "楽天",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "早川 隆久",
+      "probability": 0.5963,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-16",
+      "opponent": "楽天",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.5828,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-17",
+      "opponent": "楽天",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "藤井 聖",
+      "probability": 0.5619,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-19",
+      "opponent": "オリックス",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "九里 亜蓮",
+      "probability": 0.6025,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-20",
+      "opponent": "オリックス",
+      "hawks_starter": "藤原 大翔",
+      "opponent_starter": "エスピノーザ",
+      "probability": 0.5564,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-22",
+      "opponent": "日本ハム",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "達 孝太",
+      "probability": 0.6019,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-23",
+      "opponent": "日本ハム",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "細野 晴希",
+      "probability": 0.6186,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-24",
+      "opponent": "日本ハム",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "北山 亘基",
+      "probability": 0.6061,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-26",
+      "opponent": "巨人",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "則本 昂大",
+      "probability": 0.6144,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-27",
+      "opponent": "巨人",
+      "hawks_starter": "アルメンタ",
+      "opponent_starter": "戸郷 翔征",
+      "probability": 0.5724,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-05-28",
+      "opponent": "巨人",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "田中 将大",
+      "probability": 0.6007,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-29",
+      "opponent": "広島",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "玉村 昇悟",
+      "probability": 0.6346,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-30",
+      "opponent": "広島",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "森下 暢仁",
+      "probability": 0.6219,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-05-31",
+      "opponent": "広島",
+      "hawks_starter": "徐 若熙",
+      "opponent_starter": "岡本 駿",
+      "probability": 0.6196,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-02",
+      "opponent": "中日",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "マラー",
+      "probability": 0.6388,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-04",
+      "opponent": "中日",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "金丸 夢斗",
+      "probability": 0.6233,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-05",
+      "opponent": "DeNA",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "篠木 健太郎",
+      "probability": 0.6397,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-06-06",
+      "opponent": "DeNA",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "庄司 陽斗",
+      "probability": 0.606,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-07",
+      "opponent": "DeNA",
+      "hawks_starter": "徐 若熙",
+      "opponent_starter": "尾形 崇斗",
+      "probability": 0.5959,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-09",
+      "opponent": "阪神",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "才木 浩人",
+      "probability": 0.6653,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-10",
+      "opponent": "阪神",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "大竹 耕太郎",
+      "probability": 0.6685,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-11",
+      "opponent": "阪神",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "伊藤 将司",
+      "probability": 0.6646,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-12",
+      "opponent": "ヤクルト",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "吉村 貢司郎",
+      "probability": 0.6499,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-06-13",
+      "opponent": "ヤクルト",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "山野 太一",
+      "probability": 0.6576,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-14",
+      "opponent": "ヤクルト",
+      "hawks_starter": "アルメンタ",
+      "opponent_starter": "奥川 恭伸",
+      "probability": 0.6282,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-06-19",
+      "opponent": "日本ハム",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.6112,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-06-20",
+      "opponent": "日本ハム",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "孫 易磊",
+      "probability": 0.6013,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-21",
+      "opponent": "日本ハム",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "柴田 獅子",
+      "probability": 0.5933,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-23",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "ジェリー",
+      "probability": 0.6251,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-06-24",
+      "opponent": "オリックス",
+      "hawks_starter": "中村 稔弥",
+      "opponent_starter": "田嶋 大樹",
+      "probability": 0.5887,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-25",
+      "opponent": "オリックス",
+      "hawks_starter": "前田 純",
+      "opponent_starter": "髙島 泰都",
+      "probability": 0.6353,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-06-30",
+      "opponent": "西武",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "平良 海馬",
+      "probability": 0.6289,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-01",
+      "opponent": "西武",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "ワイナンス",
+      "probability": 0.6275,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-02",
+      "opponent": "西武",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "武内 夏暉",
+      "probability": 0.6398,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-03",
+      "opponent": "ロッテ",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "廣池 康志郎",
+      "probability": 0.6479,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-04",
+      "opponent": "ロッテ",
+      "hawks_starter": "北斗",
+      "opponent_starter": "ロング",
+      "probability": 0.6261,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-07-05",
+      "opponent": "ロッテ",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "小島 和哉",
+      "probability": 0.6379,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-07",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "ジェリー",
+      "probability": 0.6078,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-08",
+      "opponent": "オリックス",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "九里 亜蓮",
+      "probability": 0.6037,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-07-10",
+      "opponent": "楽天",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "早川 隆久",
+      "probability": 0.6531,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-07-11",
+      "opponent": "楽天",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "ウレーニャ",
+      "probability": 0.6429,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-12",
+      "opponent": "楽天",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.634,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-14",
+      "opponent": "日本ハム",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "北山 亘基",
+      "probability": 0.6111,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-15",
+      "opponent": "日本ハム",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "加藤 貴之",
+      "probability": 0.6091,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-07-16",
+      "opponent": "日本ハム",
+      "hawks_starter": "上茶谷 大河",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.582,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-18",
+      "opponent": "ロッテ",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "廣池 康志郎",
+      "probability": 0.5997,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-19",
+      "opponent": "ロッテ",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "ロング",
+      "probability": 0.6082,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-20",
+      "opponent": "ロッテ",
+      "hawks_starter": "大関 友久",
+      "opponent_starter": "ジャクソン",
+      "probability": 0.6167,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-21",
+      "opponent": "オリックス",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "エスピノーザ",
+      "probability": 0.6361,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-07-22",
+      "opponent": "オリックス",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "片山 楽生",
+      "probability": 0.639,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-23",
+      "opponent": "オリックス",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "山口 廉王",
+      "probability": 0.6504,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-24",
+      "opponent": "西武",
+      "hawks_starter": "上茶谷 大河",
+      "opponent_starter": "渡邉 勇太朗",
+      "probability": 0.6005,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-07-25",
+      "opponent": "西武",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "武内 夏暉",
+      "probability": 0.6364,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-07-26",
+      "opponent": "西武",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "髙橋 光成",
+      "probability": 0.6232,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-08-01",
+      "opponent": "楽天",
+      "hawks_starter": "上茶谷 大河",
+      "opponent_starter": "早川 隆久",
+      "probability": 0.6005,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-08-02",
+      "opponent": "楽天",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "古謝 樹",
+      "probability": 0.61,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-08-04",
+      "opponent": "日本ハム",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "伊藤 大海",
+      "probability": 0.6438,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-08-05",
+      "opponent": "日本ハム",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "北山 亘基",
+      "probability": 0.6512,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-08-06",
+      "opponent": "日本ハム",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "細野 晴希",
+      "probability": 0.6224,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-08-07",
+      "opponent": "西武",
+      "hawks_starter": "松本 晴",
+      "opponent_starter": "髙橋 光成",
+      "probability": 0.6384,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-08-08",
+      "opponent": "西武",
+      "hawks_starter": "上茶谷 大河",
+      "opponent_starter": "隅田 知一郎",
+      "probability": 0.6242,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-08-09",
+      "opponent": "西武",
+      "hawks_starter": "前田 悠伍",
+      "opponent_starter": "武内 夏暉",
+      "probability": 0.6256,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-08-11",
+      "opponent": "ロッテ",
+      "hawks_starter": "モイネロ",
+      "opponent_starter": "河村 説人",
+      "probability": 0.6623,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-08-12",
+      "opponent": "ロッテ",
+      "hawks_starter": "上沢 直之",
+      "opponent_starter": "ロング",
+      "probability": 0.6716,
+      "predicted": "win",
+      "actual": "win",
+      "correct": true
+    },
+    {
+      "date": "2026-08-13",
+      "opponent": "ロッテ",
+      "hawks_starter": "スチュワート・ジュニア",
+      "opponent_starter": "田中 晴也",
+      "probability": 0.6599,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    },
+    {
+      "date": "2026-08-14",
+      "opponent": "楽天",
+      "hawks_starter": "大津 亮介",
+      "opponent_starter": "藤井 聖",
+      "probability": 0.6594,
+      "predicted": "win",
+      "actual": "loss",
+      "correct": false
+    }
+  ]
+}

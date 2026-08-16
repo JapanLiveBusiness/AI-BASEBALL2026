@@ -1,0 +1,243 @@
+:root{
+  --hawks-navy:#07101c;--hawks-navy-2:#0d1b30;--hawks-gold:#d9b150;
+  --hawks-red:#d91f2a;--hawks-green:#0d9b50;--hawks-text:#17233a;
+  --hawks-muted:#7c899a;--hawks-border:#dde5ee;--hawks-page:#f7f9fc;
+}
+.stApp{background:linear-gradient(180deg,#f7f9fc 0%,#fff 28%,#fff 100%)!important;color:var(--hawks-text)!important}
+.block-container{max-width:1180px!important;padding:0 1.2rem 4rem!important}
+
+.hawks-live-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 -1.2rem 18px;padding:15px 20px;border:1px solid rgba(120,151,193,.35);border-radius:0 0 16px 16px;background:linear-gradient(135deg,#0d1b30,#081426);color:#fff;box-shadow:0 10px 24px rgba(11,25,44,.15)}
+.hawks-live-left,.hawks-live-right{display:flex;align-items:center;gap:10px}
+.hawks-live-dot{width:9px;height:9px;border-radius:50%;background:#ff3b45;box-shadow:0 0 10px rgba(255,59,69,.75)}
+.hawks-live-title{font-weight:900}
+.hawks-live-refresh{color:#9badc3;font-size:.78rem}
+.hawks-live-badge{padding:5px 10px;border-radius:999px;font-size:.72rem;font-weight:900}
+.hawks-live-badge.is-live{color:#ff757a;background:rgba(255,58,68,.1);border:1px solid rgba(255,58,68,.22)}
+.hawks-live-badge.is-finished{color:#b7dfff;background:rgba(69,145,214,.1);border:1px solid rgba(69,145,214,.22)}
+.hawks-live-badge.is-waiting{color:#f4d477;background:rgba(218,176,67,.1);border:1px solid rgba(218,176,67,.22)}
+
+.hawks-game-card{overflow:hidden;margin:18px 0;border:1px solid rgba(217,31,42,.32);border-left:5px solid var(--hawks-red);border-radius:18px;background:#fff;box-shadow:0 10px 26px rgba(143,46,52,.08)}
+.hawks-game-card-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid rgba(217,31,42,.1)}
+.hawks-game-card-title{display:flex;align-items:center;gap:9px;color:#c6262f;font-size:1.03rem;font-weight:950}
+.hawks-red-dot{width:12px;height:12px;border-radius:50%;background:#e01f2b}
+.hawks-game-card-source{padding:5px 9px;border-radius:999px;color:#bd343a;background:#fff2f3;border:1px solid rgba(224,63,69,.16);font-size:.68rem;font-weight:900}
+.hawks-score-area{display:grid;grid-template-columns:1fr .72fr 1fr;align-items:center;min-height:210px;padding:22px 20px}
+.hawks-team{text-align:center}.hawks-team-icon{font-size:2rem}.hawks-team-name{margin-top:6px;color:#17233a;font-weight:950}.hawks-team-sub{margin-top:2px;color:#7e8a9b;font-size:.68rem}
+.hawks-score-number{margin-top:10px;color:#0f1a31;font-size:4.8rem;line-height:.9;font-weight:950}.hawks-score-main{color:#e3232c}
+.hawks-vs-area{display:flex;flex-direction:column;align-items:center;gap:10px}.hawks-final-badge{padding:5px 11px;border-radius:999px;color:#0f8d49;background:rgba(19,164,88,.08);border:1px solid rgba(19,164,88,.16);font-size:.68rem;font-weight:900}.hawks-vs{color:#a0a9b5;font-size:.72rem;font-weight:900;letter-spacing:.12em}
+.hawks-score-diff{padding:7px 10px;border-radius:9px;font-size:.72rem;font-weight:950;white-space:nowrap}.hawks-leading{color:#0d9b50;background:#eef9f2}.hawks-behind{color:#d32630;background:#fff2f3}.hawks-tied{color:#9a7000;background:#fff9e8}
+.hawks-score-footer{display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid rgba(43,64,91,.07);background:#fafbfd;color:#7d8999;font-size:.67rem}.hawks-sync-dot{width:7px;height:7px;border-radius:50%;background:#44d88e}.hawks-auto-badge{margin-left:auto;padding:3px 6px;border-radius:5px;color:#0d9b50;background:#eef9f2;font-size:.56rem;font-weight:900}
+
+.hawks-ai-card{margin:20px 0;border:1px solid rgba(13,155,80,.28);border-left:5px solid var(--hawks-green);border-radius:18px;background:#fff;box-shadow:0 10px 28px rgba(18,115,66,.07)}
+.hawks-ai-head{display:flex;align-items:center;gap:12px;padding:16px 18px;color:#0d9b50;font-weight:950;font-size:1.08rem}
+.hawks-ai-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:#0d9b50;color:#fff}
+.hawks-ai-body{display:grid;grid-template-columns:.9fr 1.4fr;gap:28px;align-items:center;margin:0 18px 18px;padding:22px;border:1px solid #e1e8ef;border-radius:14px}
+.hawks-ai-label{font-size:.9rem}.hawks-ai-value{margin-top:6px;color:#0d9b50;font-size:3.8rem;line-height:.95;font-weight:950}.hawks-ai-value span{font-size:1.5rem}
+.hawks-ai-track{height:14px;border-radius:999px;background:#e9edf2;overflow:hidden}.hawks-ai-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,#0d9b50,#42bf79)}.hawks-ai-caption{margin-top:10px;color:#0d9b50;font-weight:850;font-size:.8rem}
+
+.hawks-info-card{display:flex;align-items:center;gap:12px;margin:18px 0;padding:16px 18px;border:1px solid rgba(217,177,80,.55);border-radius:14px;background:#fffaf0}
+.hawks-info-title{color:#a87700;font-weight:950}.hawks-info-text{margin-left:8px;color:#42506a;font-size:.8rem}.hawks-info-arrow{margin-left:auto;color:#b2871a;font-size:1.7rem}
+
+@media(max-width:600px){
+  .block-container{padding:0 .65rem 5rem!important}
+  .hawks-live-strip{margin:0 -.65rem 14px;padding:12px 14px}
+  .hawks-score-area{grid-template-columns:1fr 64px 1fr;min-height:175px;padding:16px 8px}
+  .hawks-score-number{font-size:3.6rem}.hawks-team-icon{font-size:1.5rem}.hawks-team-name{font-size:.76rem}.hawks-team-sub{font-size:.55rem}
+  .hawks-score-diff{padding:5px 7px;font-size:.56rem}
+  .hawks-ai-body{grid-template-columns:1fr 1.2fr;gap:16px;padding:16px}.hawks-ai-value{font-size:3rem}
+  .hawks-info-text{display:none}
+}
+
+/* =====================================================
+   HAWKS AI V8 READABILITY FIX
+   ===================================================== */
+
+/* 通常本文 */
+.stApp,
+.stApp p,
+.stApp label,
+.stApp span {
+    color: #17233a;
+}
+
+/* キャプション */
+div[data-testid="stCaptionContainer"],
+div[data-testid="stCaptionContainer"] p {
+    color: #7c899a !important;
+}
+
+/* Metric */
+div[data-testid="stMetric"] {
+    background: #ffffff !important;
+    border: 1px solid #dde5ee !important;
+    border-radius: 14px !important;
+    box-shadow: 0 4px 14px rgba(20,35,60,.06) !important;
+}
+
+div[data-testid="stMetricLabel"] p {
+    color: #718096 !important;
+    font-weight: 700 !important;
+}
+
+div[data-testid="stMetricValue"] {
+    color: #17233a !important;
+    font-weight: 900 !important;
+}
+
+/* セクションタイトル */
+.section-head {
+    background: linear-gradient(
+        135deg,
+        #132238 0%,
+        #0c1828 100%
+    ) !important;
+
+    color: #ffffff !important;
+
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    font-weight: 900 !important;
+
+    box-shadow:
+        0 8px 20px rgba(8,20,38,.12) !important;
+}
+
+/* セクション内文字は白 */
+.section-head,
+.section-head * {
+    color: #ffffff !important;
+}
+
+/* 今日の試合カード */
+div[data-testid="stHorizontalBlock"] div[data-testid="stMetric"] {
+    color: #17233a !important;
+}
+
+/* 入力フォーム */
+div[data-testid="stNumberInput"] input {
+    background: #ffffff !important;
+    color: #17233a !important;
+    border: 1px solid #dce4ed !important;
+}
+
+/* ラジオ・チェック */
+div[data-testid="stRadio"] label,
+div[data-testid="stCheckbox"] label {
+    color: #17233a !important;
+}
+
+/* LIVEバーは白文字を維持 */
+.hawks-live-strip,
+.hawks-live-strip *,
+.hawks-live-title,
+.hawks-live-refresh {
+    color: #ffffff !important;
+}
+
+/* スコアカード */
+.hawks-game-card,
+.hawks-game-card * {
+    color: #17233a;
+}
+
+.hawks-game-card-title {
+    color: #d91f2a !important;
+}
+
+.hawks-score-main {
+    color: #e3232c !important;
+}
+
+.hawks-leading {
+    color: #0d9b50 !important;
+}
+
+.hawks-behind {
+    color: #d32630 !important;
+}
+
+/* AIカード */
+.hawks-ai-head,
+.hawks-ai-value,
+.hawks-ai-caption {
+    color: #0d9b50 !important;
+}
+
+
+/* =====================================================
+   TOP HEADER TEXT VISIBILITY FIX
+   ===================================================== */
+
+/* Streamlitタイトル */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4 {
+    color: #14213d !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* 上部Markdown本文 */
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] strong,
+[data-testid="stMarkdownContainer"] b {
+    color: #17233a !important;
+    opacity: 1 !important;
+}
+
+/* 通常ラベル */
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] span {
+    color: #526176 !important;
+}
+
+/* Metric文字 */
+[data-testid="stMetricLabel"] *,
+[data-testid="stMetricValue"] * {
+    color: #17233a !important;
+}
+
+/* セクション見出しだけ白文字を維持 */
+.section-head,
+.section-head *,
+.hawks-live-strip,
+.hawks-live-strip * {
+    color: #ffffff !important;
+}
+
+/* 試合カードタイトルは赤 */
+.hawks-game-card-title,
+.hawks-game-card-title * {
+    color: #d91f2a !important;
+}
+
+/* AIカードタイトルは緑 */
+.hawks-ai-head,
+.hawks-ai-head * {
+    color: #0d9b50 !important;
+}
+
+
+/* ================================
+   PITCHER CARD TEXT FIX
+   ================================ */
+
+[data-testid="stAlert"]{
+    background:#16304f !important;
+    border:1px solid rgba(255,255,255,.06) !important;
+}
+
+[data-testid="stAlert"] p,
+[data-testid="stAlert"] strong,
+[data-testid="stAlert"] span,
+[data-testid="stAlert"] div{
+    color:#ffffff !important;
+}
+

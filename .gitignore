@@ -1,0 +1,53 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# ===== Environment / Secrets =====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets.toml
+.streamlit/secrets.toml
+
+# ===== Virtual environments =====
+venv/
+.venv/
+env/
+
+# ===== Logs / temporary =====
+*.log
+*.tmp
+*.swp
+*.bak
+.DS_Store
+
+# ===== HAWKS AI old source backups =====
+app.before-*.py
+app.py.bak*
+*.before-*.py
+
+# ===== Local/cache data =====
+.cache/
+tmp/
+temp/
+
+# ===== IDE =====
+.vscode/
+.idea/
+
+# ===== Additional HAWKS AI backups =====
+*.backup
+*.backup-*
+*.bak-*
+app.v*.py
+
+# ===== Inspection / debug dumps =====
+*.inspect.json
+data/*.before-*.json
