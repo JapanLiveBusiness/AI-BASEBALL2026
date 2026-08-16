@@ -2350,12 +2350,72 @@ div[data-testid="stAlert"] span{
     color:#17233a !important;
 }
 
-/* 濃紺系の手作りカード内文字 */
-.pitcher-card,
-.pitcher-card *,
-.hawks-pitcher-card,
-.hawks-pitcher-card *{
-    color:#ffffff !important;
+/* ===== 先発投手カード ===== */
+.pitcher-card{
+    background:#ffffff;
+    border:1px solid #dce4ee;
+    border-radius:14px;
+    padding:16px 18px;
+    min-height:78px;
+    box-shadow:0 6px 18px rgba(15,35,60,.06);
+    color:#17233a !important;
+}
+
+.pitcher-card *{
+    color:#17233a !important;
+}
+
+.pitcher-card .pitcher-name{
+    font-size:1.08rem;
+    font-weight:900;
+    margin-bottom:8px;
+    line-height:1.25;
+}
+
+.pitcher-card .pitcher-stats{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    flex-wrap:wrap;
+    font-size:.86rem;
+    font-weight:700;
+    color:#607087 !important;
+}
+
+.pitcher-card .pitcher-stats span{
+    color:#607087 !important;
+}
+
+.pitcher-card .pitcher-era{
+    color:#0877d8 !important;
+    font-weight:900;
+}
+
+.pitcher-card .pitcher-grade{
+    display:inline-flex;
+    align-items:center;
+    padding:3px 9px;
+    border-radius:999px;
+    background:#eef7ff;
+    color:#0877d8 !important;
+    font-size:.78rem;
+    font-weight:850;
+}
+
+@media screen and (max-width:600px){
+    .pitcher-card{
+        padding:13px 14px;
+        min-height:72px;
+    }
+
+    .pitcher-card .pitcher-name{
+        font-size:1rem;
+    }
+
+    .pitcher-card .pitcher-stats{
+        gap:6px;
+        font-size:.78rem;
+    }
 }
 
 /* ===== MOBILE ===== */
@@ -2740,63 +2800,306 @@ st.markdown(
 # データ計算後に内容を入れても、表示位置はHero直下に維持される
 premium_top_slot = st.empty()
 
-# ===== HAWKS AI v2.0 手動ハンディ =====
-st.markdown(
-    '<div class="section-head section-yellow">🔥 現在のハンディ</div>',
-    unsafe_allow_html=True
-)
+# ===== HAWKS AI v2.0 ハンディ計算 =====
+# 操作UIは非表示。
+# handicap_score は上部プレミアム表示・AI計算・勝敗判定で使用するため維持。
+handicap_score = -2.0
 
-handicap_score = st.number_input(
-    "ホークス基準のハンディ",
-    min_value=-20.0,
-    max_value=20.0,
-    value=-2.0,
-    step=0.1,
-    format="%.1f",
-    help="＋はホークス有利、－はホークス不利。0.1単位で設定できます"
-)
 
-if handicap_score > 0:
-    st.markdown(
-        f'<div class="handicap-status handicap-plus">'
-        f'🦅 ホークス {handicap_score:+.1f} ハンディ'
-        f'</div>',
-        unsafe_allow_html=True
-    )
+# ===== PREMIUM HANDICAP DISPLAY =====
+# 表示上はマイナスを出さない。
+# ハンデ対象チームだけ数値を表示し、基準側は0。
+# handicap_score < 0 : ホークス側にハンデ
+# handicap_score > 0 : 相手側にハンデ
+premium_hawks_handicap = 0.0
+premium_opp_handicap = 0.0
 
-elif handicap_score < 0:
-    st.markdown(
-        f'<div class="handicap-status handicap-minus">'
-        f'🔥 ホークス {handicap_score:.1f} ハンディ'
-        f'</div>',
-        unsafe_allow_html=True
-    )
+if handicap_score < 0:
+    premium_hawks_handicap = abs(float(handicap_score))
 
-else:
-    st.markdown(
-        '<div class="handicap-status handicap-even">'
-        '⚾ イーブン 0.0'
-        '</div>',
-        unsafe_allow_html=True
-    )
+elif handicap_score > 0:
+    premium_opp_handicap = abs(float(handicap_score))
 
-if handicap_score > 0:
-    start_text = f"開始ハンディ：ホークス +{handicap_score:.1f}"
-elif handicap_score < 0:
-    start_text = f"開始ハンディ：ホークス {handicap_score:.1f}"
-else:
-    start_text = "開始ハンディ：0.0（イーブン）"
+def format_premium_handicap(value):
+    if value is None:
+        return "－"
 
-st.markdown(
-    f'<div class="handicap-start">ⓘ {start_text}</div>',
-    unsafe_allow_html=True
-)
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return "－"
+
+    if value == 0:
+        return "0"
+
+    if value.is_integer():
+        return str(int(value))
+
+    return f"{value:.1f}"
+
+# ===== HANDICAP UI HIDDEN =====
+# handicap_score / premium_opp_handicap / premium_hawks_handicap は
+# 上部プレミアム表示・AI計算・ハンデ判定で引き続き使用。
+
 
 st.caption(
     "＋ = ホークスリード　／　0 = 同点　／　－ = ホークスビハインド"
 )
 
 # ===== HAWKS AI v2.0 NPB自動取得 =====
+
+def fetch_next_hawks_game_from_npb():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    import re
+    import requests
+    from bs4 import BeautifulSoup
+
+    now = datetime.now(ZoneInfo("Asia/Tokyo"))
+    year = now.year
+
+    team_names = [
+        "日本ハム", "楽天", "西武", "ロッテ",
+        "オリックス", "ソフトバンク",
+        "巨人", "阪神", "広島", "DeNA",
+        "中日", "ヤクルト",
+    ]
+
+    stadium_alias = {
+        "エスコンＦ": "エスコンフィールド",
+        "みずほPayPay": "みずほPayPayドーム",
+        "神　宮": "神宮球場",
+        "横　浜": "横浜スタジアム",
+    }
+
+    # 今月＋翌月まで確認
+    months = [now.month]
+    next_month = 1 if now.month == 12 else now.month + 1
+    if next_month != now.month:
+        months.append(next_month)
+
+    for month in months:
+        target_year = year + (1 if now.month == 12 and month == 1 else 0)
+
+        url = (
+            f"https://npb.jp/games/{target_year}/"
+            f"schedule_{month:02d}_detail.html"
+        )
+
+        try:
+            r = requests.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=15,
+            )
+            r.raise_for_status()
+
+            # r.textではなくbytesを渡してcharsetを自動判定
+            soup = BeautifulSoup(r.content, "html.parser")
+        except Exception:
+            continue
+
+        current_date = None
+
+        for tr in soup.find_all("tr"):
+            text = " ".join(tr.get_text(" ", strip=True).split())
+
+            # 行内の日付を更新
+            dm = re.search(r"(\d{1,2})/(\d{1,2})", text)
+
+            if dm:
+                m, d = map(int, dm.groups())
+
+                try:
+                    current_date = datetime(
+                        target_year,
+                        m,
+                        d,
+                        tzinfo=ZoneInfo("Asia/Tokyo"),
+                    )
+                except ValueError:
+                    current_date = None
+
+            if current_date is None:
+                continue
+
+            # 今日より前は除外
+            if current_date.date() < now.date():
+                continue
+
+            if "ソフトバンク" not in text:
+                continue
+
+            opponent = "-"
+
+            for team in team_names:
+                if team != "ソフトバンク" and team in text:
+                    opponent = team
+                    break
+
+            tm = re.search(r"(\d{1,2}:\d{2})", text)
+            game_time = tm.group(1) if tm else "-"
+
+            stadium = "-"
+
+            if tm:
+                before_time = text[:tm.start()]
+
+                # 日付・チーム名・記号を除去
+                cleaned = re.sub(
+                    r"\d{1,2}/\d{1,2}[（(][^）)]*[）)]",
+                    " ",
+                    before_time,
+                )
+
+                for team in team_names:
+                    cleaned = cleaned.replace(team, " ")
+
+                cleaned = cleaned.replace("-", " ")
+                cleaned = " ".join(cleaned.split())
+
+                if cleaned:
+                    # 最後に残った語を球場として使用
+                    stadium = cleaned.split()[-1]
+
+            stadium = stadium_alias.get(stadium, stadium)
+
+            return {
+                "ok": True,
+                "opponent": opponent,
+                "stadium": stadium,
+                "time": game_time,
+                "game_date": current_date.strftime("%Y-%m-%d"),
+                "game_date_label": current_date.strftime("%m/%d"),
+                "is_today": current_date.date() == now.date(),
+                "game_label": (
+                    "今日の試合"
+                    if current_date.date() == now.date()
+                    else "次の試合"
+                ),
+            }
+
+    return {"ok": False}
+
+
+
+@st.cache_data(ttl=900)
+def fetch_hawks_announced_starters(opponent_name, stadium_name, game_time):
+    """
+    NPB公式「予告先発投手」から
+    ソフトバンク戦の2投手を取得する。
+    """
+    result = {
+        "ok": False,
+        "hawks_starter": "-",
+        "opp_starter": "-",
+    }
+
+    try:
+        import urllib.request
+        from bs4 import BeautifulSoup
+
+        url = "https://npb.jp/announcement/starter/"
+
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
+        )
+
+        html = urllib.request.urlopen(
+            req,
+            timeout=10
+        ).read()
+
+        soup = BeautifulSoup(
+            html,
+            "html.parser"
+        )
+
+        # NPBの予告先発ページでは、
+        # 1試合につき「球団・投手」×2 + 球場/時刻という構造。
+        # リンクテキストから選手名を取得する。
+        rows = []
+
+        for a in soup.find_all("a", href=True):
+            text = a.get_text(" ", strip=True)
+
+            if not text:
+                continue
+
+            href = a.get("href", "")
+
+            # 選手個人ページへのリンクだけ候補にする
+            if "/bis/players/" in href:
+                rows.append({
+                    "name": text,
+                    "node": a,
+                })
+
+        # 2人ずつペアとして確認
+        for i in range(0, len(rows) - 1, 2):
+            p1 = rows[i]
+            p2 = rows[i + 1]
+
+            # 2人のリンク周辺のテキストを取得
+            parent1 = p1["node"].find_parent(
+                ["li", "div", "td"]
+            )
+            parent2 = p2["node"].find_parent(
+                ["li", "div", "td"]
+            )
+
+            ctx1 = (
+                parent1.get_text(" ", strip=True)
+                if parent1 else ""
+            )
+            ctx2 = (
+                parent2.get_text(" ", strip=True)
+                if parent2 else ""
+            )
+
+            context = f"{ctx1} {ctx2}"
+
+            # 球団名または球場名で対象試合を判定
+            if (
+                "ソフトバンク" not in context
+                and "ホークス" not in context
+                and str(stadium_name) not in context
+            ):
+                continue
+
+            n1 = p1["name"].strip()
+            n2 = p2["name"].strip()
+
+            # 周辺の球団表記で左右判定
+            if "ソフトバンク" in ctx1 or "ホークス" in ctx1:
+                result["hawks_starter"] = n1
+                result["opp_starter"] = n2
+            elif "ソフトバンク" in ctx2 or "ホークス" in ctx2:
+                result["hawks_starter"] = n2
+                result["opp_starter"] = n1
+            else:
+                # 球場一致だけの場合は、
+                # opponent_name の周辺判定
+                if str(opponent_name) in ctx1:
+                    result["opp_starter"] = n1
+                    result["hawks_starter"] = n2
+                else:
+                    result["hawks_starter"] = n1
+                    result["opp_starter"] = n2
+
+            result["ok"] = True
+            return result
+
+    except Exception:
+        pass
+
+    return result
+
+
 @st.cache_data(ttl=900)
 def fetch_hawks_npb_data():
     result = {
@@ -2812,6 +3115,10 @@ def fetch_hawks_npb_data():
         "draws": "-",
         "pct": "-",
         "recent5": [],
+        "game_date": "-",
+        "game_date_label": "-",
+        "is_today": True,
+        "game_label": "今日の試合",
     }
 
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -2839,36 +3146,57 @@ def fetch_hawks_npb_data():
             result["draws"] = draws
             result["pct"] = pct
 
-        # 今日の試合情報を日付ベースで自動取得
+        # 今日の試合がなければ、次のホークス戦を自動取得
         try:
-            from datetime import datetime
+            from datetime import datetime, timedelta
+            from zoneinfo import ZoneInfo
             import requests
 
-            today = datetime.now().strftime("%Y%m%d")
-            game_url = f"https://handenomori.com/jpb/{today}/"
+            now_jst = datetime.now(ZoneInfo("Asia/Tokyo"))
 
-            r = requests.get(
-                game_url,
-                headers=headers,
-                timeout=10
-            )
-            r.raise_for_status()
+            found_game = False
 
-            game_soup = BeautifulSoup(r.text, "html.parser")
+            # 今日を含めて未来7日まで検索
+            for day_offset in range(0, 8):
 
-            hawks_game = None
+                target_dt = now_jst + timedelta(days=day_offset)
+                target_ymd = target_dt.strftime("%Y%m%d")
 
-            for game in game_soup.select(".game-detail2"):
-                teams = [
-                    x.get_text(" ", strip=True)
-                    for x in game.select(".detail-card-team")
-                ]
+                game_url = f"https://handenomori.com/jpb/{target_ymd}/"
 
-                if any("ソフトバンク" in x for x in teams):
-                    hawks_game = game
-                    break
+                try:
+                    r = requests.get(
+                        game_url,
+                        headers=headers,
+                        timeout=10
+                    )
+                    r.raise_for_status()
+                except Exception:
+                    continue
 
-            if hawks_game:
+                game_soup = BeautifulSoup(
+                    r.text,
+                    "html.parser"
+                )
+
+                hawks_game = None
+
+                for game in game_soup.select(".game-detail2"):
+                    teams = [
+                        x.get_text(" ", strip=True)
+                        for x in game.select(".detail-card-team")
+                    ]
+
+                    if any(
+                        "ソフトバンク" in x
+                        for x in teams
+                    ):
+                        hawks_game = game
+                        break
+
+                if hawks_game is None:
+                    continue
+
                 teams = [
                     x.get_text(" ", strip=True)
                     for x in hawks_game.select(".detail-card-team")
@@ -2879,6 +3207,56 @@ def fetch_hawks_npb_data():
                         result["opponent"] = teams[1]
                     else:
                         result["opponent"] = teams[0]
+
+                # ===== ハンデの森 実ハンデ取得 =====
+                # teams[0] = ホーム / teams[1] = ビジター
+                result["hawks_handicap"] = None
+                result["opp_handicap"] = None
+
+                handi_cells = hawks_game.select(
+                    "table.single-handi td.single-handi-handi"
+                )
+
+                if len(handi_cells) >= 2 and len(teams) >= 2:
+                    home_text = handi_cells[0].get_text(
+                        " ",
+                        strip=True
+                    )
+                    visitor_text = handi_cells[1].get_text(
+                        " ",
+                        strip=True
+                    )
+
+                    def _parse_handi(v):
+                        v = str(v).strip()
+
+                        # 試合カードは存在するが片側が空欄
+                        # → 基準側なので 0
+                        if not v:
+                            return 0.0
+
+                        v = (
+                            v.replace("＋", "+")
+                             .replace("−", "-")
+                             .replace("－", "-")
+                             .replace("点", "")
+                             .strip()
+                        )
+
+                        try:
+                            return float(v)
+                        except (TypeError, ValueError):
+                            return None
+
+                    home_handi = _parse_handi(home_text)
+                    visitor_handi = _parse_handi(visitor_text)
+
+                    if "ソフトバンク" in teams[0]:
+                        result["hawks_handicap"] = home_handi
+                        result["opp_handicap"] = visitor_handi
+                    else:
+                        result["hawks_handicap"] = visitor_handi
+                        result["opp_handicap"] = home_handi
 
                 info = hawks_game.select(
                     ".detail-single-studium-time span"
@@ -2909,7 +3287,43 @@ def fetch_hawks_npb_data():
                         result["hawks_starter"] = p2
                         result["opp_starter"] = p1
 
-        except Exception as game_error:
+                # 表示対象の日付も保存
+                result["game_date"] = target_dt.strftime("%Y-%m-%d")
+                result["game_date_label"] = target_dt.strftime("%m/%d")
+                result["is_today"] = (day_offset == 0)
+                result["game_label"] = (
+                    "今日の試合"
+                    if day_offset == 0
+                    else "次の試合"
+                )
+
+                found_game = True
+                break
+
+            if not found_game:
+                # ハンデの森に未来試合がまだ無い場合、
+                # NPB公式日程から次戦を取得
+                next_game = fetch_next_hawks_game_from_npb()
+
+                if next_game.get("ok"):
+                    result["opponent"] = next_game["opponent"]
+                    result["stadium"] = next_game["stadium"]
+                    result["time"] = next_game["time"]
+                    result["game_date"] = next_game["game_date"]
+                    result["game_date_label"] = next_game["game_date_label"]
+                    result["is_today"] = next_game["is_today"]
+                    result["game_label"] = next_game["game_label"]
+
+                    # 予告先発未発表時
+                    result["hawks_starter"] = "-"
+                    result["opp_starter"] = "-"
+                else:
+                    result["game_date"] = "-"
+                    result["game_date_label"] = "-"
+                    result["is_today"] = False
+                    result["game_label"] = "次の試合"
+
+        except Exception:
             pass
 
         # --- ホークス試合結果：直近5試合 ---
@@ -2968,6 +3382,8 @@ def fetch_team_standings():
             "ロッテ": ["千葉ロッテ", "ロッテ"],
         }
 
+        rank = 0
+
         for tr in soup.find_all("tr"):
             cells = [
                 c.get_text(" ", strip=True)
@@ -2984,29 +3400,121 @@ def fetch_team_standings():
                     continue
 
                 if any(name in row for name in names):
-                    if len(cells) >= 6:
-                        try:
-                            games = int(cells[1])
-                            wins = int(cells[2])
-                            losses = int(cells[3])
-                            draws = int(cells[4])
-                            pct = float(cells[5])
+                    try:
+                        games = int(cells[1])
+                        wins = int(cells[2])
+                        losses = int(cells[3])
+                        draws = int(cells[4])
+                        pct = float(cells[5])
 
-                            if games >= 50:
-                                result[key] = {
-                                    "games": games,
-                                    "wins": wins,
-                                    "losses": losses,
-                                    "draws": draws,
-                                    "pct": pct,
-                                }
-                        except (ValueError, IndexError):
-                            pass
+                        if games >= 50:
+                            rank += 1
+
+                            result[key] = {
+                                "rank": rank,
+                                "games": games,
+                                "wins": wins,
+                                "losses": losses,
+                                "draws": draws,
+                                "pct": pct,
+                            }
+
+                    except (ValueError, IndexError):
+                        pass
 
     except Exception:
         pass
 
     return result
+
+
+
+# ===== PITCHER IMAGE AUTO SELECT =====
+def get_pitcher_image(pitcher_name, team_key):
+    import base64
+    import mimetypes
+    from pathlib import Path
+
+    def norm(v):
+        return (
+            str(v or "")
+            .replace(" ", "")
+            .replace("　", "")
+            .replace("\t", "")
+            .strip()
+        )
+
+    target = norm(pitcher_name)
+
+    team_folder_map = {
+        "ソフトバンク": "福岡ソフトバンクホークス",
+        "楽天": "東北楽天ゴールデンイーグルス",
+        "西武": "埼玉西武ライオンズ",
+        "日本ハム": "北海道日本ハムファイターズ",
+        "オリックス": "オリックス・バファローズ",
+        "ロッテ": "千葉ロッテマリーンズ",
+        "巨人": "読売ジャイアンツ",
+        "阪神": "阪神タイガース",
+        "広島": "広島東洋カープ",
+        "DeNA": "横浜DeNAベイスターズ",
+        "中日": "中日ドラゴンズ",
+        "ヤクルト": "東京ヤクルトスワローズ",
+    }
+
+    roots = [
+        Path("/app/static/pitchers"),
+        Path("/opt/hawks-ai/static/pitchers"),
+    ]
+
+    # 球団別 npb_all_players を最優先
+    folder_name = team_folder_map.get(str(team_key))
+
+    if folder_name:
+        for root in roots:
+            team_dir = root / "npb_all_players" / folder_name
+
+            if not team_dir.exists():
+                continue
+
+            for candidate in team_dir.rglob("*"):
+                if (
+                    candidate.is_file()
+                    and candidate.suffix.lower() in
+                    (".jpg", ".jpeg", ".png", ".webp")
+                    and norm(candidate.stem) == target
+                ):
+                    mime = (
+                        mimetypes.guess_type(str(candidate))[0]
+                        or "image/jpeg"
+                    )
+                    encoded = base64.b64encode(
+                        candidate.read_bytes()
+                    ).decode("ascii")
+                    return f"data:{mime};base64,{encoded}"
+
+    # 球団フォルダで見つからない場合のみ全体検索
+    for root in roots:
+        if not root.exists():
+            continue
+
+        for candidate in root.rglob("*"):
+            if (
+                candidate.is_file()
+                and candidate.suffix.lower() in
+                (".jpg", ".jpeg", ".png", ".webp")
+                and norm(candidate.stem) == target
+            ):
+                mime = (
+                    mimetypes.guess_type(str(candidate))[0]
+                    or "image/jpeg"
+                )
+                encoded = base64.b64encode(
+                    candidate.read_bytes()
+                ).decode("ascii")
+                return f"data:{mime};base64,{encoded}"
+
+    return ""
+# ===== END PITCHER IMAGE AUTO SELECT =====
 
 
 TEAM_PITCHER_CODES = {
@@ -3560,6 +4068,26 @@ def fetch_hawks_live_status():
 
 npb = fetch_hawks_npb_data()
 
+# ===== PREMIUM HANDICAP FROM HANDENOMORI =====
+# 試合カード/ハンデデータが無い場合は None → 「－」表示
+premium_hawks_handicap = npb.get("hawks_handicap")
+premium_opp_handicap = npb.get("opp_handicap")
+
+# ===== NPB OFFICIAL ANNOUNCED STARTERS =====
+_announced = fetch_hawks_announced_starters(
+    npb.get("opponent", "-"),
+    npb.get("stadium", "-"),
+    npb.get("time", "-"),
+)
+
+if _announced.get("ok"):
+    npb["hawks_starter"] = _announced.get(
+        "hawks_starter", "-"
+    )
+    npb["opp_starter"] = _announced.get(
+        "opp_starter", "-"
+    )
+
 standings = fetch_team_standings()
 
 hawks_team_stats = standings.get("ソフトバンク", {})
@@ -3573,6 +4101,31 @@ for k in ["楽天", "西武", "日本ハム", "オリックス", "ロッテ"]:
         break
 
 opponent_team_stats = standings.get(opp_key, {})
+
+# ===== PREMIUM SCOREBOARD TEAM DATA =====
+_premium_team_full_names = {
+    "日本ハム": "北海道日本ハムファイターズ",
+    "楽天": "東北楽天ゴールデンイーグルス",
+    "西武": "埼玉西武ライオンズ",
+    "オリックス": "オリックス・バファローズ",
+    "ロッテ": "千葉ロッテマリーンズ",
+}
+
+_premium_opp_full_name = _premium_team_full_names.get(
+    opp_key,
+    str(npb.get("opponent", opp_key))
+)
+
+_premium_opp_rank = opponent_team_stats.get("rank", "-")
+_premium_hawks_rank = hawks_team_stats.get("rank", "-")
+
+_premium_opp_wins = opponent_team_stats.get("wins", "-")
+_premium_opp_losses = opponent_team_stats.get("losses", "-")
+_premium_opp_draws = opponent_team_stats.get("draws", "-")
+
+_premium_hawks_wins = hawks_team_stats.get("wins", "-")
+_premium_hawks_losses = hawks_team_stats.get("losses", "-")
+_premium_hawks_draws = hawks_team_stats.get("draws", "-")
 
 hawks_pitcher_stats = fetch_pitcher_stats(
     "ソフトバンク",
@@ -3737,37 +4290,13 @@ try:
                 pregame_probability / 100.0
             )
 
-            st.markdown(
-        '<div class="section-head section-purple">🤖 本日の HAWKS AI V8 FINAL</div>',
-        unsafe_allow_html=True
-    )
+            # =============================================
+            # V8 FINAL 正式予測値
+            # 画面表示は上部プレミアムカード1か所に統一
+            # =============================================
+            v8_final_probability = probability
 
-            c1, c2, c3 = st.columns(3)
-
-            with c1:
-                st.metric("勝利期待度", f"{probability:.1%}")
-
-            with c2:
-                st.metric("リスク判定", f"{icon} {risk}")
-
-            with c3:
-                st.metric(
-                    "危険パターン",
-                    "・".join(patterns) if patterns else "該当なし"
-                )
-
-            st.caption(
-                f'{v8_opponent}戦 ｜ '
-                f'{npb.get("stadium", "-")} ｜ '
-                f'{v8_hawks_starter} vs {v8_opp_starter}'
-            )
-
-            st.caption(
-                f'Hawks直近5: {h5_pct:.1%} / RD {h5_rd:+.2f} ｜ '
-                f'{v8_opponent}直近5: {opp_pct:.1%} / RD {opp_rd:+.2f}'
-            )
-
-            st.divider()
+            # risk / patterns / icon 等は内部判定用として保持
 
 
 except Exception as e:
@@ -3784,7 +4313,7 @@ tomorrow_col = st.container()
 
 with today_col:
     st.markdown(
-            '<div class="section-head section-blue">⚾ 今日の試合</div>',
+            f'<div class="section-head section-blue">⚾ {npb.get("game_label", "今日の試合")}</div>',
             unsafe_allow_html=True
         )
 
@@ -3811,31 +4340,8 @@ with today_col:
         else:
             st.metric("パ・リーグ順位", "取得中")
 
-    p1, p2 = st.columns(2)
-
-    with p1:
-        hp = hawks_pitcher_stats
-        if hp.get("ok"):
-            st.info(
-                f'🦅 **{npb["hawks_starter"]}**\n\n'
-                f'{hp.get("wins", "-")}勝 {hp.get("losses", "-")}敗'
-                f' ｜ 防御率 {hp.get("era", "-")}'
-                f' ｜ {hp.get("grade", "標準")}'
-            )
-        else:
-            st.info(f'🦅 ホークス先発：**{npb["hawks_starter"]}**')
-
-    with p2:
-        op = opp_pitcher_stats
-        if op.get("ok"):
-            st.info(
-                f'⚾ **{npb["opp_starter"]}**\n\n'
-                f'{op.get("wins", "-")}勝 {op.get("losses", "-")}敗'
-                f' ｜ 防御率 {op.get("era", "-")}'
-                f' ｜ {op.get("grade", "標準")}'
-            )
-        else:
-            st.info(f'⚾ 相手先発：**{npb["opp_starter"]}**')
+    # ===== STARTER CARDS MOVED TO PREMIUM SCOREBOARD =====
+    # 下部の重複表示は停止。データ・写真取得機能は上部で引き続き使用。
 
     if npb["wins"] != "-":
         st.caption(
@@ -4197,7 +4703,12 @@ else:
 
 # =========================================================
 # HERO直下：PC / スマホ共通プレミアム統合速報
-_premium_prob_raw = float(globals().get("probability", 0.634))
+_premium_prob_raw = float(
+    globals().get(
+        "v8_final_probability",
+        globals().get("probability", 0.634)
+    )
+)
 _premium_prob = _premium_prob_raw * 100.0 if _premium_prob_raw <= 1.0 else _premium_prob_raw
 _premium_prob = max(0.0, min(100.0, _premium_prob))
 _premium_opponent = str(npb.get("opponent", "対戦相手"))
@@ -4236,6 +4747,33 @@ _premium_stadium = str(npb.get("stadium", "-"))
 _premium_time = str(npb.get("time", "-"))
 _premium_hawks_starter = str(npb.get("hawks_starter", "-"))
 _premium_opp_starter = str(npb.get("opp_starter", "-"))
+
+# ===== PREMIUM STARTER PHOTOS =====
+_premium_hawks_pitcher_image = get_pitcher_image(
+    _premium_hawks_starter,
+    "ソフトバンク"
+)
+
+_premium_opp_pitcher_image = get_pitcher_image(
+    _premium_opp_starter,
+    npb.get("opponent", "-")
+)
+
+_premium_hawks_pitcher_img = (
+    f'<img class="hawks-premium-pitcher-photo" '
+    f'src="{_premium_hawks_pitcher_image}" '
+    f'alt="{_premium_hawks_starter}">'
+    if _premium_hawks_pitcher_image
+    else '<div class="hawks-premium-pitcher-fallback">⚾</div>'
+)
+
+_premium_opp_pitcher_img = (
+    f'<img class="hawks-premium-pitcher-photo" '
+    f'src="{_premium_opp_pitcher_image}" '
+    f'alt="{_premium_opp_starter}">'
+    if _premium_opp_pitcher_image
+    else '<div class="hawks-premium-pitcher-fallback">⚾</div>'
+)
 _premium_date = datetime.now(ZoneInfo("Asia/Tokyo")).strftime("%Y.%m.%d（%a）")
 _premium_now = datetime.now(ZoneInfo("Asia/Tokyo")).strftime("%H:%M")
 _premium_status = str(live.get("status", "試合開始前"))
@@ -4260,8 +4798,10 @@ _recent_wins = _recent.count("○") if isinstance(_recent, list) else 0
 _recent_losses = _recent.count("●") if isinstance(_recent, list) else 0
 _recent_text = f"ホークス {_recent_wins}勝 {_recent_losses}敗" if _recent else "データ取得中"
 
+import textwrap
+
 premium_top_slot.markdown(
-    f"""
+    textwrap.dedent(f"""
     <div class="hawks-premium-shell">
       <div class="hawks-premium-news">
         <span class="dot"></span><span class="source">NPB公式速報</span>
@@ -4271,16 +4811,44 @@ premium_top_slot.markdown(
       <div class="hawks-premium-card">
         <div class="hawks-premium-score">
           <div class="hawks-premium-team">
-            <img class="hawks-premium-team-logo" src="{_premium_opp_logo_src}" alt="{_premium_opponent} ロゴ">
-            <div><div class="hawks-premium-team-name">{_premium_opponent}</div><div class="hawks-premium-team-sub">OPPONENT</div></div>
+            <div class="hawks-premium-team-visual">
+              <img class="hawks-premium-team-logo" src="{_premium_opp_logo_src}" alt="{_premium_opponent} ロゴ">
+              <div class="hawks-premium-handicap-box {'is-active' if (premium_opp_handicap or 0) > 0 else 'is-zero'}">
+                <small>ハンデの森</small>
+                <strong>{format_premium_handicap(premium_opp_handicap) + ("点" if premium_opp_handicap is not None else "")}</strong>
+              </div>
+            </div>
+
+            <div class="hawks-premium-team-info">
+              <div class="hawks-premium-team-name">{_premium_opponent}</div>
+              <div class="hawks-premium-team-sub">{_premium_opp_full_name}</div>
+              <div class="hawks-premium-team-meta">パ・リーグ　{_premium_opp_rank}位</div>
+              <div class="hawks-premium-team-record">今季成績<br>{_premium_opp_wins}勝{_premium_opp_losses}敗{_premium_opp_draws}分</div>
+            </div>
           </div>
+
           <div class="hawks-premium-scoreline">
             <div class="numbers">{opponent_score} − <span class="hawks-num">{hawks_score}</span></div>
-            <span class="hawks-premium-status">{_premium_status_label}</span>
+            {f'<span class="hawks-premium-status">{_premium_status_label}</span>' if _premium_status_label != "試合開始前" else ""}
+            <div class="hawks-premium-venue">{_premium_stadium}</div>
+            <div class="hawks-premium-time">{_premium_time} 開始予定</div>
           </div>
+
           <div class="hawks-premium-team right">
-            <div><div class="hawks-premium-team-name">ソフトバンク</div><div class="hawks-premium-team-sub">福岡ソフトバンクホークス</div></div>
-            <img class="hawks-premium-team-logo" src="{_premium_hawks_logo_src}" alt="福岡ソフトバンクホークス ロゴ">
+            <div class="hawks-premium-team-info">
+              <div class="hawks-premium-team-name">ソフトバンク</div>
+              <div class="hawks-premium-team-sub">福岡ソフトバンクホークス</div>
+              <div class="hawks-premium-team-meta">パ・リーグ　{_premium_hawks_rank}位</div>
+              <div class="hawks-premium-team-record">今季成績<br>{_premium_hawks_wins}勝{_premium_hawks_losses}敗{_premium_hawks_draws}分</div>
+            </div>
+
+            <div class="hawks-premium-team-visual">
+              <img class="hawks-premium-team-logo" src="{_premium_hawks_logo_src}" alt="福岡ソフトバンクホークス ロゴ">
+              <div class="hawks-premium-handicap-box right {'is-active' if (premium_hawks_handicap or 0) > 0 else 'is-zero'}">
+                <small>ハンデの森</small>
+                <strong>{format_premium_handicap(premium_hawks_handicap) + ("点" if premium_hawks_handicap is not None else "")}</strong>
+              </div>
+            </div>
           </div>
         </div>
         <div class="hawks-premium-result"><span class="diff">{_premium_result}</span><span>{_premium_status_label}</span></div>
@@ -4291,16 +4859,74 @@ premium_top_slot.markdown(
           <div class="hawks-premium-confidence">信頼度<b>{'高' if _premium_prob >= 50 else '中'}</b></div>
         </div>
         <div class="hawks-premium-detail-title">☷　詳細情報</div>
-        <div class="hawks-premium-details">
-          <div class="hawks-premium-detail"><small>対戦成績（直近5試合）</small><b class="green">{_recent_text}</b></div>
-          <div class="hawks-premium-detail"><small>本日の先発投手</small><b>{_premium_hawks_starter} vs {_premium_opp_starter}</b></div>
-          <div class="hawks-premium-detail"><small>今日の球場</small><b>{_premium_stadium}</b></div>
-          <div class="hawks-premium-detail"><small>開始時間</small><b>{_premium_time}</b></div>
+        <div class="hawks-premium-details premium-details-three">
+          <div class="hawks-premium-detail">
+            <small>対戦成績（直近5試合）</small>
+            <b class="green">{_recent_text}</b>
+          </div>
+
+          <div class="hawks-premium-detail">
+            <small>{'今日の球場' if npb.get('is_today') else '次の試合会場'}</small>
+            <b>{_premium_stadium}</b>
+          </div>
+
+          <div class="hawks-premium-detail">
+            <small>開始時間</small>
+            <b>{_premium_time}</b>
+          </div>
+        </div>
+
+        <div class="hawks-premium-starters">
+
+          <div class="hawks-premium-starter-card opponent">
+            <div class="hawks-premium-pitcher-photo-wrap">
+              {_premium_opp_pitcher_img}
+            </div>
+
+            <div class="hawks-premium-starter-info">
+              <div class="hawks-premium-starter-label">
+                {_premium_opponent} 予告先発
+              </div>
+              <div class="hawks-premium-starter-name">
+                {_premium_opp_starter}
+              </div>
+              <div class="hawks-premium-starter-meta">
+                {opp_pitcher_stats.get("wins", "-")}勝
+                {opp_pitcher_stats.get("losses", "-")}敗
+                <span>｜</span>
+                防御率 {opp_pitcher_stats.get("era", "-")}
+              </div>
+            </div>
+          </div>
+
+          <div class="hawks-premium-starter-vs">VS</div>
+
+          <div class="hawks-premium-starter-card hawks">
+            <div class="hawks-premium-pitcher-photo-wrap">
+              {_premium_hawks_pitcher_img}
+            </div>
+
+            <div class="hawks-premium-starter-info">
+              <div class="hawks-premium-starter-label">
+                ソフトバンク 予告先発
+              </div>
+              <div class="hawks-premium-starter-name">
+                {_premium_hawks_starter}
+              </div>
+              <div class="hawks-premium-starter-meta">
+                {hawks_pitcher_stats.get("wins", "-")}勝
+                {hawks_pitcher_stats.get("losses", "-")}敗
+                <span>｜</span>
+                防御率 {hawks_pitcher_stats.get("era", "-")}
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
       <div class="hawks-premium-foot"><span>※ データは5〜15分間隔で自動更新されています</span><span>最終更新：{_premium_now}</span></div>
     </div>
-    """,
+    """).replace("\n", ""),
     unsafe_allow_html=True,
 )
 
@@ -6778,6 +7404,606 @@ body,
 
 }
 
+
+/* ===== PITCHER PHOTO CARD FINAL ===== */
+.pitcher-card{
+    display:flex !important;
+    align-items:center !important;
+    gap:14px !important;
+    min-height:110px !important;
+    padding:14px 16px !important;
+    background:#fff !important;
+    border:1px solid #dce5ef !important;
+    border-radius:16px !important;
+    box-shadow:0 5px 16px rgba(20,40,70,.06) !important;
+}
+
+.pitcher-photo-wrap{
+    width:82px !important;
+    height:82px !important;
+    min-width:82px !important;
+    overflow:hidden !important;
+    border-radius:13px !important;
+    background:#eef3f8 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+}
+
+.pitcher-photo{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    object-position:center top !important;
+}
+
+.pitcher-photo-fallback{
+    font-size:2.2rem !important;
+}
+
+.pitcher-info{
+    flex:1 !important;
+    min-width:0 !important;
+}
+
+.pitcher-name{
+    font-size:1.08rem !important;
+    font-weight:900 !important;
+    color:#17233a !important;
+    margin-bottom:7px !important;
+}
+
+.pitcher-stats{
+    display:flex !important;
+    align-items:center !important;
+    flex-wrap:wrap !important;
+    gap:5px !important;
+    font-size:.80rem !important;
+    font-weight:700 !important;
+    color:#607087 !important;
+}
+
+.pitcher-era{
+    color:#0877d8 !important;
+    font-weight:900 !important;
+}
+
+.pitcher-grade{
+    padding:3px 8px !important;
+    border-radius:999px !important;
+    background:#eaf5ff !important;
+    color:#0877d8 !important;
+    font-size:.70rem !important;
+    font-weight:900 !important;
+}
+
+@media screen and (max-width:600px){
+    .pitcher-card{
+        gap:9px !important;
+        min-height:88px !important;
+        padding:10px !important;
+    }
+
+    .pitcher-photo-wrap{
+        width:62px !important;
+        height:70px !important;
+        min-width:62px !important;
+    }
+
+    .pitcher-name{
+        font-size:.94rem !important;
+    }
+
+    .pitcher-stats{
+        font-size:.68rem !important;
+    }
+}
+
+
+/* ===== PREMIUM HANDICAP BOX ===== */
+.hawks-premium-handicap-box{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    margin-top:10px;
+    min-width:112px;
+    padding:7px 14px 8px;
+    background:#ffffff;
+    border:3px solid #111820;
+    border-radius:8px;
+    box-sizing:border-box;
+}
+
+.hawks-premium-handicap-box.right{
+    align-items:flex-end;
+    margin-left:auto;
+}
+
+.hawks-premium-handicap-box small{
+    display:block;
+    margin-bottom:1px;
+    color:#596675;
+    font-size:.61rem;
+    line-height:1.1;
+    font-weight:800;
+}
+
+.hawks-premium-handicap-box strong{
+    display:block;
+    color:#14243a;
+    font-size:1.45rem;
+    line-height:1.05;
+    font-weight:950;
+}
+
+.hawks-premium-handicap-box strong:not(:only-child){
+    letter-spacing:.01em;
+}
+
+@media screen and (max-width:600px){
+    .hawks-premium-handicap-box{
+        min-width:76px;
+        margin-top:6px;
+        padding:5px 8px 6px;
+        border-width:2px;
+    }
+
+    .hawks-premium-handicap-box small{
+        font-size:.48rem;
+    }
+
+    .hawks-premium-handicap-box strong{
+        font-size:1rem;
+    }
+}
+
+
+
+/* =========================================================
+   HAWKS PREMIUM SCOREBOARD FINAL
+   ========================================================= */
+
+.hawks-premium-score{
+    display:grid !important;
+    grid-template-columns:minmax(330px,1fr) 230px minmax(330px,1fr) !important;
+    align-items:start !important;
+    gap:16px !important;
+
+    padding:20px 34px 24px !important;
+}
+
+/* ===== TEAM ===== */
+
+.hawks-premium-team{
+    display:grid !important;
+    grid-template-columns:150px minmax(0,1fr) !important;
+    align-items:start !important;
+    gap:16px !important;
+    min-width:0 !important;
+}
+
+.hawks-premium-team.right{
+    grid-template-columns:minmax(0,1fr) 150px !important;
+    text-align:right !important;
+}
+
+.hawks-premium-team-visual{
+    width:150px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+}
+
+.hawks-premium-team-info{
+    padding-top:8px !important;
+    min-width:0 !important;
+    font-size:16px !important;
+    line-height:1.35 !important;
+}
+
+.hawks-premium-team-logo{
+    width:138px !important;
+    height:138px !important;
+    object-fit:contain !important;
+    flex-shrink:0 !important;
+    display:block !important;
+    transform:scale(1.10) !important;
+    transform-origin:center center !important;
+}
+
+.hawks-premium-team-name{
+    font-size:26px !important;
+    line-height:1.1 !important;
+    font-weight:950 !important;
+    color:#07111f !important;
+}
+
+.hawks-premium-team-sub{
+    margin-top:5px !important;
+    color:#637083 !important;
+    font-size:13px !important;
+    line-height:1.25 !important;
+    font-weight:750 !important;
+}
+
+.hawks-premium-team-meta{
+    margin-top:12px !important;
+    color:#111827 !important;
+    font-size:13px !important;
+    font-weight:850 !important;
+}
+
+.hawks-premium-team-record{
+    margin-top:11px !important;
+    color:#4b5563 !important;
+    font-size:.72rem !important;
+    line-height:1.45 !important;
+    font-weight:700 !important;
+}
+
+/* ===== HANDICAP ===== */
+
+.hawks-premium-handicap-box,
+.hawks-premium-handicap-box.right{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+
+    width:100% !important;
+    min-width:0 !important;
+
+    margin:2px 0 0 !important;
+    padding:0 !important;
+
+    background:transparent !important;
+    border:0 !important;
+    outline:0 !important;
+    box-shadow:none !important;
+
+    text-align:center !important;
+}
+
+.hawks-premium-handicap-box small{
+    display:none !important;
+    margin:0 0 3px !important;
+    padding:0 !important;
+
+    font-size:11px !important;
+    line-height:1 !important;
+    font-weight:850 !important;
+
+    color:#5d6979 !important;
+}
+
+.hawks-premium-handicap-box strong{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+
+    min-width:112px !important;
+    min-height:32px !important;
+
+    padding:2px 8px !important;
+
+    border:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+
+    font-size:25px !important;
+    line-height:1 !important;
+    font-weight:950 !important;
+}
+
+/* 相手側 */
+.hawks-premium-team:not(.right)
+.hawks-premium-handicap-box strong{
+    color:#1683e8 !important;
+}
+
+/* ホークス側 */
+.hawks-premium-team.right
+.hawks-premium-handicap-box strong{
+    color:#ef2634 !important;
+}
+
+/* ===== CENTER SCORE ===== */
+
+.hawks-premium-scoreline{
+    align-self:start !important;
+    text-align:center !important;
+    padding-top:2px !important;
+}
+
+.hawks-premium-scoreline .numbers{
+    font-size:58px !important;
+    line-height:1 !important;
+    font-weight:950 !important;
+    letter-spacing:.02em !important;
+    color:#07111f !important;
+}
+
+.hawks-premium-scoreline .hawks-num{
+    color:#e0212f !important;
+}
+
+.hawks-premium-status{
+    display:inline-flex !important;
+    margin-top:10px !important;
+    padding:5px 12px !important;
+
+    border-radius:999px !important;
+    background:#0a0e13 !important;
+    color:#fff !important;
+
+    font-size:.72rem !important;
+    font-weight:900 !important;
+}
+
+.hawks-premium-venue{
+    margin-top:21px !important;
+    color:#111827 !important;
+    font-size:15px !important;
+    font-weight:900 !important;
+}
+
+.hawks-premium-time{
+    margin-top:7px !important;
+    color:#4b5563 !important;
+    font-size:.72rem !important;
+    font-weight:750 !important;
+}
+
+/* ===== MOBILE ===== */
+
+@media screen and (max-width:600px){
+
+    .hawks-premium-score{
+        grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr) !important;
+        gap:6px !important;
+        padding:14px 8px 16px !important;
+    }
+
+    .hawks-premium-team{
+        grid-template-columns:66px minmax(0,1fr) !important;
+        gap:5px !important;
+    }
+
+    .hawks-premium-team.right{
+        grid-template-columns:minmax(0,1fr) 66px !important;
+    }
+
+    .hawks-premium-team-visual{
+        width:66px !important;
+    }
+
+    .hawks-premium-team-logo{
+        width:60px !important;
+        height:60px !important;
+    }
+
+    .hawks-premium-team-name{
+        font-size:13px !important;
+    }
+
+    .hawks-premium-team-sub{
+        margin-top:2px !important;
+        font-size:.43rem !important;
+    }
+
+    .hawks-premium-team-meta{
+        margin-top:7px !important;
+        font-size:.48rem !important;
+    }
+
+    .hawks-premium-team-record{
+        margin-top:5px !important;
+        font-size:.43rem !important;
+    }
+
+    .hawks-premium-handicap-box,
+    .hawks-premium-handicap-box.right{
+        margin-top:2px !important;
+    }
+
+    .hawks-premium-handicap-box small{
+        margin-bottom:2px !important;
+        font-size:.40rem !important;
+        white-space:nowrap !important;
+    }
+
+    .hawks-premium-handicap-box strong{
+        min-width:58px !important;
+        min-height:22px !important;
+        padding:1px 3px !important;
+        font-size:.78rem !important;
+        white-space:nowrap !important;
+    }
+
+    .hawks-premium-scoreline .numbers{
+        font-size:1.8rem !important;
+    }
+
+    .hawks-premium-status{
+        margin-top:6px !important;
+        padding:4px 7px !important;
+        font-size:.45rem !important;
+    }
+
+    .hawks-premium-venue{
+        margin-top:13px !important;
+        font-size:.52rem !important;
+    }
+
+    .hawks-premium-time{
+        margin-top:4px !important;
+        font-size:.43rem !important;
+    }
+}
+
+/* =========================================================
+   PREMIUM STARTING PITCHERS FINAL
+   ========================================================= */
+
+.hawks-premium-details.premium-details-three{
+    grid-template-columns:repeat(3,1fr) !important;
+}
+
+.hawks-premium-starters{
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) 60px minmax(0,1fr) !important;
+    align-items:center !important;
+    gap:12px !important;
+
+    margin:0 18px 18px !important;
+    padding:14px !important;
+
+    background:#fff !important;
+    border:1px solid #e2e8ef !important;
+    border-radius:15px !important;
+    box-sizing:border-box !important;
+}
+
+.hawks-premium-starter-card{
+    display:flex !important;
+    align-items:center !important;
+    gap:16px !important;
+
+    min-height:105px !important;
+    padding:10px 14px !important;
+
+    background:linear-gradient(135deg,#fff,#f8fafc) !important;
+    border-radius:13px !important;
+    box-sizing:border-box !important;
+}
+
+.hawks-premium-starter-card.hawks{
+    border-left:4px solid #e2b500 !important;
+}
+
+.hawks-premium-starter-card.opponent{
+    border-left:4px solid #1683e8 !important;
+}
+
+.hawks-premium-pitcher-photo-wrap{
+    width:84px !important;
+    height:84px !important;
+    min-width:84px !important;
+
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+
+    overflow:hidden !important;
+    border-radius:50% !important;
+    background:#eef3f7 !important;
+}
+
+.hawks-premium-pitcher-photo{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    object-position:center top !important;
+}
+
+.hawks-premium-pitcher-fallback{
+    font-size:2rem !important;
+}
+
+.hawks-premium-starter-info{
+    flex:1 !important;
+    min-width:0 !important;
+}
+
+.hawks-premium-starter-label{
+    margin-bottom:5px !important;
+
+    color:#738197 !important;
+    font-size:.68rem !important;
+    line-height:1.2 !important;
+    font-weight:850 !important;
+}
+
+.hawks-premium-starter-card.hawks
+.hawks-premium-starter-label{
+    color:#c38f00 !important;
+}
+
+.hawks-premium-starter-name{
+    color:#111d2d !important;
+
+    font-size:1.2rem !important;
+    line-height:1.2 !important;
+    font-weight:950 !important;
+}
+
+.hawks-premium-starter-meta{
+    margin-top:7px !important;
+
+    color:#66758a !important;
+    font-size:.76rem !important;
+    line-height:1.3 !important;
+    font-weight:700 !important;
+}
+
+.hawks-premium-starter-vs{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+
+    color:#111d2d !important;
+    font-size:1.45rem !important;
+    font-weight:950 !important;
+}
+
+
+/* ===== MOBILE ===== */
+
+@media screen and (max-width:600px){
+
+    .hawks-premium-details.premium-details-three{
+        grid-template-columns:1fr !important;
+    }
+
+    .hawks-premium-starters{
+        grid-template-columns:1fr !important;
+        gap:8px !important;
+
+        margin:0 10px 12px !important;
+        padding:9px !important;
+    }
+
+    .hawks-premium-starter-vs{
+        font-size:.75rem !important;
+        height:14px !important;
+    }
+
+    .hawks-premium-starter-card{
+        gap:10px !important;
+        min-height:82px !important;
+        padding:8px 10px !important;
+    }
+
+    .hawks-premium-pitcher-photo-wrap{
+        width:62px !important;
+        height:62px !important;
+        min-width:62px !important;
+    }
+
+    .hawks-premium-starter-label{
+        font-size:.57rem !important;
+    }
+
+    .hawks-premium-starter-name{
+        font-size:.96rem !important;
+    }
+
+    .hawks-premium-starter-meta{
+        margin-top:4px !important;
+        font-size:.63rem !important;
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 # ===== /HAWKS AI MOBILE ALIGN FINAL =====
@@ -6795,4 +8021,8 @@ st.markdown(r"""
 
 """, unsafe_allow_html=True)
 # ===== /HAWKS MOBILE VISUAL FINAL TUNE =====
+
+
+
+
 
