@@ -4081,12 +4081,21 @@ _announced = fetch_hawks_announced_starters(
 )
 
 if _announced.get("ok"):
-    npb["hawks_starter"] = _announced.get(
-        "hawks_starter", "-"
-    )
-    npb["opp_starter"] = _announced.get(
-        "opp_starter", "-"
-    )
+    _ann_hawks = str(
+        _announced.get("hawks_starter", "-")
+    ).strip()
+
+    _ann_opp = str(
+        _announced.get("opp_starter", "-")
+    ).strip()
+
+    # NPB公式で実際の投手名が取れた場合のみ上書き。
+    # 未発表時はハンデの森等ですでに取得した値を残す。
+    if _ann_hawks not in ("", "-", "None"):
+        npb["hawks_starter"] = _ann_hawks
+
+    if _ann_opp not in ("", "-", "None"):
+        npb["opp_starter"] = _ann_opp
 
 standings = fetch_team_standings()
 
@@ -4805,7 +4814,7 @@ premium_top_slot.markdown(
     <div class="hawks-premium-shell">
       <div class="hawks-premium-news">
         <span class="dot"></span><span class="source">NPB公式速報</span>
-        <span>{_premium_date}</span><span>{_premium_stadium}</span>
+        <span>{_premium_date}</span><span class="premium-stadium-top">{_premium_stadium}</span>
         <span class="auto">↻ 自動更新（15秒）</span>
       </div>
       <div class="hawks-premium-card">
@@ -4851,7 +4860,7 @@ premium_top_slot.markdown(
             </div>
           </div>
         </div>
-        <div class="hawks-premium-result"><span class="diff">{_premium_result}</span><span>{_premium_status_label}</span></div>
+        {"" if _premium_status_label == "試合開始前" else f'<div class="hawks-premium-result"><span class="diff">{_premium_result}</span><span>{_premium_status_label}</span></div>'}
         <div class="hawks-premium-ai">
           <div class="hawks-premium-bot">🤖</div>
           <div><div class="hawks-premium-ai-label">HAWKS AI 勝率予測</div><div class="hawks-premium-prob">{_premium_prob:.1f}%</div><small>ホークス勝利の可能性</small></div>
@@ -4891,10 +4900,10 @@ premium_top_slot.markdown(
                 {_premium_opp_starter}
               </div>
               <div class="hawks-premium-starter-meta">
-                {opp_pitcher_stats.get("wins", "-")}勝
-                {opp_pitcher_stats.get("losses", "-")}敗
+                {opp_pitcher_stats.get("wins") if opp_pitcher_stats.get("wins") is not None else "－"}勝
+                {opp_pitcher_stats.get("losses") if opp_pitcher_stats.get("losses") is not None else "－"}敗
                 <span>｜</span>
-                防御率 {opp_pitcher_stats.get("era", "-")}
+                防御率 {opp_pitcher_stats.get("era") if opp_pitcher_stats.get("era") is not None else "－"}
               </div>
             </div>
           </div>
@@ -4914,10 +4923,10 @@ premium_top_slot.markdown(
                 {_premium_hawks_starter}
               </div>
               <div class="hawks-premium-starter-meta">
-                {hawks_pitcher_stats.get("wins", "-")}勝
-                {hawks_pitcher_stats.get("losses", "-")}敗
+                {hawks_pitcher_stats.get("wins") if hawks_pitcher_stats.get("wins") is not None else "－"}勝
+                {hawks_pitcher_stats.get("losses") if hawks_pitcher_stats.get("losses") is not None else "－"}敗
                 <span>｜</span>
-                防御率 {hawks_pitcher_stats.get("era", "-")}
+                防御率 {hawks_pitcher_stats.get("era") if hawks_pitcher_stats.get("era") is not None else "－"}
               </div>
             </div>
           </div>
@@ -7559,6 +7568,26 @@ body,
 }
 
 
+
+
+.premium-stadium-top{
+    display:inline-flex !important;
+    align-items:center !important;
+    gap:6px !important;
+}
+
+.premium-stadium-top::before{
+    content:"";
+    display:inline-block;
+    width:12px;
+    height:12px;
+    border:2px solid #d7b300;
+    border-radius:50%;
+    box-sizing:border-box;
+    position:relative;
+    background:
+        radial-gradient(circle at center,#d7b300 0 2px,transparent 2.5px);
+}
 
 /* =========================================================
    HAWKS PREMIUM SCOREBOARD FINAL
