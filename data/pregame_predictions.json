@@ -61,5 +61,23 @@
     "model": "V8 FINAL",
     "locked": true,
     "saved_at": "2026-08-16T18:12:12.088071"
+  },
+  {
+    "game_id": "2026-08-18_日本ハム",
+    "date": "2026-08-18",
+    "opponent": "日本ハム",
+    "probability": 63.4,
+    "model": "V8 FINAL",
+    "locked": true,
+    "saved_at": "2026-08-17T22:25:06.175862"
+  },
+  {
+    "game_id": "2026-08-19_日本ハム",
+    "date": "2026-08-19",
+    "opponent": "日本ハム",
+    "probability": 56.0,
+    "model": "V8 FINAL",
+    "locked": true,
+    "saved_at": "2026-08-18T17:04:52.497554"
   }
 ]

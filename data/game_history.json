@@ -1,5 +1,28 @@
 [
   {
+    "game_id": "2026/0818/f-h-18",
+    "date": "2026-08-18",
+    "opponent": "日本ハム",
+    "stadium": "エスコンF",
+    "hawks_score": 7,
+    "opponent_score": 1,
+    "result": "勝",
+    "hawks_starter": "モイネロ",
+    "opponent_starter": "伊藤 大海",
+    "hawks_starter_wins": 1,
+    "hawks_starter_losses": 0,
+    "hawks_starter_era": 0.0,
+    "opponent_starter_wins": null,
+    "opponent_starter_losses": null,
+    "opponent_starter_era": null,
+    "ai_probability": 63.4,
+    "live_probability": 99.5,
+    "base_probability": 57.5,
+    "auto_saved": true,
+    "source": "NPB公式速報",
+    "pregame_probability": 63.4
+  },
+  {
     "game_id": "2026/0816/h-e-20",
     "date": "2026-08-16",
     "opponent": "楽天",

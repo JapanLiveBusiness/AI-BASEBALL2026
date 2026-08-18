@@ -8100,41 +8100,7 @@ st.markdown(r"""
 """, unsafe_allow_html=True)
 # ===== /HAWKS MOBILE VISUAL FINAL TUNE =====
 
-# ===== HAWKS HERO STUDIO CSS START =====
-st.markdown(
-    r"""
-<style>
-.hawks-hero {
-  min-height: 260px;
-  background-size: cover;
-  background-position: 38.8% 71%;
-  background-repeat: no-repeat;
-}
 
-.hawks-hero::before {
-  background: linear-gradient(90deg,
-    rgba(0, 0, 0, 0.5) 0%,
-    rgba(0, 0, 0, 0) 68%
-  );
-}
 
-@media (max-width: 600px) {
-  .hawks-hero {
-    min-height: 190px;
-    background-size: cover;
-    background-position: 50% 50%;
-    overflow: hidden;
-  }
 
-  .hawks-hero::before {
-    background: linear-gradient(90deg,
-      rgba(0, 0, 0, 0.6) 0%,
-      rgba(0, 0, 0, 0) 82%
-    );
-  }
-}
-</style>
-""",
-    unsafe_allow_html=True,
-)
-# ===== HAWKS HERO STUDIO CSS END =====
+
