@@ -4310,12 +4310,69 @@ except Exception as e:
 # TODAY / TOMORROW 2 COLUMN DASHBOARD
 # =========================================================
 # 今日の試合は常に横幅100%
-# =========================================================
-# TODAY DASHBOARD REMOVED
-# 今日の試合情報は上部プレミアムカードへ統合
-# =========================================================
-
+today_col = st.container()
 tomorrow_col = st.container()
+
+with today_col:
+    st.markdown(
+            f'<div class="section-head section-blue">⚾ {npb.get("game_label", "今日の試合")}</div>',
+            unsafe_allow_html=True
+        )
+
+    g1, g2, g3, g4 = st.columns(4)
+
+    with g1:
+        st.metric("対戦相手", npb["opponent"])
+
+    with g2:
+        st.caption("球場")
+        st.markdown(
+            f'<div style="font-size:1.55rem;font-weight:500;'
+            f'line-height:1.2;white-space:normal;">'
+            f'{npb["stadium"]}</div>',
+            unsafe_allow_html=True
+        )
+
+    with g3:
+        st.metric("開始", npb["time"])
+
+    with g4:
+        if npb["rank"] != "-":
+            st.metric("パ・リーグ順位", f'{npb["rank"]}位')
+        else:
+            st.metric("パ・リーグ順位", "取得中")
+
+    # ===== STARTER CARDS MOVED TO PREMIUM SCOREBOARD =====
+    # 下部の重複表示は停止。データ・写真取得機能は上部で引き続き使用。
+
+    if npb["wins"] != "-":
+        st.caption(
+            f'🏆 シーズン成績：'
+            f'{npb["wins"]}勝 {npb["losses"]}敗 '
+            f'{npb["draws"]}分　勝率 {npb["pct"]}'
+        )
+
+    if npb["recent5"]:
+        recent_text = "　".join(npb["recent5"])
+        wins_recent = npb["recent5"].count("○")
+
+        if wins_recent >= 4:
+            recent_state = "🔥 絶好調"
+        elif wins_recent >= 3:
+            recent_state = "↗ 好調"
+        elif wins_recent == 2:
+            recent_state = "➡ 五分"
+        else:
+            recent_state = "↘ やや不振"
+
+        st.markdown(
+            f"**直近5試合： {recent_text}　{recent_state}**"
+        )
+
+    if npb["ok"]:
+        st.caption("✅ NPB公式データ自動同期")
+    else:
+        st.warning("NPB自動取得に失敗しました。手動設定で分析を継続します。")
 
 with tomorrow_col:
     # =====================================================
