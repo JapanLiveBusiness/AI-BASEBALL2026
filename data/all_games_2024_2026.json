@@ -23290,5 +23290,59 @@
     "away_score": 2,
     "venue": "メットライフドーム",
     "source_url": "https://handenomori.com/jpb/20260819/"
+  },
+  {
+    "date": "2026-08-20",
+    "home": "DeNA",
+    "away": "巨人",
+    "home_score": 3,
+    "away_score": 6,
+    "venue": "横浜スタジアム",
+    "source_url": "https://handenomori.com/jpb/20260820/"
+  },
+  {
+    "date": "2026-08-20",
+    "home": "広島",
+    "away": "中日",
+    "home_score": 2,
+    "away_score": 1,
+    "venue": "マツダスタジアム",
+    "source_url": "https://handenomori.com/jpb/20260820/"
+  },
+  {
+    "date": "2026-08-20",
+    "home": "日本ハム",
+    "away": "ソフトバンク",
+    "home_score": 5,
+    "away_score": 5,
+    "venue": "エスコンF",
+    "source_url": "https://handenomori.com/jpb/20260820/"
+  },
+  {
+    "date": "2026-08-20",
+    "home": "楽天",
+    "away": "ロッテ",
+    "home_score": 3,
+    "away_score": 4,
+    "venue": "楽天モバイル",
+    "source_url": "https://handenomori.com/jpb/20260820/"
+  },
+  {
+    "date": "2026-08-20",
+    "home": "西武",
+    "away": "オリックス",
+    "home_score": 1,
+    "away_score": 3,
+    "venue": "メットライフドーム",
+    "source_url": "https://handenomori.com/jpb/20260820/"
+  },
+  {
+    "date": "2026-08-20",
+    "home": "阪神",
+    "away": "ヤクルト",
+    "home_score": 1,
+    "away_score": 4,
+    "venue": "京セラドーム大阪",
+    "source_url": "https://handenomori.com/jpb/20260820/"
   }
 ]

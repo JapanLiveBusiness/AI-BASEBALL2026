@@ -88,5 +88,14 @@
     "model": "V8 FINAL",
     "locked": true,
     "saved_at": "2026-08-19T18:01:47.153836"
+  },
+  {
+    "game_id": "2026-08-21_オリックス",
+    "date": "2026-08-21",
+    "opponent": "オリックス",
+    "probability": 63.4,
+    "model": "V8 FINAL",
+    "locked": true,
+    "saved_at": "2026-08-20T16:35:31.900212"
   }
 ]

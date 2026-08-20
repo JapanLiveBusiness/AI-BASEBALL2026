@@ -8113,3 +8113,211 @@ st.markdown(
     unsafe_allow_html=True,
 )
 # ===== HAWKS HERO STUDIO CSS END =====
+
+
+# ============================================================
+# 💰 BET MANAGEMENT
+# ============================================================
+
+from pathlib import Path as BetPath
+import json as bet_json
+
+
+def _bet_data_dir():
+    p = BetPath("/app/data")
+    if p.exists():
+        return p
+    return BetPath("/opt/hawks-ai/data")
+
+
+def _load_bet_json(filename, default):
+    p = _bet_data_dir() / filename
+    try:
+        if p.exists():
+            return bet_json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return default
+
+
+def _save_bet_json(filename, data):
+    p = _bet_data_dir() / filename
+    p.write_text(
+        bet_json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8"
+    )
+
+
+st.markdown("---")
+st.markdown("## 💰 ベット収支管理")
+
+_bet_summary = _load_bet_json("bet_summary.json", {})
+_bet_records = _load_bet_json("bet_records.json", [])
+
+_week_profit = int(
+    _bet_summary.get("weekly_unsettled_profit", 0) or 0
+)
+
+_week_start = _bet_summary.get("week_start", "-")
+_week_end = _bet_summary.get("week_end", "-")
+
+if _week_profit > 0:
+    _profit_text = f"+¥{_week_profit:,}"
+elif _week_profit < 0:
+    _profit_text = f"-¥{abs(_week_profit):,}"
+else:
+    _profit_text = "¥0"
+
+st.markdown(
+    f"""
+    <div style="
+        padding:18px 20px;
+        margin:10px 0 18px 0;
+        border-radius:16px;
+        background:linear-gradient(145deg,#07111c,#0d1b2a);
+        color:white;
+        box-shadow:0 8px 24px rgba(0,0,0,.18);
+    ">
+        <div style="font-size:13px;opacity:.72;">
+            {_week_start} 〜 {_week_end}
+        </div>
+        <div style="font-size:15px;margin-top:4px;">
+            今週の未精算収支
+        </div>
+        <div style="
+            font-size:34px;
+            font-weight:800;
+            margin-top:4px;
+        ">
+            {_profit_text}
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+_result_label = {
+    "win": "✅ WIN",
+    "loss": "❌ LOSS",
+    "push": "➖ PUSH",
+    None: "⏳ 未確定"
+}
+
+
+for idx, bet in enumerate(_bet_records):
+
+    date = bet.get("date", "")
+    time = bet.get("time", "")
+    team = bet.get("team", "")
+    opponent = bet.get("opponent", "")
+    handicap = bet.get("handicap", 0)
+    units = bet.get("bet_units", 0)
+
+    status = bet.get("status", "pending")
+    result = bet.get("result")
+
+    team_score = bet.get("team_score")
+    opponent_score = bet.get("opponent_score")
+    profit = int(bet.get("profit", 0) or 0)
+    settled = bool(bet.get("settled", False))
+
+    if profit > 0:
+        profit_text = f"+¥{profit:,}"
+    elif profit < 0:
+        profit_text = f"-¥{abs(profit):,}"
+    else:
+        profit_text = "¥0"
+
+    if team_score is None or opponent_score is None:
+        score_text = "試合結果待ち"
+    else:
+        score_text = f"{team_score} - {opponent_score}"
+
+    result_text = _result_label.get(result, "⏳ 未確定")
+
+    with st.container(border=True):
+
+        c1, c2, c3 = st.columns([2.2, 1.2, 1.2])
+
+        with c1:
+            st.markdown(
+                f"**{date}　{time}**  \n"
+                f"### {team} vs {opponent}"
+            )
+
+            st.caption(
+                f"ハンデ {handicap} ｜ ベット {units}"
+            )
+
+        with c2:
+            st.markdown("**試合結果**")
+            st.markdown(f"### {score_text}")
+            st.markdown(result_text)
+
+        with c3:
+            st.markdown("**収支**")
+
+            if status == "final":
+                st.markdown(f"### {profit_text}")
+            else:
+                st.markdown("### 未確定")
+
+        if status == "final":
+
+            if settled:
+                st.success("精算済み")
+
+                if st.button(
+                    "未精算へ戻す",
+                    key=f"bet_unsettle_{idx}"
+                ):
+                    _bet_records[idx]["settled"] = False
+                    _save_bet_json(
+                        "bet_records.json",
+                        _bet_records
+                    )
+                    st.rerun()
+
+            else:
+                if st.button(
+                    "✅ 精算済みにする",
+                    key=f"bet_settle_{idx}",
+                    type="primary"
+                ):
+                    _bet_records[idx]["settled"] = True
+                    _save_bet_json(
+                        "bet_records.json",
+                        _bet_records
+                    )
+
+                    # summaryも即時再計算
+                    weekly_total = 0
+
+                    for b in _bet_records:
+                        try:
+                            if (
+                                not b.get("settled", False)
+                                and b.get("status") == "final"
+                            ):
+                                bd = b.get("date", "")
+
+                                if (
+                                    _week_start != "-"
+                                    and _week_end != "-"
+                                    and _week_start <= bd <= _week_end
+                                ):
+                                    weekly_total += int(
+                                        b.get("profit", 0) or 0
+                                    )
+                        except Exception:
+                            pass
+
+                    _bet_summary["weekly_unsettled_profit"] = weekly_total
+
+                    _save_bet_json(
+                        "bet_summary.json",
+                        _bet_summary
+                    )
+
+                    st.rerun()
