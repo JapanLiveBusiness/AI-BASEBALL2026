@@ -2647,10 +2647,9 @@ import json
 _now_dt_jst = datetime.now(ZoneInfo("Asia/Tokyo"))
 _now_jst = _now_dt_jst.strftime("%H:%M")
 
-# 試合がない場合は曜日別
-_weekday_banner = f"banner{_now_dt_jst.weekday() + 1:02d}.webp"
-_banner_filename = _weekday_banner
-_banner_mode = "weekday"
+# 試合がない場合は固定のOFFバナー
+_banner_filename = "banner_off.webp"
+_banner_mode = "off"
 
 try:
     _npb_today_path = Path("/app/data/npb_today.json")
@@ -2698,11 +2697,28 @@ try:
 except Exception as _banner_error:
     print("HERO BANNER SELECT ERROR:", _banner_error)
 
-_banner_path = Path("/app/data/banners") / _banner_filename
+# 状態別の固定バナーを選択
+_pc_banner_filename = _banner_filename
+
+# スマホも同じ状態別バナーを中央トリミングで表示
+_mobile_banner_filename = None
+
+_pc_banner_path = (
+    Path("/app/static/banners/pc") / _pc_banner_filename
+)
+_pc_banner_url = (
+    f"app/static/banners/pc/{_pc_banner_filename}"
+)
+
+if _mobile_banner_filename:
+    _mobile_banner_url = (
+        f"app/static/banners/mobile/{_mobile_banner_filename}"
+    )
+else:
+    _mobile_banner_url = _pc_banner_url
 
 try:
-    if _banner_path.exists():
-        _banner_url = f"app/static/banners/{_banner_filename}"
+    if _pc_banner_path.exists():
 
         st.markdown(
             f"""
@@ -2716,11 +2732,28 @@ try:
             rgba(0,0,0,.16) 40%,
             rgba(0,0,0,.06) 100%
         ),
-        url("{_banner_url}") !important;
+        url("{_pc_banner_url}") !important;
 
     background-size:cover !important;
     background-position:center center !important;
     background-repeat:no-repeat !important;
+}}
+
+@media (max-width: 768px) {{
+    .hawks-hero {{
+        background-image:
+            linear-gradient(
+                90deg,
+                rgba(0,0,0,.28) 0%,
+                rgba(0,0,0,.12) 55%,
+                rgba(0,0,0,.04) 100%
+            ),
+            url("{_mobile_banner_url}") !important;
+
+        background-size:cover !important;
+        background-position:center center !important;
+        background-repeat:no-repeat !important;
+    }}
 }}
 
 /* 新バナーを見せるため既存の暗幕を弱くする */

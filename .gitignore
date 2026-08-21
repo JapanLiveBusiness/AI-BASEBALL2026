@@ -52,3 +52,7 @@ app.v*.py
 *.inspect.json
 data/*.before-*.json
 private/
+
+# ===== Generated archives / banner backups =====
+*.zip
+static/banners_backup_*/
