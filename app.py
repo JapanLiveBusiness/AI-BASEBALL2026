@@ -2804,7 +2804,7 @@ try:
         )
 
     else:
-        print("HERO BANNER FILE NOT FOUND:", _banner_path)
+        print("HERO BANNER FILE NOT FOUND:", _pc_banner_path)
 
 except Exception as _banner_render_error:
     print("HERO BANNER RENDER ERROR:", _banner_render_error)
