@@ -2,3 +2,5 @@ streamlit
 beautifulsoup4
 plotly
 requests
+scikit-learn
+pandas
