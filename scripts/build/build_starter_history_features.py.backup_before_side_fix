@@ -3,10 +3,13 @@ import unicodedata
 from pathlib import Path
 from collections import defaultdict
 
-ROOT = Path(__file__).resolve().parents[2]
+SRC = Path(
+    "/opt/hawks-ai/data/hawks_games_with_starters.json"
+)
 
-SRC = ROOT / "data" / "hawks_games_with_starters.json"
-OUT = ROOT / "data" / "hawks_games_starter_history_corrected.json"
+OUT = Path(
+    "/opt/hawks-ai/data/hawks_games_starter_history.json"
+)
 
 ALIASES = {
     "スチュワート": "スチュワートジュニア",
@@ -169,30 +172,18 @@ for g in games:
     # この試合終了後に履歴へ追加
     # ＝未来情報を絶対に使用しない
 
-    hawks_record = {
+    record = {
         "date": g["date"],
         "result": g["result"],
         "run_diff": g["run_diff"]
     }
 
-    opponent_result = {
-        "win": "loss",
-        "loss": "win",
-        "draw": "draw",
-    }[g["result"]]
-
-    opponent_record = {
-        "date": g["date"],
-        "result": opponent_result,
-        "run_diff": -g["run_diff"]
-    }
-
     hawks_history[hs].append(
-        hawks_record
+        record
     )
 
     opp_history[opp_key].append(
-        opponent_record
+        record
     )
 
 
