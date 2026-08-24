@@ -16,7 +16,15 @@ from zoneinfo import ZoneInfo
 st.set_page_config(page_title="ホークス応援 AI勝率シミュレーター", page_icon="⚾", layout="wide")
 
 # ===== HAWKS AI 試合履歴 永続保存 =====
-HISTORY_FILE = "/app/data/game_history.json"
+DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+HISTORY_PATH = DATA_DIR / "game_history.json"
+
+if not HISTORY_PATH.exists():
+    HISTORY_PATH.write_text("[]", encoding="utf-8")
+
+HISTORY_FILE = str(HISTORY_PATH)
 
 
 def load_game_history():
@@ -4534,8 +4542,11 @@ def auto_fetch_npb():
     info = {"status": False, "msg": "手動設定モード"}
     try:
         url = "https://npb.jp/announcement/starter/"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=3)
-        html = urllib.request.urlopen(req).read().decode('utf-8')
+        req = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        )
+        html = urllib.request.urlopen(req, timeout=3).read().decode('utf-8')
         soup = BeautifulSoup(html, 'html.parser')
         text = soup.get_text()
 
@@ -6157,7 +6168,7 @@ history_c1, history_c2 = st.columns([1, 2])
 with history_c1:
     save_result = st.button(
         "💾 この試合結果を保存",
-        width="stretch"
+        use_container_width=True
     )
 
 with history_c2:
