@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 
-DATA_DIR = Path("/opt/hawks-ai/data")
+from storage.json_store import load_json, save_json_atomic
+
+DATA_DIR = Path(__file__).resolve().parent / "data"
 GAMES_FILE = DATA_DIR / "all_games_2024_2026.json"
 BETS_FILE = DATA_DIR / "bet_records.json"
 
@@ -27,19 +29,6 @@ def normalize_team(name):
     if not name:
         return ""
     return TEAM_ALIASES.get(str(name).strip(), str(name).strip())
-
-
-def load_json(path, default):
-    if not path.exists():
-        return default
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def save_json(path, data):
-    path.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2),
-        encoding="utf-8"
-    )
 
 
 def find_game(games, date_str, team, opponent):
@@ -186,7 +175,7 @@ def main():
                 bet.get("profit", 0)
             )
 
-    save_json(BETS_FILE, bets)
+    save_json_atomic(BETS_FILE, bets)
 
     summary = {
         "week_start": monday.isoformat() if monday else None,
@@ -195,7 +184,7 @@ def main():
         "updated_at": datetime.now().isoformat(timespec="seconds")
     }
 
-    save_json(
+    save_json_atomic(
         DATA_DIR / "bet_summary.json",
         summary
     )
