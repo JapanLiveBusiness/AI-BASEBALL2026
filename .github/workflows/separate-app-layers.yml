@@ -51,7 +51,7 @@ jobs:
           _, node, html = max(candidates, key=lambda x: x[0])
           Path('ui').mkdir(exist_ok=True)
           Path('ui/__init__.py').write_text('"""Streamlit presentation helpers."""\n', encoding='utf-8')
-          Path('ui/global_styles.html').write_text(html, encoding='utf-8')
+          Path('ui/global_styles.html').write_text(html.rstrip() + '\n', encoding='utf-8')
           Path('ui/styles.py').write_text('from pathlib import Path\n\nimport streamlit as st\n\n_STYLE = Path(__file__).with_name("global_styles.html")\n\ndef render_global_styles() -> None:\n    st.markdown(_STYLE.read_text(encoding="utf-8"), unsafe_allow_html=True)\n', encoding='utf-8')
           start = offsets[node.lineno-1] + node.col_offset
           end = offsets[node.end_lineno-1] + node.end_col_offset
