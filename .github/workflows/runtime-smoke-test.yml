@@ -1,0 +1,47 @@
+name: Runtime smoke test
+
+on:
+  push:
+    branches:
+      - main-AI-BASEBALL
+      - refactor/**
+  pull_request:
+    branches:
+      - main-AI-BASEBALL
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python syntax check
+        run: |
+          python -m py_compile app.py storage/*.py
+          if [ -d ui ]; then python -m py_compile ui/*.py; fi
+
+      - name: Build Docker image
+        run: docker build -t ai-baseball2026-smoke .
+
+      - name: Start container
+        run: docker run -d --name ai-baseball2026-smoke -p 8501:8501 ai-baseball2026-smoke
+
+      - name: Wait for Streamlit health endpoint
+        shell: bash
+        run: |
+          set -e
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8501/_stcore/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs ai-baseball2026-smoke
+          exit 1
+
+      - name: Verify app HTTP response
+        run: curl -fsS http://127.0.0.1:8501/ >/dev/null
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker logs ai-baseball2026-smoke || true
