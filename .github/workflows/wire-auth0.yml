@@ -1,0 +1,63 @@
+name: Wire Auth0 authentication
+
+on:
+  push:
+    branches:
+      - feat/auth0-authentication
+
+permissions:
+  contents: write
+
+jobs:
+  wire-auth:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/auth0-authentication
+          fetch-depth: 0
+
+      - name: Wire authentication gate into app
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app.py')
+          src = path.read_text(encoding='utf-8')
+          import_line = 'from auth_gate import require_login, render_account_controls\n'
+          if import_line not in src:
+              anchor = 'from zoneinfo import ZoneInfo\n'
+              if anchor not in src:
+                  raise SystemExit('import anchor not found')
+              src = src.replace(anchor, anchor + import_line, 1)
+
+          page = 'st.set_page_config(page_title="ホークス応援 AI勝率シミュレーター", page_icon="⚾", layout="wide")\n'
+          gate = page + '\n# Authentication must run before application data/UI is rendered.\nrequire_login()\nrender_account_controls()\n'
+          if 'require_login()\nrender_account_controls()' not in src:
+              if page not in src:
+                  raise SystemExit('page config anchor not found')
+              src = src.replace(page, gate, 1)
+
+          path.write_text(src, encoding='utf-8')
+          PY
+
+      - name: Syntax check
+        run: python -m py_compile app.py auth_gate.py storage/*.py
+
+      - name: Verify auth wiring
+        run: |
+          grep -q 'from auth_gate import require_login, render_account_controls' app.py
+          grep -q 'require_login()' app.py
+          grep -q 'render_account_controls()' app.py
+          grep -q 'Authlib' requirements.txt
+
+      - name: Commit wiring
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/wire-auth0.yml
+          git add app.py auth_gate.py requirements.txt .streamlit/secrets.toml.example
+          git diff --cached --check
+          git commit -m "Wire Auth0 login into Streamlit app"
+          git push origin HEAD:feat/auth0-authentication
