@@ -16,8 +16,24 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
     steps:
+      - name: Validate deploy secrets
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          missing=0
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_PORT; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not available to this workflow"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1.2.2
         env:
@@ -28,8 +44,8 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
           envs: DEPLOY_SHA
-          script_stop: true
           script: |
+            set -e
             export DEPLOY_SHA="$DEPLOY_SHA"
             export APP_DIR="/opt/ai-baseball2026"
             export DATA_DIR="/opt/hawks-ai/data"
