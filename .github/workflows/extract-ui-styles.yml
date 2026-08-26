@@ -1,0 +1,128 @@
+name: Extract UI styles from app
+
+on:
+  push:
+    branches:
+      - refactor/modularize-storage
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/modularize-storage
+          fetch-depth: 0
+
+      - name: Extract largest static Streamlit style block
+        shell: bash
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          app_path = Path('app.py')
+          source = app_path.read_text(encoding='utf-8')
+          tree = ast.parse(source)
+          lines = source.splitlines(keepends=True)
+          offsets = [0]
+          for line in lines:
+              offsets.append(offsets[-1] + len(line))
+
+          candidates = []
+          for node in ast.walk(tree):
+              if not isinstance(node, ast.Call):
+                  continue
+              func = node.func
+              if not (
+                  isinstance(func, ast.Attribute)
+                  and func.attr == 'markdown'
+                  and isinstance(func.value, ast.Name)
+                  and func.value.id == 'st'
+              ):
+                  continue
+              if not node.args or not isinstance(node.args[0], ast.Constant):
+                  continue
+              html = node.args[0].value
+              if not isinstance(html, str):
+                  continue
+              unsafe = any(
+                  kw.arg == 'unsafe_allow_html'
+                  and isinstance(kw.value, ast.Constant)
+                  and kw.value.value is True
+                  for kw in node.keywords
+              )
+              if unsafe and len(html) > 10000:
+                  candidates.append((len(html), node, html))
+
+          if not candidates:
+              raise SystemExit('No large static st.markdown style block found; refusing edit')
+
+          _, node, html = max(candidates, key=lambda item: item[0])
+          if 'HAWKS AI' not in html or '<style>' not in html:
+              raise SystemExit('Largest block does not look like expected HAWKS UI styles')
+
+          ui_dir = Path('ui')
+          ui_dir.mkdir(exist_ok=True)
+          (ui_dir / '__init__.py').write_text('"""UI helpers for the Streamlit application."""\n', encoding='utf-8')
+          (ui_dir / 'global_styles.html').write_text(html, encoding='utf-8')
+          (ui_dir / 'styles.py').write_text(
+              'from pathlib import Path\n\n'
+              'import streamlit as st\n\n'
+              '_STYLE_PATH = Path(__file__).with_name("global_styles.html")\n\n'
+              'def render_global_styles() -> None:\n'
+              '    st.markdown(_STYLE_PATH.read_text(encoding="utf-8"), unsafe_allow_html=True)\n',
+              encoding='utf-8',
+          )
+
+          start = offsets[node.lineno - 1] + node.col_offset
+          end = offsets[node.end_lineno - 1] + node.end_col_offset
+          source = source[:start] + 'render_global_styles()' + source[end:]
+
+          import_anchor = 'from zoneinfo import ZoneInfo\n'
+          import_line = 'from ui.styles import render_global_styles\n'
+          if import_line not in source:
+              if import_anchor not in source:
+                  raise SystemExit('Import anchor not found; refusing edit')
+              source = source.replace(import_anchor, import_anchor + import_line, 1)
+
+          app_path.write_text(source, encoding='utf-8')
+          print(f'Extracted {len(html)} characters from app.py')
+          PY
+
+      - name: Syntax check
+        run: python -m py_compile app.py storage/*.py ui/*.py
+
+      - name: Build Docker image
+        run: docker build -t ai-baseball2026-refactor .
+
+      - name: Start container
+        run: docker run -d --name ai-baseball2026-refactor -p 8501:8501 ai-baseball2026-refactor
+
+      - name: Wait for Streamlit health endpoint
+        shell: bash
+        run: |
+          set -e
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8501/_stcore/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs ai-baseball2026-refactor
+          exit 1
+
+      - name: Commit refactor and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/extract-ui-styles.yml
+          git add app.py ui
+          git diff --cached --check
+          git commit -m "Extract global UI styles from app"
+          git push origin HEAD:refactor/modularize-storage
