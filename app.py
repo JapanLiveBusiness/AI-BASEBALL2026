@@ -10,10 +10,15 @@ import re
 import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from auth_gate import require_login, render_account_controls
 
 
 # ページ設定
 st.set_page_config(page_title="ホークス応援 AI勝率シミュレーター", page_icon="⚾", layout="wide")
+
+# Authentication must run before application data/UI is rendered.
+require_login()
+render_account_controls()
 
 # ===== HAWKS AI 試合履歴 永続保存 =====
 from storage.game_history import (
