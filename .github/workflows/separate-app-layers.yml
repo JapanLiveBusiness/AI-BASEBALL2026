@@ -1,0 +1,143 @@
+name: Separate app layers
+
+on:
+  push:
+    branches:
+      - refactor/separate-ui-prediction-data
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/separate-ui-prediction-data
+          fetch-depth: 0
+
+      - name: Separate UI, data access, and prediction engine
+        shell: bash
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          p = Path('app.py')
+          src = p.read_text(encoding='utf-8')
+          tree = ast.parse(src)
+          lines = src.splitlines(keepends=True)
+          offsets = [0]
+          for line in lines:
+              offsets.append(offsets[-1] + len(line))
+
+          # 1) UI: move the largest static Streamlit HTML/CSS block intact.
+          candidates = []
+          for node in ast.walk(tree):
+              if not isinstance(node, ast.Call):
+                  continue
+              f = node.func
+              if not (isinstance(f, ast.Attribute) and f.attr == 'markdown' and isinstance(f.value, ast.Name) and f.value.id == 'st'):
+                  continue
+              if not node.args or not isinstance(node.args[0], ast.Constant) or not isinstance(node.args[0].value, str):
+                  continue
+              html = node.args[0].value
+              unsafe = any(k.arg == 'unsafe_allow_html' and isinstance(k.value, ast.Constant) and k.value.value is True for k in node.keywords)
+              if unsafe and '<style' in html and len(html) > 10000:
+                  candidates.append((len(html), node, html))
+          if not candidates:
+              raise SystemExit('large static UI style block not found')
+          _, node, html = max(candidates, key=lambda x: x[0])
+          Path('ui').mkdir(exist_ok=True)
+          Path('ui/__init__.py').write_text('"""Streamlit presentation helpers."""\n', encoding='utf-8')
+          Path('ui/global_styles.html').write_text(html, encoding='utf-8')
+          Path('ui/styles.py').write_text(
+              'from pathlib import Path\n\nimport streamlit as st\n\n_STYLE = Path(__file__).with_name("global_styles.html")\n\ndef render_global_styles() -> None:\n    st.markdown(_STYLE.read_text(encoding="utf-8"), unsafe_allow_html=True)\n',
+              encoding='utf-8')
+          start = offsets[node.lineno-1] + node.col_offset
+          end = offsets[node.end_lineno-1] + node.end_col_offset
+          src = src[:start] + 'render_global_styles()' + src[end:]
+          anchor = 'from zoneinfo import ZoneInfo\n'
+          if 'from ui.styles import render_global_styles\n' not in src:
+              src = src.replace(anchor, anchor + 'from ui.styles import render_global_styles\n', 1)
+
+          # 2) Data: move pure normalization/mapping helpers out of app.
+          data_code = '''"""Data normalization helpers used by the Streamlit app."""\n\nTEAM_ALIASES = {\n    "日ハム": "日本ハム", "日本ハム": "日本ハム", "ソフトバンク": "ソフトバンク",\n    "西武": "西武", "ロッテ": "ロッテ", "楽天": "楽天", "オリックス": "オリックス",\n    "巨人": "巨人", "中日": "中日", "阪神": "阪神", "ヤクルト": "ヤクルト",\n    "DeNA": "DeNA", "広島": "広島",\n}\n\ndef normalize_team(name):\n    if not name:\n        return ""\n    value = str(name).strip()\n    return TEAM_ALIASES.get(value, value)\n\ndef npb_logo_slug(team_name):\n    name = str(team_name)\n    logo_names = (\n        (("阪神", "タイガース"), "hanshin"), (("巨人", "読売", "ジャイアンツ"), "giants"),\n        (("中日", "ドラゴンズ"), "dragons"), (("広島", "カープ"), "carp"),\n        (("DeNA", "ＤｅＮＡ", "横浜", "ベイスターズ"), "baystars"), (("ヤクルト", "スワローズ"), "swallows"),\n        (("ソフトバンク", "ホークス"), "hawks"), (("ロッテ", "マリーンズ"), "marines"),\n        (("楽天", "イーグルス"), "eagles"), (("日本ハム", "ファイターズ"), "fighters"),\n        (("西武", "ライオンズ"), "lions"), (("オリックス", "バファローズ"), "buffaloes"),\n    )\n    for aliases, slug in logo_names:\n        if any(alias in name for alias in aliases):\n            return slug\n    return "generic"\n'''
+          Path('data_access').mkdir(exist_ok=True)
+          Path('data_access/__init__.py').write_text('"""External and normalized baseball data access."""\n', encoding='utf-8')
+          Path('data_access/normalization.py').write_text(data_code, encoding='utf-8')
+
+          # Replace only the local logo helper with imported pure helper.
+          src = src.replace('from ui.styles import render_global_styles\n', 'from ui.styles import render_global_styles\nfrom data_access.normalization import npb_logo_slug\n', 1)
+          marker = 'def _npb_logo_slug(team_name):'
+          pos = src.find(marker)
+          if pos != -1:
+              end_marker = '\n_premium_opp_logo = _npb_logo_slug(_premium_opponent)'
+              ep = src.find(end_marker, pos)
+              if ep == -1:
+                  raise SystemExit('logo helper end marker not found')
+              src = src[:pos] + src[ep+1:]
+              src = src.replace('_npb_logo_slug(_premium_opponent)', 'npb_logo_slug(_premium_opponent)', 1)
+
+          # 3) Prediction: extract the deterministic probability engine as a tested module.
+          Path('prediction').mkdir(exist_ok=True)
+          Path('prediction/__init__.py').write_text('"""HAWKS AI prediction engines."""\n', encoding='utf-8')
+          Path('prediction/win_probability.py').write_text('''"""Deterministic win-probability calculations independent of Streamlit."""\n\ndef bradley_terry_probability(hawks_pct, opponent_pct):\n    if hawks_pct is None or opponent_pct is None:\n        return None\n    denominator = hawks_pct + opponent_pct - (2 * hawks_pct * opponent_pct)\n    if denominator <= 0:\n        return float(hawks_pct) * 100.0\n    return ((hawks_pct - hawks_pct * opponent_pct) / denominator) * 100.0\n\ndef clamp_probability(value):\n    return max(0.5, min(99.5, float(value)))\n\ndef score_adjustment(score_mode, handicap_score, effective_score_diff, inning, outs):\n    if score_mode == "handicap":\n        value = float(handicap_score) * 8.0\n    else:\n        point_value = 8.0 + ((int(inning) - 1) * 1.25)\n        out_pressure = 1.0 + (int(outs) * 0.10 if int(inning) >= 7 else 0.0)\n        value = float(effective_score_diff) * point_value * out_pressure\n    return max(-55.0, min(55.0, value))\n''', encoding='utf-8')
+
+          # Wire the extracted deterministic pieces into app without changing formulas.
+          src = src.replace('from data_access.normalization import npb_logo_slug\n', 'from data_access.normalization import npb_logo_slug\nfrom prediction.win_probability import bradley_terry_probability, clamp_probability, score_adjustment\n', 1)
+          old_bt = '''        denominator = (\n            hawks_pct\n            + opp_pct\n            - (2 * hawks_pct * opp_pct)\n        )\n\n        if denominator > 0:\n            base_prob = (\n                (\n                    hawks_pct\n                    - hawks_pct * opp_pct\n                )\n                / denominator\n            ) * 100.0\n        else:\n            base_prob = hawks_pct * 100.0'''
+          src = src.replace(old_bt, '        base_prob = bradley_terry_probability(hawks_pct, opp_pct)', 1)
+
+          score_start = src.find('    if score_mode == "handicap":', src.find('# HAWKS AI v2.7'))
+          score_end_marker = '    handicap_penalty = score_mod'
+          score_end = src.find(score_end_marker, score_start)
+          if score_start == -1 or score_end == -1:
+              raise SystemExit('score engine block not found')
+          replacement = '''    score_mod = score_adjustment(\n        score_mode, handicap_score, effective_score_diff, inning, outs\n    )\n\n    # 既存グラフとの互換性のため名前を維持\n'''
+          src = src[:score_start] + replacement + src[score_end:]
+          old_clamp = '''    final_sb = max(\n        0.5,\n        min(99.5, total_raw)\n    )'''
+          src = src.replace(old_clamp, '    final_sb = clamp_probability(total_raw)', 1)
+
+          p.write_text(src, encoding='utf-8')
+          PY
+
+      - name: Syntax check
+        run: python -m py_compile app.py storage/*.py ui/*.py data_access/*.py prediction/*.py
+
+      - name: Prediction smoke checks
+        run: |
+          python - <<'PY'
+          from prediction.win_probability import bradley_terry_probability, clamp_probability, score_adjustment
+          assert 0 <= bradley_terry_probability(.6, .5) <= 100
+          assert clamp_probability(120) == 99.5
+          assert score_adjustment('handicap', -2, 0, 1, 0) == -16.0
+          assert score_adjustment('live', 0, 1, 9, 2) == 21.6
+          PY
+
+      - name: Build Docker image
+        run: docker build -t ai-baseball2026-layers .
+
+      - name: Start container
+        run: docker run -d --name ai-baseball2026-layers -p 8501:8501 ai-baseball2026-layers
+
+      - name: Wait for Streamlit health endpoint
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8501/_stcore/health >/dev/null && exit 0
+            sleep 2
+          done
+          docker logs ai-baseball2026-layers
+          exit 1
+
+      - name: Commit separated layers
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/separate-app-layers.yml
+          git add app.py ui data_access prediction
+          git diff --cached --check
+          git commit -m "Separate UI prediction and data layers"
+          git push origin HEAD:refactor/separate-ui-prediction-data
