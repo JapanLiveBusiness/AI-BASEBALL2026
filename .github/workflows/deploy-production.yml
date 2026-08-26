@@ -1,0 +1,56 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main-AI-BASEBALL
+  workflow_dispatch:
+
+concurrency:
+  group: production-ai-baseball
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          envs: DEPLOY_SHA
+          script_stop: true
+          script: |
+            export DEPLOY_SHA="$DEPLOY_SHA"
+            export APP_DIR="/opt/ai-baseball2026"
+            export DATA_DIR="/opt/hawks-ai/data"
+            export BRANCH="main-AI-BASEBALL"
+            export CONTAINER_NAME="hawks-app"
+            export IMAGE_NAME="hawks-app"
+            export PORT="8501"
+            cd "$APP_DIR"
+            git fetch origin "$BRANCH"
+            git show "origin/$BRANCH:scripts/deploy-production.sh" > /tmp/ai-baseball-deploy.sh
+            chmod +x /tmp/ai-baseball-deploy.sh
+            /tmp/ai-baseball-deploy.sh
+
+      - name: Verify public site
+        run: |
+          for attempt in $(seq 1 20); do
+            if curl -fsS --max-time 10 https://ai-baseball.f-polaris.jp/ >/dev/null; then
+              echo "Production site is responding"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Production site health check failed"
+          exit 1
