@@ -1,0 +1,168 @@
+name: Patch safe game history wiring
+
+on:
+  push:
+    branches:
+      - improve/safe-game-history
+
+permissions:
+  contents: write
+
+jobs:
+  patch-app:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: improve/safe-game-history
+          fetch-depth: 0
+
+      - name: Wire app.py to safe history store
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app.py')
+          text = path.read_text(encoding='utf-8')
+
+          old = '''# ===== HAWKS AI 試合履歴 永続保存 =====
+          DATA_DIR = Path(__file__).resolve().parent / "data"
+          DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+          HISTORY_PATH = DATA_DIR / "game_history.json"
+
+          if not HISTORY_PATH.exists():
+              HISTORY_PATH.write_text("[]", encoding="utf-8")
+
+          HISTORY_FILE = str(HISTORY_PATH)
+
+
+          def load_game_history():
+              try:
+                  path = Path(HISTORY_FILE)
+
+                  if not path.exists():
+                      return []
+
+                  data = json.loads(
+                      path.read_text(encoding="utf-8")
+                  )
+
+                  if isinstance(data, list):
+                      return data
+
+              except Exception:
+                  pass
+
+              return []
+
+
+          def save_game_history(game):
+              history = load_game_history()
+
+              game_id = game.get("game_id")
+
+              # 同じ試合は重複保存せず更新
+              updated = False
+
+              for i, old in enumerate(history):
+                  if old.get("game_id") == game_id:
+
+                      # =============================================
+                      # 試合前予測は一度保存したら絶対に変更しない
+                      # =============================================
+                      locked_pregame = old.get(
+                          "pregame_probability"
+                      )
+
+                      if locked_pregame is None:
+                          locked_pregame = old.get(
+                              "ai_probability"
+                          )
+
+                      # 新しいLIVE/試合結果データを反映
+                      merged = dict(old)
+                      merged.update(game)
+
+                      # 固定済み試合前予測を復元
+                      if locked_pregame is not None:
+                          merged["pregame_probability"] = (
+                              locked_pregame
+                          )
+                          merged["ai_probability"] = (
+                              locked_pregame
+                          )
+
+                      history[i] = merged
+                      updated = True
+                      break
+
+              if not updated:
+                  history.append(game)
+
+              history.sort(
+                  key=lambda x: x.get("date", ""),
+                  reverse=True
+              )
+
+              path = Path(HISTORY_FILE)
+              path.parent.mkdir(parents=True, exist_ok=True)
+
+              path.write_text(
+                  json.dumps(
+                      history,
+                      ensure_ascii=False,
+                      indent=2
+                  ),
+                  encoding="utf-8"
+              )
+          '''
+
+          # Strip indentation introduced in the workflow heredoc source.
+          old = '\n'.join(line[10:] if line.startswith('          ') else line for line in old.splitlines())
+
+          new = '''# ===== HAWKS AI 試合履歴 永続保存 =====
+          from game_history_store import (
+              load_game_history as _load_game_history,
+              save_game_history as _save_game_history,
+          )
+
+          DATA_DIR = Path(__file__).resolve().parent / "data"
+          DATA_DIR.mkdir(parents=True, exist_ok=True)
+          HISTORY_PATH = DATA_DIR / "game_history.json"
+
+
+          def load_game_history():
+              return _load_game_history(HISTORY_PATH)
+
+
+          def save_game_history(game):
+              _save_game_history(HISTORY_PATH, game)
+          '''
+          new = '\n'.join(line[10:] if line.startswith('          ') else line for line in new.splitlines())
+
+          if new in text:
+              print('app.py is already wired to game_history_store.py')
+          elif old in text:
+              text = text.replace(old, new, 1)
+              path.write_text(text, encoding='utf-8')
+              print('Patched app.py')
+          else:
+              raise SystemExit('Expected game history block was not found; refusing unsafe edit')
+          PY
+
+      - name: Syntax check
+        run: python -m py_compile app.py game_history_store.py
+
+      - name: Commit minimal patch and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/patch-safe-history.yml
+          git add app.py
+          git diff --cached --check
+          git commit -m "Wire app to safe game history storage"
+          git push origin HEAD:improve/safe-game-history
