@@ -16,97 +16,22 @@ from zoneinfo import ZoneInfo
 st.set_page_config(page_title="ホークス応援 AI勝率シミュレーター", page_icon="⚾", layout="wide")
 
 # ===== HAWKS AI 試合履歴 永続保存 =====
+from storage.game_history import (
+    load_game_history as _load_game_history,
+    save_game_history as _save_game_history,
+)
+
 DATA_DIR = Path(__file__).resolve().parent / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-
 HISTORY_PATH = DATA_DIR / "game_history.json"
-
-if not HISTORY_PATH.exists():
-    HISTORY_PATH.write_text("[]", encoding="utf-8")
-
-HISTORY_FILE = str(HISTORY_PATH)
 
 
 def load_game_history():
-    try:
-        path = Path(HISTORY_FILE)
-
-        if not path.exists():
-            return []
-
-        data = json.loads(
-            path.read_text(encoding="utf-8")
-        )
-
-        if isinstance(data, list):
-            return data
-
-    except Exception:
-        pass
-
-    return []
+    return _load_game_history(HISTORY_PATH)
 
 
 def save_game_history(game):
-    history = load_game_history()
-
-    game_id = game.get("game_id")
-
-    # 同じ試合は重複保存せず更新
-    updated = False
-
-    for i, old in enumerate(history):
-        if old.get("game_id") == game_id:
-
-            # =============================================
-            # 試合前予測は一度保存したら絶対に変更しない
-            # =============================================
-            locked_pregame = old.get(
-                "pregame_probability"
-            )
-
-            if locked_pregame is None:
-                locked_pregame = old.get(
-                    "ai_probability"
-                )
-
-            # 新しいLIVE/試合結果データを反映
-            merged = dict(old)
-            merged.update(game)
-
-            # 固定済み試合前予測を復元
-            if locked_pregame is not None:
-                merged["pregame_probability"] = (
-                    locked_pregame
-                )
-                merged["ai_probability"] = (
-                    locked_pregame
-                )
-
-            history[i] = merged
-            updated = True
-            break
-
-    if not updated:
-        history.append(game)
-
-    history.sort(
-        key=lambda x: x.get("date", ""),
-        reverse=True
-    )
-
-    path = Path(HISTORY_FILE)
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    path.write_text(
-        json.dumps(
-            history,
-            ensure_ascii=False,
-            indent=2
-        ),
-        encoding="utf-8"
-    )
-
+    _save_game_history(HISTORY_PATH, game)
 
 
 components.html("""
@@ -2525,97 +2450,31 @@ div[data-testid="stAlert"] span{
 # =========================================================
 # HAWKS AI 試合前予測 固定保存
 # =========================================================
-
-PREGAME_PREDICTION_FILE = (
-    Path(__file__).resolve().parent
-    / "data"
-    / "pregame_predictions.json"
+from storage.pregame_predictions import (
+    get_pregame_probability as _get_pregame_probability,
+    load_pregame_predictions as _load_pregame_predictions,
+    save_pregame_prediction as _save_pregame_prediction,
 )
+
+PREGAME_PREDICTION_FILE = DATA_DIR / "pregame_predictions.json"
 
 
 def load_pregame_predictions():
-    try:
-        if PREGAME_PREDICTION_FILE.exists():
-            return json.loads(
-                PREGAME_PREDICTION_FILE.read_text(
-                    encoding="utf-8"
-                )
-            )
-    except Exception:
-        pass
-
-    return []
+    return _load_pregame_predictions(PREGAME_PREDICTION_FILE)
 
 
-def save_pregame_prediction(
-    date_value,
-    opponent,
-    probability_value,
-    model="V8 FINAL",
-):
-    data = load_pregame_predictions()
-
-    game_id = f"{date_value}_{opponent}"
-
-    # 一度保存した試合前予測は変更しない
-    for row in data:
-        if row.get("game_id") == game_id:
-            try:
-                return float(row["probability"])
-            except Exception:
-                return probability_value
-
-    row = {
-        "game_id": game_id,
-        "date": date_value,
-        "opponent": opponent,
-        "probability": round(
-            float(probability_value),
-            1
-        ),
-        "model": model,
-        "locked": True,
-        "saved_at": datetime.now().isoformat(),
-    }
-
-    data.append(row)
-
-    PREGAME_PREDICTION_FILE.parent.mkdir(
-        parents=True,
-        exist_ok=True
+def save_pregame_prediction(date_value, opponent, probability_value, model="V8 FINAL"):
+    return _save_pregame_prediction(
+        PREGAME_PREDICTION_FILE,
+        date_value,
+        opponent,
+        probability_value,
+        model,
     )
 
-    PREGAME_PREDICTION_FILE.write_text(
-        json.dumps(
-            data,
-            ensure_ascii=False,
-            indent=2
-        ),
-        encoding="utf-8"
-    )
 
-    return float(row["probability"])
-
-
-def get_pregame_probability(
-    date_value,
-    opponent
-):
-    game_id = f"{date_value}_{opponent}"
-
-    for row in load_pregame_predictions():
-        if row.get("game_id") == game_id:
-            try:
-                return float(
-                    row.get("probability")
-                )
-            except Exception:
-                return None
-
-    return None
-
-
-
+def get_pregame_probability(date_value, opponent):
+    return _get_pregame_probability(PREGAME_PREDICTION_FILE, date_value, opponent)
 
 # =========================================================
 # HAWKS AI PREMIUM TOP DASHBOARD (PC / MOBILE)
