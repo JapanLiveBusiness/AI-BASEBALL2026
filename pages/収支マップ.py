@@ -26,135 +26,89 @@ def yen(value):
 
 
 def result_label(value):
-    return {
-        "win": "WIN",
-        "loss": "LOSE",
-        "push": "PUSH",
-    }.get(value, "未確定")
+    return {"win": "WIN", "loss": "LOSE", "push": "PUSH"}.get(value, "未確定")
 
 
 st.title("💰 収支マップ")
 st.caption("各ポイントにカーソルを合わせると、BETした試合・ハンディ・BET額・スコア・損益を確認できます。")
 
 bets = load_bets()
-
 if not bets:
     st.info("BET記録がまだありません。")
     st.stop()
 
-bets = sorted(
-    bets,
-    key=lambda b: (str(b.get("date", "")), str(b.get("time", ""))),
-)
-
+bets = sorted(bets, key=lambda b: (str(b.get("date", "")), str(b.get("time", ""))))
 settled = [b for b in bets if b.get("status") == "final"]
+pending = [b for b in bets if b.get("status") != "final"]
 
 if not settled:
     st.info("確定済みのBETがまだありません。")
     st.stop()
 
-running = 0
-x_values = []
-y_values = []
-hover_values = []
+wins = sum(1 for b in settled if b.get("result") == "win")
+losses = sum(1 for b in settled if b.get("result") == "loss")
+pushes = sum(1 for b in settled if b.get("result") == "push")
+total_profit = sum(int(b.get("profit", 0) or 0) for b in settled)
+total_bet = sum(abs(float(b.get("bet_units", 0) or 0)) * 10000 for b in settled)
+decided = wins + losses
+win_rate = (wins / decided * 100.0) if decided else 0.0
+roi = (total_profit / total_bet * 100.0) if total_bet else 0.0
 
+s1, s2, s3, s4, s5 = st.columns(5)
+s1.metric("総収支", yen(total_profit))
+s2.metric("確定BET", f"{len(settled)}試合")
+s3.metric("勝敗", f"{wins}勝 {losses}敗" + (f" {pushes}分" if pushes else ""))
+s4.metric("勝率", f"{win_rate:.1f}%" if decided else "-")
+s5.metric("ROI", f"{roi:+.1f}%" if total_bet else "-")
+
+running = 0
+x_values, y_values, hover_values = [], [], []
 for bet in settled:
     profit = int(bet.get("profit", 0) or 0)
     running += profit
-
-    date = str(bet.get("date", "-"))
-    time = str(bet.get("time", "-"))
-    team = str(bet.get("team", "-"))
-    opponent = str(bet.get("opponent", "-"))
+    date, time = str(bet.get("date", "-")), str(bet.get("time", "-"))
+    team, opponent = str(bet.get("team", "-")), str(bet.get("opponent", "-"))
     handicap = bet.get("handicap", 0)
-    units = float(bet.get("bet_units", 0) or 0)
-    amount = abs(units) * 10000
-    team_score = bet.get("team_score")
-    opponent_score = bet.get("opponent_score")
-    score = (
-        f"{team_score} - {opponent_score}"
-        if team_score is not None and opponent_score is not None
-        else "未確定"
-    )
-
+    amount = abs(float(bet.get("bet_units", 0) or 0)) * 10000
+    team_score, opponent_score = bet.get("team_score"), bet.get("opponent_score")
+    score = f"{team_score} - {opponent_score}" if team_score is not None and opponent_score is not None else "未確定"
     x_values.append(f"{date} {time}")
     y_values.append(running)
     hover_values.append(
-        "<b>" + team + " vs " + opponent + "</b>"
-        + "<br>日時: " + date + " " + time
-        + "<br>BET先: " + team
-        + "<br>ハンディ: " + str(handicap)
-        + "<br>BET額: " + yen(amount)
-        + "<br>スコア: " + score
-        + "<br>結果: " + result_label(bet.get("result"))
-        + "<br>この試合の損益: " + yen(profit)
-        + "<br><b>累積収支: " + yen(running) + "</b>"
+        f"<b>{team} vs {opponent}</b><br>日時: {date} {time}<br>BET先: {team}"
+        f"<br>ハンディ: {handicap}<br>BET額: {yen(amount)}<br>スコア: {score}"
+        f"<br>結果: {result_label(bet.get('result'))}<br>この試合の損益: {yen(profit)}"
+        f"<br><b>累積収支: {yen(running)}</b>"
     )
 
 fig = go.Figure()
-fig.add_trace(
-    go.Scatter(
-        x=x_values,
-        y=y_values,
-        mode="lines+markers",
-        customdata=hover_values,
-        hovertemplate="%{customdata}<extra></extra>",
-        name="累積収支",
-    )
-)
+fig.add_trace(go.Scatter(x=x_values, y=y_values, mode="lines+markers", customdata=hover_values,
+                         hovertemplate="%{customdata}<extra></extra>", name="累積収支"))
 fig.add_hline(y=0, line_dash="dash", line_width=1)
-fig.update_layout(
-    xaxis_title="BETした試合",
-    yaxis_title="累積収支（円）",
-    hovermode="closest",
-    height=500,
-    margin=dict(l=20, r=20, t=30, b=30),
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
-)
+fig.update_layout(xaxis_title="BETした試合", yaxis_title="累積収支（円）", hovermode="closest", height=500,
+                  margin=dict(l=20, r=20, t=30, b=30), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
 fig.update_yaxes(tickformat=",")
-
 st.plotly_chart(fig, use_container_width=True)
 
 st.markdown("### BETした試合の詳細")
-
 for bet in reversed(settled):
     profit = int(bet.get("profit", 0) or 0)
-    units = float(bet.get("bet_units", 0) or 0)
-    amount = abs(units) * 10000
-    team = str(bet.get("team", "-"))
-    opponent = str(bet.get("opponent", "-"))
-    team_score = bet.get("team_score")
-    opponent_score = bet.get("opponent_score")
-    score = (
-        f"{team_score} - {opponent_score}"
-        if team_score is not None and opponent_score is not None
-        else "未確定"
-    )
+    amount = abs(float(bet.get("bet_units", 0) or 0)) * 10000
+    team, opponent = str(bet.get("team", "-")), str(bet.get("opponent", "-"))
+    team_score, opponent_score = bet.get("team_score"), bet.get("opponent_score")
+    score = f"{team_score} - {opponent_score}" if team_score is not None and opponent_score is not None else "未確定"
     icon = "🟢" if profit > 0 else ("🔴" if profit < 0 else "⚪")
-    title = (
-        f"{icon} {bet.get('date', '-')} {bet.get('time', '-')} | "
-        f"{team} vs {opponent} | {yen(profit)}"
-    )
-
+    title = f"{icon} {bet.get('date', '-')} {bet.get('time', '-')} | {team} vs {opponent} | {yen(profit)}"
     with st.expander(title):
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("BET先", team)
         c2.metric("BET額", yen(amount))
         c3.metric("ハンディ", str(bet.get("handicap", 0)))
         c4.metric("損益", yen(profit))
-        st.write(
-            f"**試合スコア:** {score}　｜　"
-            f"**結果:** {result_label(bet.get('result'))}"
-        )
+        st.write(f"**試合スコア:** {score}　｜　**結果:** {result_label(bet.get('result'))}")
 
-pending = [b for b in bets if b.get("status") != "final"]
 if pending:
     st.markdown("### 未確定BET")
     for bet in reversed(pending):
-        st.write(
-            f"⏳ {bet.get('date', '-')} {bet.get('time', '-')} ｜ "
-            f"{bet.get('team', '-')} vs {bet.get('opponent', '-')} ｜ "
-            f"BET {yen(abs(float(bet.get('bet_units', 0) or 0)) * 10000)} ｜ "
-            f"ハンディ {bet.get('handicap', 0)}"
-        )
+        st.write(f"⏳ {bet.get('date', '-')} {bet.get('time', '-')} ｜ {bet.get('team', '-')} vs {bet.get('opponent', '-')} ｜ "
+                 f"BET {yen(abs(float(bet.get('bet_units', 0) or 0)) * 10000)} ｜ ハンディ {bet.get('handicap', 0)}")
