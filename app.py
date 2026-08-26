@@ -8107,6 +8107,28 @@ _result_label = {
     None: "⏳ 未確定"
 }
 
+_bet_game_history = load_game_history()
+
+
+def _find_bet_game(bet):
+    """BET記録に対応するホークス戦の履歴を返す。"""
+    bet_date = str(bet.get("date", ""))
+    bet_team = str(bet.get("team", ""))
+    bet_opponent = str(bet.get("opponent", ""))
+
+    # game_history はホークス戦のみ。別球団のBETを誤照合しない。
+    if "ソフトバンク" not in bet_team and "ホークス" not in bet_team:
+        return None
+
+    for game in _bet_game_history:
+        if (
+            str(game.get("date", "")) == bet_date
+            and str(game.get("opponent", "")) == bet_opponent
+        ):
+            return game
+
+    return None
+
 
 for idx, bet in enumerate(_bet_records):
 
@@ -8139,6 +8161,32 @@ for idx, bet in enumerate(_bet_records):
 
     result_text = _result_label.get(result, "⏳ 未確定")
 
+    matched_game = _find_bet_game(bet)
+    game_details = matched_game or {}
+
+    stadium = (
+        bet.get("stadium")
+        or bet.get("venue")
+        or game_details.get("stadium")
+        or "未登録"
+    )
+    team_starter = (
+        bet.get("team_starter")
+        or game_details.get("hawks_starter")
+        or "未登録"
+    )
+    opponent_starter = (
+        bet.get("opponent_starter")
+        or game_details.get("opponent_starter")
+        or "未登録"
+    )
+    pregame_probability = (
+        bet.get("pregame_probability")
+        if bet.get("pregame_probability") is not None
+        else game_details.get("pregame_probability")
+    )
+    game_source = bet.get("source") or game_details.get("source")
+
     with st.container(border=True):
 
         c1, c2, c3 = st.columns([2.2, 1.2, 1.2])
@@ -8165,6 +8213,31 @@ for idx, bet in enumerate(_bet_records):
                 st.markdown(f"### {profit_text}")
             else:
                 st.markdown("### 未確定")
+
+        with st.expander("🏟️ 開催試合の詳細", expanded=False):
+            detail_left, detail_right = st.columns(2)
+
+            with detail_left:
+                st.markdown(f"**開催日時：** {date} {time}")
+                st.markdown(f"**対戦カード：** {team} vs {opponent}")
+                st.markdown(f"**球場：** {stadium}")
+
+            with detail_right:
+                st.markdown(f"**先発：** {team_starter} / {opponent_starter}")
+
+                if pregame_probability is not None:
+                    st.markdown(
+                        f"**試合前AI勝率：** "
+                        f"{float(pregame_probability):.1f}%"
+                    )
+
+                if game_source:
+                    st.caption(f"試合情報：{game_source}")
+
+            if matched_game is None and stadium == "未登録":
+                st.caption(
+                    "このBETに対応する詳細な試合履歴はまだ登録されていません。"
+                )
 
         if status == "final":
 
