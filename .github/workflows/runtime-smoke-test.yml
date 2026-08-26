@@ -16,7 +16,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Python syntax check
-        run: python -m py_compile app.py bet_manager.py storage/*.py
+        run: |
+          python -m py_compile app.py storage/*.py
+          if [ -d ui ]; then python -m py_compile ui/*.py; fi
 
       - name: Build Docker image
         run: docker build -t ai-baseball2026-smoke .
