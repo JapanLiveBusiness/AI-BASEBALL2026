@@ -3,7 +3,8 @@ name: Runtime smoke test
 on:
   push:
     branches:
-      - refactor/minimal-runtime
+      - main-AI-BASEBALL
+      - refactor/**
   pull_request:
     branches:
       - main-AI-BASEBALL
@@ -13,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Python syntax check
+        run: python -m py_compile app.py bet_manager.py storage/*.py
 
       - name: Build Docker image
         run: docker build -t ai-baseball2026-smoke .
