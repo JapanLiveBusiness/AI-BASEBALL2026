@@ -20,6 +20,7 @@ from storage.game_history import (
     load_game_history as _load_game_history,
     save_game_history as _save_game_history,
 )
+from display_games import select_display_games
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -2526,9 +2527,14 @@ try:
             _npb_today_path.read_text(encoding="utf-8")
         )
 
+        _display_games = select_display_games(
+            _npb_today,
+            _now_dt_jst,
+        )
+
         _hawks_game = next(
             (
-                g for g in _npb_today.get("games", [])
+                g for g in _display_games
                 if g.get("home") == "ソフトバンク"
                 or g.get("away") == "ソフトバンク"
             ),
@@ -4800,7 +4806,10 @@ try:
             _npb_today_path.read_text(encoding="utf-8")
         )
 
-        _npb_today_games = _npb_today_data.get("games", []) or []
+        _npb_today_games = select_display_games(
+            _npb_today_data,
+            datetime.now(ZoneInfo("Asia/Tokyo")),
+        )
 
         # ホークス戦は上の大型カードに表示済みなので除外
         _npb_other_games = [
