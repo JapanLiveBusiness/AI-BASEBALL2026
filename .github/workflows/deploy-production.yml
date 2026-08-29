@@ -74,14 +74,10 @@ jobs:
             chmod +x /tmp/ai-baseball-deploy.sh
             /tmp/ai-baseball-deploy.sh
 
-      - name: Verify public site
-        run: |
-          for attempt in $(seq 1 20); do
-            if curl -fsS --max-time 10 https://ai-baseball.f-polaris.jp/ >/dev/null; then
-              echo "Production site is responding"
-              exit 0
-            fi
-            sleep 3
-          done
-          echo "Production site health check failed"
-          exit 1
+      - name: Verify protected public site
+        shell: bash
+        env:
+          SITE_URL: https://ai-baseball.f-polaris.jp/
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: bash scripts/verify-protected-site.sh
