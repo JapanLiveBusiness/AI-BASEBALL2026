@@ -7,6 +7,8 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 
+from handicap_source import fetch_hawks_handicap
+
 st.set_page_config(
     page_title="ホークス応援 AI勝率シミュレーター",
     page_icon="⚾",
@@ -202,13 +204,42 @@ if submitted:
 st.divider()
 
 # app.py側のset_page_configは2回目になるため、この実行中だけno-op化する。
+# 旧app.pyに残る固定 handicap_score=-2.0 は実行直前に公開値へ置換する。
+# 未発表・取得失敗時は 0.0 とし、架空のハンデ補正を予想へ加えない。
+_live_handicap = fetch_hawks_handicap(date.today())
+_live_handicap_score = (
+    float(_live_handicap["handicap_score"])
+    if _live_handicap.get("published") and _live_handicap.get("handicap_score") is not None
+    else 0.0
+)
+
+if _live_handicap.get("published"):
+    st.caption(
+        f"公開ハンデ取得: {_live_handicap.get('favored_team')} "
+        f"{_live_handicap.get('token')}（予想計算へ反映）"
+    )
+else:
+    st.caption("公開ハンデ: 未発表 / 取得待ち（予想計算にはハンデ補正を適用しません）")
+
+_app_path = Path(__file__).with_name("app.py")
+_app_source = _app_path.read_text(encoding="utf-8")
+_fixed_assignment = "handicap_score = -2.0"
+if _fixed_assignment not in _app_source:
+    st.error("ハンデ固定値の置換対象が見つかりません。app.pyの構成を確認してください。")
+    st.stop()
+_app_source = _app_source.replace(
+    _fixed_assignment,
+    "handicap_score = _live_handicap_score",
+    1,
+)
+
 _original_set_page_config = st.set_page_config
 st.set_page_config = lambda *args, **kwargs: None
 try:
     exec(
         compile(
-            Path(__file__).with_name("app.py").read_text(encoding="utf-8"),
-            str(Path(__file__).with_name("app.py")),
+            _app_source,
+            str(_app_path),
             "exec",
         ),
         globals(),
