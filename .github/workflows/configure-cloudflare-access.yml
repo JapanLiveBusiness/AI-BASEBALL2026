@@ -130,7 +130,7 @@ jobs:
             if [ -z "$bypass_id" ]; then
               bypass_body="$(jq -n \
                 --arg name "$BYPASS_POLICY_NAME" \
-                '{name:$name, decision:"bypass", include:[{everyone:{}}]}')"
+                '{name:$name, decision:"allow", include:[{everyone:{}}]}')"
               api POST "/accounts/$CF_ACCOUNT_ID/access/apps/$app_id/policies" "$bypass_body" >/dev/null
               echo "Bootstrap mode: public bypass retained to prevent lockout"
             else
