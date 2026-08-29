@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 import json
 import re
 
@@ -8,6 +9,8 @@ import streamlit as st
 from bs4 import BeautifulSoup
 
 from handicap_source import fetch_hawks_handicap
+
+JST = ZoneInfo("Asia/Tokyo")
 
 st.set_page_config(
     page_title="ホークス応援 AI勝率シミュレーター",
@@ -92,12 +95,15 @@ def fetch_npb_games(selected_date):
     return games
 
 
+_now_jst = datetime.now(JST)
+_today_jst = _now_jst.date()
+
 st.markdown("## ➕ 当日のBET・収支を手動入力")
 st.caption("日付を選ぶと、その日のNPB開催試合から選択できます。保存内容は収支マップへ即時反映されます。")
 
 selected_date = st.date_input(
     "試合日",
-    value=date.today(),
+    value=_today_jst,
     key="top_manual_bet_date",
 )
 
@@ -180,8 +186,9 @@ if submitted:
             "未確定": None,
         }
         records = load_bets()
+        created_at = datetime.now(JST)
         records.append({
-            "id": f"manual-{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
+            "id": f"manual-{created_at.strftime('%Y%m%d%H%M%S%f')}",
             "date": selected_date.isoformat(),
             "time": game_time.strftime("%H:%M"),
             "team": str(bet_team).strip(),
@@ -196,7 +203,7 @@ if submitted:
             "opponent_score": int(opponent_score) if status_label == "確定" else None,
             "memo": memo.strip(),
             "source": "manual-top",
-            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "created_at": created_at.isoformat(timespec="seconds"),
         })
         save_bets(records)
         st.success("BET・収支を保存しました。収支マップにも反映されています。")
@@ -206,7 +213,7 @@ st.divider()
 # app.py側のset_page_configは2回目になるため、この実行中だけno-op化する。
 # 旧app.pyに残る固定 handicap_score=-2.0 は実行直前に公開値へ置換する。
 # 未発表・取得失敗時は 0.0 とし、架空のハンデ補正を予想へ加えない。
-_live_handicap = fetch_hawks_handicap(date.today())
+_live_handicap = fetch_hawks_handicap(_today_jst)
 _live_handicap_score = (
     float(_live_handicap["handicap_score"])
     if _live_handicap.get("published") and _live_handicap.get("handicap_score") is not None
