@@ -50,26 +50,58 @@ jobs:
         run: |
           set -euo pipefail
 
+          CF_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_ID" | tr -d '[:space:]')"
+          if ! [[ "$CF_ACCOUNT_ID" =~ ^[0-9a-fA-F]{32}$ ]]; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID must be a 32-character hexadecimal account ID"
+            exit 1
+          fi
+
           api() {
             local method="$1"
             local path="$2"
             local body="${3:-}"
+            local response_file
+            local status
+            response_file="$(mktemp)"
+
             if [ -n "$body" ]; then
-              curl --fail-with-body --silent --show-error \
+              status="$(curl --silent --show-error \
+                --output "$response_file" \
+                --write-out '%{http_code}' \
                 --request "$method" \
                 "https://api.cloudflare.com/client/v4${path}" \
                 --header "Authorization: Bearer $CF_API_TOKEN" \
                 --header "Content-Type: application/json" \
-                --data "$body"
+                --data "$body")"
             else
-              curl --fail-with-body --silent --show-error \
+              status="$(curl --silent --show-error \
+                --output "$response_file" \
+                --write-out '%{http_code}' \
                 --request "$method" \
                 "https://api.cloudflare.com/client/v4${path}" \
                 --header "Authorization: Bearer $CF_API_TOKEN" \
-                --header "Content-Type: application/json"
+                --header "Content-Type: application/json")"
             fi
+
+            if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+              echo "::error::Cloudflare API $method $path returned HTTP $status" >&2
+              jq -c '{success, errors, messages}' "$response_file" >&2 2>/dev/null || cat "$response_file" >&2
+              rm -f "$response_file"
+              return 22
+            fi
+
+            cat "$response_file"
+            rm -f "$response_file"
           }
 
+          echo "Verifying Cloudflare API token"
+          verify_json="$(api GET "/user/tokens/verify")"
+          if [ "$(jq -r '.result.status // empty' <<<"$verify_json")" != "active" ]; then
+            echo "::error::Cloudflare API token is not active"
+            exit 1
+          fi
+
+          echo "Looking up Access applications for the configured account"
           apps_json="$(api GET "/accounts/$CF_ACCOUNT_ID/access/apps")"
           app_id="$(jq -r --arg domain "$APP_DOMAIN" '.result[] | select(.domain == $domain) | .id' <<<"$apps_json" | head -n1)"
 
