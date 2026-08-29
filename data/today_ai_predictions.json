@@ -1,0 +1,61 @@
+{
+  "date": "2026-08-30",
+  "updated_at": "2026-08-30T01:00:00+09:00",
+  "model": "HAWKS AI Daily Prediction",
+  "games": [
+    {
+      "rank": 1,
+      "home": "西武",
+      "away": "楽天",
+      "pick": "西武",
+      "win_probability": 67,
+      "predicted_score": "4-2",
+      "confidence": "A"
+    },
+    {
+      "rank": 2,
+      "home": "日本ハム",
+      "away": "ロッテ",
+      "pick": "日本ハム",
+      "win_probability": 63,
+      "predicted_score": "5-3",
+      "confidence": "A-"
+    },
+    {
+      "rank": 3,
+      "home": "阪神",
+      "away": "巨人",
+      "pick": "阪神",
+      "win_probability": 62,
+      "predicted_score": "3-2",
+      "confidence": "A-"
+    },
+    {
+      "rank": 4,
+      "home": "オリックス",
+      "away": "ソフトバンク",
+      "pick": "ソフトバンク",
+      "win_probability": 56,
+      "predicted_score": "3-2",
+      "confidence": "B"
+    },
+    {
+      "rank": 5,
+      "home": "DeNA",
+      "away": "中日",
+      "pick": "DeNA",
+      "win_probability": 55,
+      "predicted_score": "3-2",
+      "confidence": "B"
+    },
+    {
+      "rank": 6,
+      "home": "広島",
+      "away": "ヤクルト",
+      "pick": "ヤクルト",
+      "win_probability": 53,
+      "predicted_score": "4-3",
+      "confidence": "C+"
+    }
+  ]
+}
