@@ -28,7 +28,6 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
           envs: DEPLOY_SHA
-          script_stop: true
           script: |
             export DEPLOY_SHA="$DEPLOY_SHA"
             export APP_DIR="/opt/ai-baseball2026"
