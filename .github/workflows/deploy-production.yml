@@ -22,12 +22,11 @@ jobs:
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
         run: |
           missing=0
-          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_PORT TAILSCALE_AUTHKEY; do
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PORT TAILSCALE_AUTHKEY; do
             if [ -z "${!name}" ]; then
               echo "::error::$name is not available to this workflow"
               missing=1
@@ -40,39 +39,60 @@ jobs:
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      - name: Verify Tailscale route
+      - name: Diagnose and verify Tailscale route
         shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
         run: |
-          tailscale status
+          tailscale ping -c 3 "$DEPLOY_HOST" || true
+          nc -vz -w 5 "$DEPLOY_HOST" "$DEPLOY_PORT"
+          if [[ ! "$DEPLOY_HOST" =~ ^[0-9a-fA-F:.]+$ ]]; then
+            getent hosts "$DEPLOY_HOST"
+          fi
+          tailscale status --json | jq --arg host "$DEPLOY_HOST" '
+            [
+              .Peer[]
+              | select(
+                  .HostName == "server-01"
+                  or ((.TailscaleIPs // []) | index($host))
+                )
+              | {
+                  Online,
+                  Active,
+                  Addresses: (.TailscaleIPs // [])
+                }
+            ]'
           timeout 10 bash -c "</dev/tcp/$DEPLOY_HOST/$DEPLOY_PORT"
 
       - name: Deploy to production server
-        uses: appleboy/ssh-action@v1.2.2
+        shell: bash
         env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_SHA: ${{ github.sha }}
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT }}
-          envs: DEPLOY_SHA
-          script: |
-            set -e
-            export DEPLOY_SHA="$DEPLOY_SHA"
-            export APP_DIR="/opt/ai-baseball2026"
-            export DATA_DIR="/opt/hawks-ai/data"
-            export BRANCH="main-AI-BASEBALL"
-            export CONTAINER_NAME="hawks-app"
-            export IMAGE_NAME="hawks-app"
-            export PORT="8501"
-            cd "$APP_DIR"
-            git fetch origin "$BRANCH"
-            git show "origin/$BRANCH:scripts/deploy-production.sh" > /tmp/ai-baseball-deploy.sh
-            chmod +x /tmp/ai-baseball-deploy.sh
-            /tmp/ai-baseball-deploy.sh
+        run: |
+          ssh \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'REMOTE'
+          set -e
+          export APP_DIR="/opt/hawks-ai/ai-baseball2026"
+          export DATA_DIR="/opt/hawks-ai/data"
+          export BRANCH="main-AI-BASEBALL"
+          export CONTAINER_NAME="hawks-app"
+          export IMAGE_NAME="hawks-app"
+          export PORT="8501"
+
+          cd "$APP_DIR"
+          git fetch origin "$BRANCH"
+          git show "origin/$BRANCH:scripts/deploy-production.sh" > /tmp/ai-baseball-deploy.sh
+          chmod +x /tmp/ai-baseball-deploy.sh
+          /tmp/ai-baseball-deploy.sh
+          REMOTE
 
       - name: Verify protected public site
         shell: bash
