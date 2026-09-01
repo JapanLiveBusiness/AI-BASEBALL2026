@@ -111,7 +111,7 @@ jobs:
             "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
             "DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'REMOTE'
           set -e
-          export APP_DIR="/opt/hawks-ai/ai-baseball2026"
+          export APP_DIR="/opt/ai-baseball2026"
           export DATA_DIR="/opt/hawks-ai/data"
           export BRANCH="main-AI-BASEBALL"
           export CONTAINER_NAME="hawks-app"
