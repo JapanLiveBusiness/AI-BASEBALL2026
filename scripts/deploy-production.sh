@@ -10,6 +10,7 @@ PORT="${PORT:-8501}"
 DEPLOY_SHA="${DEPLOY_SHA:-}"
 TRAEFIK_NETWORK="${TRAEFIK_NETWORK:-miki-stack_miki-net}"
 TRAEFIK_HOST="${TRAEFIK_HOST:-ai-baseball.f-polaris.jp}"
+TRAEFIK_CONTAINER="${TRAEFIK_CONTAINER:-miki-traefik}"
 
 cd "$APP_DIR"
 
@@ -30,6 +31,14 @@ if ! docker network inspect "$TRAEFIK_NETWORK" >/dev/null 2>&1; then
   echo "[deploy] required Traefik network not found: $TRAEFIK_NETWORK"
   exit 1
 fi
+
+TRAEFIK_IP="$(docker inspect "$TRAEFIK_CONTAINER" --format "{{with index .NetworkSettings.Networks \"$TRAEFIK_NETWORK\"}}{{.IPAddress}}{{end}}" 2>/dev/null || true)"
+if [ -z "$TRAEFIK_IP" ]; then
+  echo "[deploy] Traefik container is not attached to $TRAEFIK_NETWORK: $TRAEFIK_CONTAINER"
+  exit 1
+fi
+
+echo "[deploy] Traefik route target: $TRAEFIK_HOST via $TRAEFIK_CONTAINER on $TRAEFIK_NETWORK"
 
 SHORT_SHA="$(git rev-parse --short=12 HEAD)"
 NEW_IMAGE="$IMAGE_NAME:$SHORT_SHA"
@@ -75,9 +84,16 @@ start_container "$NEW_IMAGE"
 
 for attempt in $(seq 1 30); do
   if curl -fsS "http://127.0.0.1:$PORT/_stcore/health" >/dev/null; then
-    echo "[deploy] healthy: $NEW_IMAGE"
-    docker tag "$NEW_IMAGE" "$IMAGE_NAME:latest"
-    exit 0
+    echo "[deploy] app healthy: $NEW_IMAGE"
+    if curl -k -fsS \
+      --resolve "$TRAEFIK_HOST:443:$TRAEFIK_IP" \
+      "https://$TRAEFIK_HOST/_stcore/health" >/dev/null; then
+      echo "[deploy] Traefik route healthy: https://$TRAEFIK_HOST/ -> $CONTAINER_NAME:8501"
+      docker tag "$NEW_IMAGE" "$IMAGE_NAME:latest"
+      exit 0
+    fi
+    echo "[deploy] Traefik route health check failed for https://$TRAEFIK_HOST/"
+    rollback
   fi
   sleep 2
 done
