@@ -23,8 +23,8 @@ jobs:
       CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CF_SERVICE_TOKEN_ID: ${{ secrets.CLOUDFLARE_ACCESS_SERVICE_TOKEN_ID }}
-      APP_DOMAIN: ai-baseball.f-polaris.jp
-      APP_NAME: AI-BASEBALL2026 Production
+      APP_DOMAIN: ai-baseball-studio.f-polaris.jp
+      APP_NAME: AI-BASEBALL2026 Studio Production
       HUMAN_POLICY_NAME: Allow production operator
       SERVICE_POLICY_NAME: Allow GitHub Actions service token
       BYPASS_POLICY_NAME: Bootstrap public bypass
