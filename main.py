@@ -1,256 +1,271 @@
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 import json
-import re
 
-import requests
 import streamlit as st
-from bs4 import BeautifulSoup
-
-from handicap_source import fetch_hawks_handicap
 
 JST = ZoneInfo("Asia/Tokyo")
+DATA_DIR = Path(__file__).resolve().parent / "data"
 
 st.set_page_config(
-    page_title="ホークス応援 AI勝率シミュレーター",
+    page_title="MY AI BASEBALL | GAME INTELLIGENCE",
     page_icon="⚾",
     layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
-BETS_FILE = DATA_DIR / "bet_records.json"
 
-TEAM_NAMES = [
-    "ソフトバンク", "日本ハム", "楽天", "西武", "ロッテ", "オリックス",
-    "巨人", "阪神", "DeNA", "広島", "ヤクルト", "中日",
+def load_json(name, fallback):
+    try:
+        value = json.loads((DATA_DIR / name).read_text(encoding="utf-8"))
+        return value
+    except Exception:
+        return fallback
+
+
+predictions = load_json("today_ai_predictions.json", {"games": []})
+npb_today = load_json("npb_today.json", {"games": []})
+bet_summary = load_json("bet_summary.json", {})
+
+prediction_games = predictions.get("games") or []
+today_games = npb_today.get("games") or []
+best = prediction_games[0] if prediction_games else {}
+
+best_pick = best.get("pick") or "データ同期中"
+best_prob = best.get("win_probability")
+best_prob_label = f"{float(best_prob):.1f}%" if isinstance(best_prob, (int, float)) else "--"
+best_match = (
+    f"{best.get('home', '---')} vs {best.get('away', '---')}"
+    if best else "本日の予測データを取得中"
+)
+updated_at = predictions.get("updated_at") or npb_today.get("updated_at") or "--"
+weekly_profit = bet_summary.get("weekly_unsettled_profit")
+profit_label = f"¥{int(weekly_profit):,}" if isinstance(weekly_profit, (int, float)) else "--"
+now_jst = datetime.now(JST)
+
+teams = [
+    ("ソフトバンク", "H"), ("日本ハム", "F"), ("楽天", "E"), ("西武", "L"),
+    ("ロッテ", "M"), ("オリックス", "B"), ("巨人", "G"), ("阪神", "T"),
+    ("DeNA", "DB"), ("広島", "C"), ("ヤクルト", "S"), ("中日", "D"),
 ]
 
+st.markdown(
+    """
+<style>
+:root {
+  --mab-black: #151516;
+  --mab-black-2: #1c1c1e;
+  --mab-gold: #f3c400;
+  --mab-gold-deep: #ba8511;
+  --mab-cream: #f3efe7;
+  --mab-card: #fffdf9;
+  --mab-line: #ded7cb;
+  --mab-text: #141414;
+  --mab-muted: #776f65;
+}
 
-def load_bets():
-    try:
-        data = json.loads(BETS_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
-    except Exception:
-        return []
+[data-testid="stHeader"], [data-testid="stToolbar"], footer {display:none !important;}
+[data-testid="stSidebar"] {display:none !important;}
+[data-testid="stAppViewContainer"] {
+  background: var(--mab-cream) !important;
+  color: var(--mab-text) !important;
+}
+.block-container {
+  max-width: 1440px !important;
+  padding: 0 0 3rem 0 !important;
+}
 
+.mab-nav {
+  min-height: 76px;
+  background: var(--mab-black);
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 0 30px;
+  gap: 28px;
+  border-bottom: 1px solid #2a2a2c;
+}
+.mab-brand {display:flex; align-items:center; gap:12px; min-width:280px;}
+.mab-logo {
+  width: 40px; height: 40px; border-radius: 11px; background: var(--mab-gold);
+  color: #111; display:flex; align-items:center; justify-content:center;
+  font-weight: 1000; font-style: italic; font-size: 22px;
+}
+.mab-brand-title {font-weight:900; letter-spacing:.13em; font-size:15px;}
+.mab-brand-sub {font-size:7px; letter-spacing:.42em; color:#b8b8b8; margin-top:4px;}
+.mab-next {border:1px solid var(--mab-gold); color:var(--mab-gold); font-size:9px; padding:3px 6px;}
+.mab-nav-items {display:flex; flex:1; justify-content:center; gap:30px; align-items:center;}
+.mab-nav-item {font-size:10px; color:#ddd; text-align:center; line-height:1.6; white-space:nowrap;}
+.mab-nav-item b {font-size:16px; display:block; color:#fff; font-weight:500;}
+.mab-nav-item.active {color:var(--mab-gold); border-bottom:3px solid var(--mab-gold); padding-bottom:15px; margin-bottom:-18px;}
+.mab-nav-actions {display:flex; gap:8px;}
+.mab-square {border:1px solid #3b3b3d; border-radius:9px; padding:10px 12px; font-weight:800;}
 
-def save_bets(records):
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    BETS_FILE.write_text(
-        json.dumps(records, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+.mab-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 330px;
+  padding: 42px 38px 34px;
+  color: white;
+  background:
+    radial-gradient(circle at 80% 20%, rgba(204,151,29,.50), transparent 38%),
+    linear-gradient(135deg, #111 0%, #17120a 46%, #3a2b0d 100%);
+  border-bottom: 3px solid rgba(243,196,0,.35);
+}
+.mab-hero:after {
+  content:""; position:absolute; inset:0;
+  background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 44px 44px; pointer-events:none;
+}
+.mab-kicker {color:#f4cf52; font-size:19px; font-weight:850; letter-spacing:.05em;}
+.mab-title {font-size:64px; font-weight:400; font-style:italic; letter-spacing:-.04em; line-height:.96; margin-top:9px;}
+.mab-title .gold {color:#d5a31b;}
+.mab-subtitle {font-family: Georgia, serif; font-size:30px; margin-top:22px;}
+.mab-city {font-size:11px; letter-spacing:.55em; color:#d3cec7; margin:8px 0 18px 82px;}
+.mab-chiprow {display:flex; gap:10px; margin-top:20px;}
+.mab-chip {font-size:9px; border:1px solid rgba(255,255,255,.28); border-radius:20px; padding:7px 12px; background:rgba(0,0,0,.28);}
+.mab-chip.primary {color:#111; background:var(--mab-gold); border-color:var(--mab-gold); font-weight:900;}
 
+.mab-content {padding: 26px 36px 0;}
+.mab-panel {
+  background: rgba(255,255,255,.65); border:1px solid #d8d1c6; border-radius:18px;
+  padding:16px; box-shadow:0 14px 38px rgba(25,20,12,.08);
+}
+.mab-grid {display:grid; grid-template-columns: 1fr 1.45fr 1.55fr; gap:10px;}
+.mab-card {background:var(--mab-card); border:1px solid var(--mab-line); border-radius:10px; min-height:190px; padding:22px;}
+.mab-card.accent {border-left:4px solid var(--mab-gold);}
+.mab-eyebrow {font-size:9px; letter-spacing:.25em; color:#b08c18; font-weight:900;}
+.mab-card h3 {font-family:Georgia,serif; font-weight:500; font-size:25px; margin:12px 0 4px; color:#151515 !important;}
+.mab-big {font-size:48px; font-weight:900; margin:11px 0 0;}
+.mab-muted {font-size:11px; color:var(--mab-muted); line-height:1.65;}
+.mab-kpi {display:flex; align-items:end; justify-content:space-between; margin-top:22px; padding-top:16px; border-top:1px solid #e1dbd1;}
+.mab-kpi strong {font-size:28px;}
 
-@st.cache_data(ttl=1800, show_spinner=False)
-def fetch_npb_games(selected_date):
-    """NPB公式の月間詳細日程から指定日の開催試合を取得。"""
-    year = selected_date.year
-    month = selected_date.month
-    target_md = f"{selected_date.month}/{selected_date.day}"
-    url = f"https://npb.jp/games/{year}/schedule_{month:02d}_detail.html"
-    games = []
+.mab-team-label {font-size:10px; font-weight:800; margin:18px 0 8px;}
+.mab-teams {display:grid; grid-template-columns: repeat(12, 1fr); gap:6px;}
+.mab-team {background:#fff; border:1px solid #d7d0c5; border-radius:8px; padding:8px 5px; text-align:center; min-height:72px;}
+.mab-team-logo {width:34px; height:34px; border-radius:50%; margin:0 auto 4px; background:#1b1b1c; color:var(--mab-gold); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:11px;}
+.mab-team-name {font-size:8px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
-    try:
-        r = requests.get(
-            url,
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=10,
-        )
-        r.raise_for_status()
-        soup = BeautifulSoup(r.content, "html.parser")
+.mab-ai-banner {margin-top:16px; border-radius:11px; background:#181819; color:#fff; min-height:112px; padding:22px 26px; display:flex; justify-content:space-between; align-items:center;}
+.mab-ai-banner h3 {color:white !important; margin:5px 0; font-size:20px;}
+.mab-ai-status {border:1px solid #555; border-radius:28px; padding:14px 22px; color:var(--mab-gold); font-weight:900;}
 
-        current_date = None
-        for tr in soup.find_all("tr"):
-            text = " ".join(tr.get_text(" ", strip=True).split())
-            dm = re.search(r"(\d{1,2})/(\d{1,2})", text)
-            if dm:
-                current_date = f"{int(dm.group(1))}/{int(dm.group(2))}"
+.mab-section-title {margin:30px 0 8px; font-size:11px; color:#aa8214; letter-spacing:.28em; font-weight:900;}
+.mab-section-head {font-size:30px; font-family:Georgia,serif; margin-bottom:6px;}
 
-            if current_date != target_md:
-                continue
+/* Streamlit navigation buttons */
+div[data-testid="stPageLink"] a {
+  border:1px solid #bbb3a7 !important; border-radius:999px !important; padding:10px 16px !important;
+  background:#fffdf9 !important; color:#151515 !important; font-weight:800 !important; text-decoration:none !important;
+}
+div[data-testid="stPageLink"] a:hover {border-color:var(--mab-gold) !important; box-shadow:0 0 0 2px rgba(243,196,0,.12);}
 
-            found = []
-            for team in TEAM_NAMES:
-                if team in text and team not in found:
-                    found.append(team)
-
-            if len(found) < 2:
-                continue
-
-            tm = re.search(r"(\d{1,2}:\d{2})", text)
-            game_time = tm.group(1) if tm else "18:00"
-
-            pair = (found[0], found[1], game_time)
-            if pair not in [(g["team1"], g["team2"], g["time"]) for g in games]:
-                games.append({
-                    "team1": found[0],
-                    "team2": found[1],
-                    "time": game_time,
-                })
-    except Exception:
-        pass
-
-    return games
-
-
-_now_jst = datetime.now(JST)
-_today_jst = _now_jst.date()
-
-st.markdown("## ➕ 当日のBET・収支を手動入力")
-st.caption("日付を選ぶと、その日のNPB開催試合から選択できます。保存内容は収支マップへ即時反映されます。")
-
-selected_date = st.date_input(
-    "試合日",
-    value=_today_jst,
-    key="top_manual_bet_date",
+@media (max-width: 900px) {
+  .mab-nav-items {display:none;}
+  .mab-nav {padding:0 14px;}
+  .mab-brand {min-width:0; flex:1;}
+  .mab-hero {padding:30px 20px; min-height:280px;}
+  .mab-title {font-size:42px;}
+  .mab-subtitle {font-size:23px;}
+  .mab-content {padding:18px 12px 0;}
+  .mab-grid {grid-template-columns:1fr;}
+  .mab-teams {grid-template-columns:repeat(4,1fr);}
+}
+</style>
+""",
+    unsafe_allow_html=True,
 )
 
-games = fetch_npb_games(selected_date)
-
-if games:
-    labels = [
-        f"{g['team1']} vs {g['team2']}（{g['time']}）"
-        for g in games
-    ]
-    selected_label = st.selectbox(
-        "当日の開催試合",
-        labels,
-        key="top_manual_game",
-    )
-    selected_game = games[labels.index(selected_label)]
-    team_options = [selected_game["team1"], selected_game["team2"]]
-    default_time = selected_game["time"]
-else:
-    st.info("指定日の試合を自動取得できませんでした。チーム名を手動入力できます。")
-    team_options = []
-    default_time = "18:00"
-
-with st.form("top_manual_bet_form", clear_on_submit=False):
-    c1, c2 = st.columns(2)
-
-    if team_options:
-        bet_team = c1.selectbox("BET先", team_options)
-        opponent = team_options[1] if bet_team == team_options[0] else team_options[0]
-        c2.text_input("対戦相手", value=opponent, disabled=True)
-    else:
-        bet_team = c1.text_input("BET先 / チーム")
-        opponent = c2.text_input("対戦相手")
-
-    try:
-        default_time_obj = datetime.strptime(default_time, "%H:%M").time()
-    except ValueError:
-        default_time_obj = datetime.strptime("18:00", "%H:%M").time()
-
-    c3, c4, c5 = st.columns(3)
-    game_time = c3.time_input("開始時刻", value=default_time_obj)
-    bet_amount = c4.number_input(
-        "BET金額（円）",
-        min_value=0,
-        value=10000,
-        step=1000,
-    )
-    handicap = c5.number_input("ハンディ", value=0.0, step=0.5)
-
-    c6, c7, c8 = st.columns(3)
-    status_label = c6.selectbox("状態", ["未確定", "確定"])
-    result_label = c7.selectbox("結果", ["未確定", "WIN", "LOSE", "PUSH"])
-    profit = c8.number_input("損益（円）", value=0, step=1000)
-
-    c9, c10 = st.columns(2)
-    team_score = c9.number_input("BET先チーム得点", min_value=0, value=0, step=1)
-    opponent_score = c10.number_input("対戦相手得点", min_value=0, value=0, step=1)
-
-    memo = st.text_area(
-        "その他情報",
-        placeholder="オッズ、BET理由、ブックメーカー、補足など",
-    )
-
-    submitted = st.form_submit_button(
-        "BET・収支を保存",
-        type="primary",
-        use_container_width=True,
-    )
-
-if submitted:
-    if not str(bet_team).strip() or not str(opponent).strip():
-        st.error("BET先と対戦相手を入力してください。")
-    elif status_label == "確定" and result_label == "未確定":
-        st.error("確定の場合は WIN / LOSE / PUSH を選択してください。")
-    else:
-        result_map = {
-            "WIN": "win",
-            "LOSE": "loss",
-            "PUSH": "push",
-            "未確定": None,
-        }
-        records = load_bets()
-        created_at = datetime.now(JST)
-        records.append({
-            "id": f"manual-{created_at.strftime('%Y%m%d%H%M%S%f')}",
-            "date": selected_date.isoformat(),
-            "time": game_time.strftime("%H:%M"),
-            "team": str(bet_team).strip(),
-            "opponent": str(opponent).strip(),
-            "handicap": float(handicap),
-            "bet_units": float(bet_amount) / 10000.0,
-            "bet_amount": int(bet_amount),
-            "status": "final" if status_label == "確定" else "pending",
-            "result": result_map[result_label],
-            "profit": int(profit) if status_label == "確定" else 0,
-            "team_score": int(team_score) if status_label == "確定" else None,
-            "opponent_score": int(opponent_score) if status_label == "確定" else None,
-            "memo": memo.strip(),
-            "source": "manual-top",
-            "created_at": created_at.isoformat(timespec="seconds"),
-        })
-        save_bets(records)
-        st.success("BET・収支を保存しました。収支マップにも反映されています。")
-
-st.divider()
-
-# app.py側のset_page_configは2回目になるため、この実行中だけno-op化する。
-# 旧app.pyに残る固定 handicap_score=-2.0 は実行直前に公開値へ置換する。
-# 未発表・取得失敗時は 0.0 とし、架空のハンデ補正を予想へ加えない。
-_live_handicap = fetch_hawks_handicap(_today_jst)
-_live_handicap_score = (
-    float(_live_handicap["handicap_score"])
-    if _live_handicap.get("published") and _live_handicap.get("handicap_score") is not None
-    else 0.0
+nav_items = [
+    ("⌂", "ホーム", True), ("◉", "試合", False), ("▥", "戦績", False),
+    ("◇", "AI予測", False), ("✓", "予想結果", False), ("↗", "収支マップ", False), ("✦", "AI Hero", False),
+]
+nav_html = "".join(
+    f'<div class="mab-nav-item {"active" if active else ""}"><b>{icon}</b>{label}</div>'
+    for icon, label, active in nav_items
 )
 
-if _live_handicap.get("published"):
-    st.caption(
-        f"公開ハンデ取得: {_live_handicap.get('favored_team')} "
-        f"{_live_handicap.get('token')}（予想計算へ反映）"
-    )
-else:
-    st.caption("公開ハンデ: 未発表 / 取得待ち（予想計算にはハンデ補正を適用しません）")
-
-_app_path = Path(__file__).with_name("app.py")
-_app_source = _app_path.read_text(encoding="utf-8")
-_fixed_assignment = "handicap_score = -2.0"
-if _fixed_assignment not in _app_source:
-    st.error("ハンデ固定値の置換対象が見つかりません。app.pyの構成を確認してください。")
-    st.stop()
-_app_source = _app_source.replace(
-    _fixed_assignment,
-    "handicap_score = _live_handicap_score",
-    1,
+st.markdown(
+    f"""
+<div class="mab-nav">
+  <div class="mab-brand">
+    <div class="mab-logo">M</div>
+    <div><div class="mab-brand-title">MY AI BASEBALL</div><div class="mab-brand-sub">GAME INTELLIGENCE</div></div>
+    <span class="mab-next">NEXT</span>
+  </div>
+  <div class="mab-nav-items">{nav_html}</div>
+  <div class="mab-nav-actions"><div class="mab-square">JP</div><div class="mab-square">↻</div></div>
+</div>
+<div class="mab-hero">
+  <div class="mab-kicker">データで、もっと野球が楽しくなる。</div>
+  <div class="mab-title">MY AI <span class="gold">BASEBALL</span></div>
+  <div class="mab-subtitle">GAME INTELLIGENCE 2026</div>
+  <div class="mab-city">JAPAN · NPB</div>
+  <div class="mab-chiprow">
+    <span class="mab-chip primary">MY AI BASEBALL 03</span>
+    <span class="mab-chip">◷ {now_jst.strftime('%H:%M:%S')} 更新</span>
+    <span class="mab-chip">DATA {updated_at}</span>
+  </div>
+</div>
+""",
+    unsafe_allow_html=True,
 )
 
-_original_set_page_config = st.set_page_config
-st.set_page_config = lambda *args, **kwargs: None
-try:
-    exec(
-        compile(
-            _app_source,
-            str(_app_path),
-            "exec",
-        ),
-        globals(),
-        globals(),
-    )
-finally:
-    st.set_page_config = _original_set_page_config
+team_html = "".join(
+    f'<div class="mab-team"><div class="mab-team-logo">{abbr}</div><div class="mab-team-name">{name}</div></div>'
+    for name, abbr in teams
+)
+
+st.markdown(
+    f"""
+<div class="mab-content">
+  <div class="mab-panel">
+    <div class="mab-grid">
+      <div class="mab-card">
+        <div class="mab-eyebrow">TODAY'S AI PICK</div>
+        <h3>{best_pick}</h3>
+        <div class="mab-muted">{best_match}</div>
+        <div class="mab-kpi"><span class="mab-muted">AI勝率</span><strong>{best_prob_label}</strong></div>
+      </div>
+      <div class="mab-card">
+        <div class="mab-eyebrow">TODAY / NPB</div>
+        <h3>本日の対戦カード</h3>
+        <div class="mab-big">{len(today_games)}</div>
+        <div class="mab-muted">共有データを監視し、試合・先発・結果を自動同期します。</div>
+      </div>
+      <div class="mab-card accent">
+        <div class="mab-eyebrow">BET & PERFORMANCE</div>
+        <h3>収支データを統合</h3>
+        <div class="mab-muted">AI予測・ハンデ・BET記録・結果検証を同じダッシュボードで管理。</div>
+        <div class="mab-kpi"><span class="mab-muted">週次未確定損益</span><strong>{profit_label}</strong></div>
+      </div>
+    </div>
+    <div class="mab-team-label">12球団を切り替える</div>
+    <div class="mab-teams">{team_html}</div>
+    <div class="mab-ai-banner">
+      <div><div class="mab-eyebrow">AI PREDICTION</div><h3>次戦の勝率予測・ハンデ・収支を統合</h3><div class="mab-muted" style="color:#aaa">先発投手、直近成績、対戦相性、球場特性、ハンデ情報を再取得します。</div></div>
+      <div class="mab-ai-status">自動監視中</div>
+    </div>
+  </div>
+  <div class="mab-section-title">FUNCTIONS</div>
+  <div class="mab-section-head">機能を選択</div>
+  <div class="mab-muted">既存機能を維持したまま、このデザインへ順次統合しています。</div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
+
+st.write("")
+links = st.columns(4)
+with links[0]:
+    st.page_link("pages/本日のAI予想.py", label="AI予測", icon="🤖", use_container_width=True)
+with links[1]:
+    st.page_link("pages/収支マップ.py", label="収支マップ", icon="📈", use_container_width=True)
+with links[2]:
+    st.page_link("pages/BET入力.py", label="BET入力", icon="✍️", use_container_width=True)
+with links[3]:
+    st.page_link("pages/AI詳細.py", label="詳細ダッシュボード", icon="⚾", use_container_width=True)
+
+st.caption("MY AI BASEBALL · chatgpt.site design shell / existing AI functions preserved")
