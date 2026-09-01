@@ -8,6 +8,8 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 
+from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
+
 JST = ZoneInfo("Asia/Tokyo")
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 BETS_FILE = DATA_DIR / "bet_records.json"
@@ -17,16 +19,15 @@ TEAM_NAMES = [
 ]
 
 st.set_page_config(page_title="BET入力 | MY AI BASEBALL", page_icon="✍️", layout="wide")
-
-st.markdown("""
-<style>
-[data-testid="stAppViewContainer"] {background:#f3efe7;}
-.block-container {max-width:1180px; padding-top:2rem;}
-h1,h2,h3 {color:#171717 !important;}
-.stButton>button, button[kind="primary"] {background:#171717 !important; color:#f3c400 !important; border-radius:999px !important; border:1px solid #171717 !important; font-weight:800 !important;}
-div[data-testid="stForm"] {background:#fffdf9; border:1px solid #ded7cb; border-radius:16px; padding:18px;}
-</style>
-""", unsafe_allow_html=True)
+apply_studio_theme()
+render_topbar("BET MANAGEMENT")
+render_hero(
+    "BET・収支入力",
+    "当日のNPBカードからBET先・ハンデ・金額・結果を登録し、収支マップへ即時反映します。",
+    kicker="AI BASEBALL STUDIO / BET INPUT",
+    accent="BET",
+)
+render_nav_links()
 
 
 def load_bets():
@@ -74,10 +75,6 @@ def fetch_npb_games(selected_date):
         pass
     return games
 
-
-st.caption("MY AI BASEBALL / BET MANAGEMENT")
-st.title("BET・収支入力")
-st.write("当日のNPBカードからBET先、ハンデ、金額、結果を登録し、収支マップへ反映します。")
 
 selected_date = st.date_input("試合日", value=datetime.now(JST).date())
 games = fetch_npb_games(selected_date)
