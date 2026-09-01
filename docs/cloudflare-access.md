@@ -2,7 +2,7 @@
 
 ## Goal
 
-Protect `https://ai-baseball.f-polaris.jp/` before requests reach Streamlit. Authentication and identity-provider credentials stay in Cloudflare; the application does not store user passwords, OAuth client secrets, or login tokens.
+Protect `https://ai-baseball-studio.f-polaris.jp/` before requests reach Streamlit. Authentication and identity-provider credentials stay in Cloudflare; the application does not store user passwords, OAuth client secrets, or login tokens.
 
 ## Request flow
 
@@ -30,7 +30,7 @@ GitHub Actions
 
 Create a Cloudflare Zero Trust Access self-hosted application for:
 
-- Application domain: `ai-baseball.f-polaris.jp`
+- Application domain: `ai-baseball-studio.f-polaris.jp`
 - Path: all paths
 - Session duration: choose an organization-appropriate duration
 
