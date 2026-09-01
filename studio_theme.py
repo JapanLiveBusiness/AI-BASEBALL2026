@@ -120,12 +120,18 @@ def render_section(label, title):
 
 
 def render_nav_links():
-    cols = st.columns(4)
-    with cols[0]:
+    first = st.columns(3)
+    with first[0]:
         st.page_link("main.py", label="ホーム", icon="🏠", use_container_width=True)
-    with cols[1]:
+    with first[1]:
+        st.page_link("pages/試合.py", label="試合", icon="⚾", use_container_width=True)
+    with first[2]:
         st.page_link("pages/本日のAI予想.py", label="AI予測", icon="🤖", use_container_width=True)
-    with cols[2]:
+
+    second = st.columns(3)
+    with second[0]:
+        st.page_link("pages/予想結果.py", label="予想結果", icon="✅", use_container_width=True)
+    with second[1]:
         st.page_link("pages/収支マップ.py", label="収支マップ", icon="📈", use_container_width=True)
-    with cols[3]:
+    with second[2]:
         st.page_link("pages/BET入力.py", label="BET入力", icon="✍️", use_container_width=True)
