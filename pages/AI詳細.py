@@ -5,11 +5,21 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 from handicap_source import fetch_hawks_handicap
+from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
 
 JST = ZoneInfo("Asia/Tokyo")
 _today_jst = datetime.now(JST).date()
 
 st.set_page_config(page_title="AI詳細 | MY AI BASEBALL", page_icon="⚾", layout="wide")
+apply_studio_theme()
+render_topbar("AI DETAIL")
+render_hero(
+    "AI詳細ダッシュボード",
+    "既存の高度な試合分析・ハンデ情報・予測ロジックを維持したまま、AI Baseball Studioのデザインシェルへ統合しています。",
+    kicker="AI BASEBALL STUDIO / DEEP ANALYTICS",
+    accent="AI詳細",
+)
+render_nav_links()
 
 _live_handicap = fetch_hawks_handicap(_today_jst)
 _live_handicap_score = (
