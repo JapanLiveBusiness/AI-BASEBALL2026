@@ -25,7 +25,10 @@ h1,h2,h3 {color:var(--studio-ink) !important;}
   margin:0 -24px 24px; min-height:70px; padding:0 28px; background:#151515; color:#fff;
   border-bottom:2px solid rgba(241,196,15,.42); display:flex; align-items:center; justify-content:space-between; gap:20px;
 }
-.studio-brand {display:flex; align-items:center; gap:12px;}
+.studio-brand {display:flex; align-items:center; gap:12px;min-width:250px;}
+.studio-nav{display:flex;align-items:center;justify-content:center;gap:18px;flex:1}
+.studio-nav a{font-size:9px;color:#aaa;text-decoration:none;white-space:nowrap;font-weight:800}
+.studio-nav a:hover{color:var(--studio-gold)}
 .studio-mark {width:38px;height:38px;border-radius:11px;background:var(--studio-gold);color:#101010;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:1000;font-style:italic;}
 .studio-brand-title {font-weight:950;letter-spacing:.14em;font-size:14px;line-height:1.1;}
 .studio-brand-sub {font-size:7px;color:#bcbcbc;letter-spacing:.38em;margin-top:5px;}
@@ -63,6 +66,8 @@ div[data-testid="stMetricValue"] {color:var(--studio-ink);font-weight:850;}
   .block-container {padding:0 12px 38px !important;}
   .studio-topbar {margin:0 -12px 18px;padding:0 14px;}
   .studio-badge {display:none;}
+  .studio-nav{overflow-x:auto;justify-content:flex-start;gap:14px;padding:0 4px}
+  .studio-nav a{font-size:8px}
   .studio-hero {padding:24px 20px;}
   .studio-title {font-size:31px;}
 }
@@ -82,10 +87,11 @@ def render_topbar(section="STUDIO"):
   <div class="studio-brand">
     <div class="studio-mark">M</div>
     <div>
-      <div class="studio-brand-title">MY AI BASEBALL</div>
+      <div class="studio-brand-title">AI BASEBALL STUDIO</div>
       <div class="studio-brand-sub">GAME INTELLIGENCE</div>
     </div>
   </div>
+  <nav class="studio-nav"><a href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">BET</a><a href="/収支マップ" target="_self">PERFORMANCE</a></nav>
   <div class="studio-badge">{safe_section}</div>
 </div>
 ''',
@@ -120,18 +126,5 @@ def render_section(label, title):
 
 
 def render_nav_links():
-    first = st.columns(3)
-    with first[0]:
-        st.page_link("main.py", label="ホーム", icon="🏠", use_container_width=True)
-    with first[1]:
-        st.page_link("pages/試合.py", label="試合", icon="⚾", use_container_width=True)
-    with first[2]:
-        st.page_link("pages/本日のAI予想.py", label="AI予測", icon="🤖", use_container_width=True)
-
-    second = st.columns(3)
-    with second[0]:
-        st.page_link("pages/予想結果.py", label="予想結果", icon="✅", use_container_width=True)
-    with second[1]:
-        st.page_link("pages/収支マップ.py", label="収支マップ", icon="📈", use_container_width=True)
-    with second[2]:
-        st.page_link("pages/BET入力.py", label="BET入力", icon="✍️", use_container_width=True)
+    """Navigation is rendered in the shared top bar."""
+    return None

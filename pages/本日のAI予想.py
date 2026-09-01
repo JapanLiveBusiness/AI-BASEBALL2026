@@ -15,7 +15,9 @@ render_hero(
 )
 render_nav_links()
 
-DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "today_ai_predictions.json"
+REPO_DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "today_ai_predictions.json"
+PROD_DATA_FILE = Path("/app/data/today_ai_predictions.json")
+DATA_FILE = PROD_DATA_FILE if PROD_DATA_FILE.exists() else REPO_DATA_FILE
 
 if not DATA_FILE.exists():
     st.warning("本日の予想データがまだ登録されていません。")

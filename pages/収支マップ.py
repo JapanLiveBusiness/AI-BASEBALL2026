@@ -20,7 +20,9 @@ render_hero(
 )
 render_nav_links()
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+PROD_DATA_DIR = Path("/app/data")
+DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
 BETS_FILE = DATA_DIR / "bet_records.json"
 NPB_API = "https://npb.jp/bis/eng/2026/games/"
 

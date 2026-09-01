@@ -7,7 +7,8 @@ import json
 import streamlit as st
 
 JST = ZoneInfo("Asia/Tokyo")
-DATA_DIR = Path(__file__).resolve().parent / "data"
+REPO_DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIRS = [Path("/app/data"), REPO_DATA_DIR]
 
 st.set_page_config(
     page_title="AI BASEBALL STUDIO | GAME INTELLIGENCE",
@@ -18,10 +19,14 @@ st.set_page_config(
 
 
 def load_json(name, fallback):
-    try:
-        return json.loads((DATA_DIR / name).read_text(encoding="utf-8"))
-    except Exception:
-        return fallback
+    for directory in DATA_DIRS:
+        try:
+            path = directory / name
+            if path.exists():
+                return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+    return fallback
 
 
 def safe(value, fallback="--"):
@@ -119,7 +124,7 @@ st.markdown(
 
 .topbar{height:68px;margin:0 -28px;background:var(--dark);color:#fff;display:flex;align-items:center;padding:0 28px;border-bottom:2px solid rgba(243,196,0,.55);gap:24px}
 .brand{display:flex;align-items:center;gap:12px;min-width:270px}.logo{width:40px;height:40px;border-radius:11px;background:var(--gold);color:#111;display:grid;place-items:center;font-size:20px;font-weight:1000;font-style:italic}.brand-title{font-size:14px;font-weight:950;letter-spacing:.13em}.brand-sub{font-size:7px;color:#9ca3af;letter-spacing:.36em;margin-top:4px}
-.nav{display:flex;justify-content:center;align-items:center;gap:26px;flex:1}.nav span{font-size:10px;color:#a7a7a7;white-space:nowrap}.nav .active{color:var(--gold);font-weight:950}.status{font-size:9px;border:1px solid #404040;border-radius:999px;padding:8px 11px;color:#e5e7eb}
+.nav{display:flex;justify-content:center;align-items:center;gap:26px;flex:1}.nav a{font-size:10px;color:#a7a7a7;white-space:nowrap;text-decoration:none}.nav a:hover{color:#fff}.nav .active{color:var(--gold);font-weight:950}.status{font-size:9px;border:1px solid #404040;border-radius:999px;padding:8px 11px;color:#e5e7eb}
 
 .dashboard{padding-top:18px}.overview{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,.85fr);gap:14px;align-items:stretch}
 .hero{min-height:232px;border-radius:20px;padding:30px 34px;position:relative;overflow:hidden;color:#fff;background:radial-gradient(circle at 84% 12%,rgba(214,165,30,.48),transparent 35%),linear-gradient(135deg,#101010 0%,#17130c 58%,#3c2c0a 100%);display:flex;flex-direction:column;justify-content:center}
@@ -132,7 +137,7 @@ st.markdown(
 .content-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);gap:14px;margin-top:14px}.panel{background:rgba(255,255,255,.64);border:1px solid var(--line);border-radius:18px;padding:18px}.panel-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:14px}.panel-head h2{font-size:21px!important;margin:0!important;color:var(--ink)!important}.panel-head span{font-size:8px;letter-spacing:.15em;color:var(--muted)}
 .ranking-list{display:grid;gap:8px}.ranking-card{display:grid;grid-template-columns:42px 1fr 90px;gap:12px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:13px 15px}.ranking-no{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#171717;color:var(--gold);font-weight:950}.ranking-copy{display:flex;flex-direction:column}.ranking-copy strong{font-size:16px}.ranking-copy span{font-size:10px;color:var(--muted);margin-top:3px}.ranking-score{text-align:right}.ranking-score b{display:block;font-size:20px}.ranking-score small{font-size:8px;color:var(--muted)}.empty-state{background:var(--paper);border:1px dashed #cfc6b7;border-radius:13px;padding:22px;display:flex;flex-direction:column;gap:5px}.empty-state b{font-size:14px}.empty-state span{font-size:10px;color:var(--muted)}
 
-.actions{display:grid;gap:8px}.action{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:14px 15px;display:grid;grid-template-columns:35px 1fr 18px;align-items:center;gap:10px;min-height:69px}.action.primary{background:#171717;color:#fff;border-color:#282828}.action-icon{width:34px;height:34px;border-radius:9px;background:#f5ebbd;color:#8a6700;display:grid;place-items:center;font-weight:950}.action.primary .action-icon{background:var(--gold);color:#111}.action-copy b{display:block;font-size:14px}.action-copy span{display:block;font-size:9px;color:var(--muted);margin-top:3px}.action.primary .action-copy span{color:#aeb4bd}.action-arrow{color:#b08b00;font-weight:950}
+.actions{display:grid;gap:8px}.action{text-decoration:none;color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:14px 15px;display:grid;grid-template-columns:35px 1fr 18px;align-items:center;gap:10px;min-height:69px}.action.primary{background:#171717;color:#fff;border-color:#282828}.action-icon{width:34px;height:34px;border-radius:9px;background:#f5ebbd;color:#8a6700;display:grid;place-items:center;font-weight:950}.action.primary .action-icon{background:var(--gold);color:#111}.action-copy b{display:block;font-size:14px}.action-copy span{display:block;font-size:9px;color:var(--muted);margin-top:3px}.action.primary .action-copy span{color:#aeb4bd}.action-arrow{color:#b08b00;font-weight:950}
 
 .teams-panel{margin-top:14px}.teams{display:grid;grid-template-columns:repeat(12,1fr);gap:7px}.team{background:var(--paper);border:1px solid var(--line);border-radius:10px;min-height:68px;padding:8px 5px;text-align:center;display:flex;flex-direction:column;justify-content:center}.team b{width:30px;height:30px;border-radius:50%;background:#171717;color:var(--gold);display:grid;place-items:center;margin:0 auto 5px;font-size:9px}.team span{font-size:7px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -151,7 +156,7 @@ st.markdown(
     f"""
 <div class="topbar">
   <div class="brand"><div class="logo">M</div><div><div class="brand-title">AI BASEBALL STUDIO</div><div class="brand-sub">GAME INTELLIGENCE</div></div></div>
-  <div class="nav"><span class="active">HOME</span><span>GAMES</span><span>AI PREDICTION</span><span>RESULTS</span><span>BET</span><span>PERFORMANCE</span></div>
+  <nav class="nav"><a class="active" href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">BET</a><a href="/収支マップ" target="_self">PERFORMANCE</a></nav>
   <div class="status">JST {now.strftime('%H:%M')} · LIVE</div>
 </div>
 
@@ -183,10 +188,10 @@ st.markdown(
     <div class="panel">
       <div class="panel-head"><h2>クイック操作</h2><span>WORKSPACE</span></div>
       <div class="actions">
-        <div class="action primary"><div class="action-icon">AI</div><div class="action-copy"><b>AI予測を見る</b><span>勝率・予測スコア・信頼度</span></div><div class="action-arrow">›</div></div>
-        <div class="action"><div class="action-icon">＋</div><div class="action-copy"><b>BETを入力</b><span>当日のBETとハンデを登録</span></div><div class="action-arrow">›</div></div>
-        <div class="action"><div class="action-icon">¥</div><div class="action-copy"><b>収支を確認</b><span>的中率・ROI・累積収支</span></div><div class="action-arrow">›</div></div>
-        <div class="action"><div class="action-icon">◎</div><div class="action-copy"><b>AI詳細を開く</b><span>試合データと根拠を確認</span></div><div class="action-arrow">›</div></div>
+        <a class="action primary" href="/本日のAI予想" target="_self"><div class="action-icon">AI</div><div class="action-copy"><b>AI予測を見る</b><span>勝率・予測スコア・信頼度</span></div><div class="action-arrow">›</div></a>
+        <a class="action" href="/BET入力" target="_self"><div class="action-icon">＋</div><div class="action-copy"><b>BETを入力</b><span>当日のBETとハンデを登録</span></div><div class="action-arrow">›</div></a>
+        <a class="action" href="/収支マップ" target="_self"><div class="action-icon">¥</div><div class="action-copy"><b>収支を確認</b><span>的中率・ROI・累積収支</span></div><div class="action-arrow">›</div></a>
+        <a class="action" href="/AI詳細" target="_self"><div class="action-icon">◎</div><div class="action-copy"><b>AI詳細を開く</b><span>試合データと根拠を確認</span></div><div class="action-arrow">›</div></a>
       </div>
     </div>
   </section>
@@ -204,14 +209,3 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
-st.markdown('<div class="links"></div>', unsafe_allow_html=True)
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    st.page_link("pages/本日のAI予想.py", label="AI予測を開く", icon="🤖", use_container_width=True)
-with c2:
-    st.page_link("pages/BET入力.py", label="BET入力を開く", icon="✍️", use_container_width=True)
-with c3:
-    st.page_link("pages/収支マップ.py", label="収支マップ", icon="📈", use_container_width=True)
-with c4:
-    st.page_link("pages/AI詳細.py", label="AI詳細", icon="⚾", use_container_width=True)
