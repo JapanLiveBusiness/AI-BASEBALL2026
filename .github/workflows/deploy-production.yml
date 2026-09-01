@@ -89,7 +89,9 @@ jobs:
           fi
 
           echo "DEPLOY_HOST_RESOLVED=$resolved" >> "$GITHUB_ENV"
-          tailscale ping -c 3 "$resolved"
+          # DERP relay is a valid Tailscale path. tailscale ping may return non-zero
+          # when a direct peer-to-peer path is not established, even after pong.
+          tailscale ping -c 3 "$resolved" || echo "::warning::Direct Tailscale path not established; validating SSH over the available relay path"
           nc -vz -w 5 "$resolved" "$DEPLOY_PORT"
           timeout 10 bash -c "</dev/tcp/$resolved/$DEPLOY_PORT"
 
