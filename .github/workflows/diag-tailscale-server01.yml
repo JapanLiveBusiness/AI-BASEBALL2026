@@ -16,6 +16,7 @@ jobs:
     env:
       TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
       TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
     steps:
       - name: Connect temporary CI node
         id: ts
@@ -26,10 +27,11 @@ jobs:
           tags: tag:ci
           timeout: 1m
 
-      - name: Read-only reachability checks
+      - name: Compare peer visibility and configured target
         shell: bash
         run: |
           set -u
+
           resolved="$(tailscale status --json | jq -r '
             [
               .Peer[]
@@ -40,24 +42,94 @@ jobs:
             | .[0] // empty
           ')"
 
-          if [ -z "$resolved" ]; then
+          if [ -n "$resolved" ]; then
+            echo "SERVER01_ONLINE_PEER=true"
+            if [ -n "$DEPLOY_HOST" ] && [ "$resolved" = "$DEPLOY_HOST" ]; then
+              echo "DEPLOY_HOST_MATCHES_VISIBLE_SERVER01=true"
+            else
+              echo "DEPLOY_HOST_MATCHES_VISIBLE_SERVER01=false"
+            fi
+          else
             echo "SERVER01_ONLINE_PEER=false"
-            echo "TAILSCALE_PING=false"
-            echo "TCP22=false"
-            exit 2
+            echo "DEPLOY_HOST_MATCHES_VISIBLE_SERVER01=unknown"
           fi
 
-          echo "SERVER01_ONLINE_PEER=true"
-
-          if timeout 15 tailscale ping --timeout=10s "$resolved" >/dev/null 2>&1; then
-            echo "TAILSCALE_PING=true"
+          if timeout 15 tailscale ping --timeout=10s server-01 >/dev/null 2>&1; then
+            echo "PING_BY_NAME=true"
           else
-            echo "TAILSCALE_PING=false"
+            echo "PING_BY_NAME=false"
           fi
 
-          if nc -z -w 10 "$resolved" 22 >/dev/null 2>&1; then
-            echo "TCP22=true"
+          if [ -n "$DEPLOY_HOST" ]; then
+            if timeout 15 tailscale ping --timeout=10s "$DEPLOY_HOST" >/dev/null 2>&1; then
+              echo "PING_CONFIGURED_HOST=true"
+            else
+              echo "PING_CONFIGURED_HOST=false"
+            fi
+
+            if nc -z -w 10 "$DEPLOY_HOST" 22 >/dev/null 2>&1; then
+              echo "TCP22_CONFIGURED_HOST=true"
+            else
+              echo "TCP22_CONFIGURED_HOST=false"
+            fi
           else
-            echo "TCP22=false"
-            exit 3
+            echo "PING_CONFIGURED_HOST=unset"
+            echo "TCP22_CONFIGURED_HOST=unset"
+          fi
+
+      - name: Compare configured target with Tailscale device API when permitted
+        shell: bash
+        run: |
+          set -u
+
+          token_json="$(curl --fail-with-body --silent --show-error \
+            -d "client_id=$TS_OAUTH_CLIENT_ID" \
+            -d "client_secret=$TS_OAUTH_SECRET" \
+            https://api.tailscale.com/api/v2/oauth/token || true)"
+          token="$(jq -r '.access_token // empty' <<<"$token_json" 2>/dev/null || true)"
+          if [ -z "$token" ]; then
+            echo "DEVICE_API_READ=false"
+            echo "SERVER01_API_FOUND=unknown"
+            echo "DEPLOY_HOST_MATCHES_API_SERVER01=unknown"
+            exit 0
+          fi
+
+          code="$(curl --silent --show-error \
+            -H "Authorization: Bearer $token" \
+            -H "Accept: application/json" \
+            -o devices.json \
+            -w '%{http_code}' \
+            https://api.tailscale.com/api/v2/tailnet/-/devices || true)"
+
+          if [ "$code" != "200" ]; then
+            echo "DEVICE_API_READ=false"
+            echo "SERVER01_API_FOUND=unknown"
+            echo "DEPLOY_HOST_MATCHES_API_SERVER01=unknown"
+            exit 0
+          fi
+
+          echo "DEVICE_API_READ=true"
+          current_ip="$(jq -r '
+            (if type == "array" then . else (.devices // []) end)
+            | map(select(
+                ((.hostname // "") == "server-01")
+                or ((.name // "") == "server-01")
+                or ((.name // "") | startswith("server-01."))
+              ))
+            | .[0].addresses // []
+            | map(select(test("^100\\.")))
+            | .[0] // empty
+          ' devices.json)"
+
+          if [ -z "$current_ip" ]; then
+            echo "SERVER01_API_FOUND=false"
+            echo "DEPLOY_HOST_MATCHES_API_SERVER01=unknown"
+            exit 0
+          fi
+
+          echo "SERVER01_API_FOUND=true"
+          if [ -n "$DEPLOY_HOST" ] && [ "$current_ip" = "$DEPLOY_HOST" ]; then
+            echo "DEPLOY_HOST_MATCHES_API_SERVER01=true"
+          else
+            echo "DEPLOY_HOST_MATCHES_API_SERVER01=false"
           fi
