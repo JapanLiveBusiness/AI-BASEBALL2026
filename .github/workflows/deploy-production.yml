@@ -22,18 +22,22 @@ jobs:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
     steps:
       - name: Validate deploy secrets
         shell: bash
         run: |
           missing=0
-          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_PORT; do
+          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_PORT DEPLOY_SSH_KEY; do
             if [ -z "${!name}" ]; then
               echo "::error::$name is not available to this workflow"
               missing=1
             fi
           done
           exit "$missing"
+
+      - name: Check out deployment scripts
+        uses: actions/checkout@v4
 
       - name: Connect to Tailscale with OAuth
         uses: tailscale/github-action@v4
@@ -79,12 +83,22 @@ jobs:
           timeout 15 bash -c "</dev/tcp/$resolved/$DEPLOY_PORT"
           echo "DEPLOY_HOST_RESOLVED=$resolved" >> "$GITHUB_ENV"
 
+      - name: Configure deployment SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+
       - name: Deploy to production server
         shell: bash
         env:
           DEPLOY_SHA: ${{ github.sha }}
         run: |
           ssh \
+            -i "$HOME/.ssh/deploy_key" \
+            -o IdentitiesOnly=yes \
             -o BatchMode=yes \
             -o ConnectTimeout=15 \
             -o StrictHostKeyChecking=no \
