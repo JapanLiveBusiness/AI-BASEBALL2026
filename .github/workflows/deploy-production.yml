@@ -59,36 +59,43 @@ jobs:
         with:
           authkey: ${{ env.TAILSCALE_AUTHKEY }}
 
-      - name: Diagnose and verify Tailscale route
+      - name: Resolve and verify production Tailscale peer
         shell: bash
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
         run: |
-          tailscale ping -c 3 "$DEPLOY_HOST" || true
-          nc -vz -w 5 "$DEPLOY_HOST" "$DEPLOY_PORT"
-          if [[ ! "$DEPLOY_HOST" =~ ^[0-9a-fA-F:.]+$ ]]; then
-            getent hosts "$DEPLOY_HOST"
-          fi
-          tailscale status --json | jq --arg host "$DEPLOY_HOST" '
+          set -euo pipefail
+          echo "Visible Tailscale peers:"
+          tailscale status
+
+          resolved="$(tailscale status --json | jq -r '
             [
               .Peer[]
-              | select(
-                  .HostName == "server-01"
-                  or ((.TailscaleIPs // []) | index($host))
-                )
-              | {
-                  Online,
-                  Active,
-                  Addresses: (.TailscaleIPs // [])
-                }
-            ]'
-          timeout 10 bash -c "</dev/tcp/$DEPLOY_HOST/$DEPLOY_PORT"
+              | select(.HostName == "server-01" and .Online == true)
+              | (.TailscaleIPs // [])[0]
+            ]
+            | map(select(. != null))
+            | .[0] // empty
+          ')"
+
+          if [ -z "$resolved" ]; then
+            echo "::error::Online Tailscale peer server-01 was not found"
+            exit 1
+          fi
+
+          if [ "$resolved" != "$DEPLOY_HOST" ]; then
+            echo "::warning::DEPLOY_HOST does not match the current server-01 Tailscale address; using the live peer address for this deployment"
+          fi
+
+          echo "DEPLOY_HOST_RESOLVED=$resolved" >> "$GITHUB_ENV"
+          tailscale ping -c 3 "$resolved"
+          nc -vz -w 5 "$resolved" "$DEPLOY_PORT"
+          timeout 10 bash -c "</dev/tcp/$resolved/$DEPLOY_PORT"
 
       - name: Deploy to production server
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_SHA: ${{ github.sha }}
         run: |
@@ -97,7 +104,7 @@ jobs:
             -o ConnectTimeout=15 \
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
             "DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'REMOTE'
           set -e
           export APP_DIR="/opt/hawks-ai/ai-baseball2026"
