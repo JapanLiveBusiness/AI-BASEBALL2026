@@ -52,12 +52,14 @@ jobs:
           oauth-client-id: ${{ env.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ env.TS_OAUTH_SECRET }}
           tags: tag:ci
+          ping: server-01
 
       - name: Connect to Tailscale with legacy auth key
         if: ${{ env.TS_OAUTH_CLIENT_ID == '' || env.TS_OAUTH_SECRET == '' }}
         uses: tailscale/github-action@v4
         with:
           authkey: ${{ env.TAILSCALE_AUTHKEY }}
+          ping: server-01
 
       - name: Resolve and verify production Tailscale peer
         shell: bash
@@ -66,21 +68,31 @@ jobs:
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
         run: |
           set -euo pipefail
-          echo "Visible Tailscale peers:"
-          tailscale status
 
-          resolved="$(tailscale status --json | jq -r '
-            [
-              .Peer[]
-              | select(.HostName == "server-01" and .Online == true)
-              | (.TailscaleIPs // [])[0]
-            ]
-            | map(select(. != null))
-            | .[0] // empty
-          ')"
+          resolved=""
+          for attempt in $(seq 1 12); do
+            echo "Tailscale peer discovery attempt $attempt/12"
+            tailscale status
+
+            resolved="$(tailscale status --json | jq -r '
+              [
+                .Peer[]
+                | select(.HostName == "server-01" and .Online == true)
+                | (.TailscaleIPs // [])[0]
+              ]
+              | map(select(. != null))
+              | .[0] // empty
+            ')"
+
+            if [ -n "$resolved" ]; then
+              break
+            fi
+
+            sleep 5
+          done
 
           if [ -z "$resolved" ]; then
-            echo "::error::Online Tailscale peer server-01 was not found"
+            echo "::error::Online Tailscale peer server-01 was not found after waiting for tailnet propagation"
             exit 1
           fi
 
