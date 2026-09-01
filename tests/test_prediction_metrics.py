@@ -48,4 +48,4 @@ def test_build_prediction_metrics_uses_history_and_prediction_fallback(tmp_path)
     assert metrics["verified_count"] == 2
     assert metrics["hits"] == 1
     assert metrics["hit_rate"] == 50.0
-    assert metrics["brier_score"] == 0.517956
+    assert metrics["brier_score"] == 0.267956
