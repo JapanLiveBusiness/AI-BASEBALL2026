@@ -6,7 +6,7 @@ CF_ACCESS_CLIENT_ID="${CF_ACCESS_CLIENT_ID:-}"
 CF_ACCESS_CLIENT_SECRET="${CF_ACCESS_CLIENT_SECRET:-}"
 
 if [ -z "$CF_ACCESS_CLIENT_ID" ] || [ -z "$CF_ACCESS_CLIENT_SECRET" ]; then
-  echo "Cloudflare Access service token is not configured; verifying that anonymous access is blocked by Access"
+  echo "Cloudflare Access service token is not configured; verifying that anonymous access is blocked"
   headers="$(mktemp)"
   trap 'rm -f "$headers"' EXIT
 
@@ -23,14 +23,19 @@ if [ -z "$CF_ACCESS_CLIENT_ID" ] || [ -z "$CF_ACCESS_CLIENT_SECRET" ]; then
   echo "Anonymous HTTP status: $status"
 
   if [[ "$status" =~ ^30[12378]$ ]] && [[ "$location" == *"cloudflareaccess.com"* || "$location" == *"/cdn-cgi/access/"* ]]; then
-    echo "Cloudflare Access is enforcing authentication for anonymous requests"
+    echo "Cloudflare Access is enforcing authentication with a login redirect"
+    exit 0
+  fi
+
+  if [ "$status" = "401" ] || [ "$status" = "403" ]; then
+    echo "Anonymous access is blocked (HTTP $status)"
     exit 0
   fi
 
   if [ "$status" = "200" ]; then
-    echo "::error::Anonymous request reached the production site with HTTP 200; Cloudflare Access is not enforcing authentication"
+    echo "::error::Anonymous request reached the production site with HTTP 200; access protection is not enforcing authentication"
   else
-    echo "::error::Anonymous request was not recognized as a Cloudflare Access login redirect (status=$status)"
+    echo "::error::Anonymous access returned an unexpected status: $status"
   fi
   exit 1
 fi
