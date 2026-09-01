@@ -53,20 +53,45 @@ jobs:
           oauth-client-id: ${{ env.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ env.TS_OAUTH_SECRET }}
           tags: tag:ci
+          timeout: 1m
 
-      - name: Probe production SSH over OAuth
+      - name: Resolve current server-01 peer and probe SSH
         id: oauth_probe
         if: ${{ steps.tailscale_oauth.outcome == 'success' }}
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          echo "Tailscale status after OAuth connection:"
-          tailscale status || true
-          echo "Testing configured production address over Tailscale: $DEPLOY_HOST:$DEPLOY_PORT"
-          nc -vz -w 10 "$DEPLOY_HOST" "$DEPLOY_PORT"
-          timeout 15 bash -c "</dev/tcp/$DEPLOY_HOST/$DEPLOY_PORT"
-          echo "DEPLOY_HOST_RESOLVED=$DEPLOY_HOST" >> "$GITHUB_ENV"
+          resolved=""
+          for attempt in $(seq 1 12); do
+            echo "Tailscale peer discovery attempt $attempt/12"
+            tailscale status || true
+            resolved="$(tailscale status --json | jq -r '
+              [
+                .Peer[]
+                | select(.HostName == "server-01" and .Online == true)
+                | (.TailscaleIPs // [])[0]
+              ]
+              | map(select(. != null))
+              | .[0] // empty
+            ')"
+            if [ -n "$resolved" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          if [ -z "$resolved" ]; then
+            echo "::warning::Online server-01 peer was not discovered; falling back to configured DEPLOY_HOST for the probe"
+            resolved="$DEPLOY_HOST"
+          elif [ "$resolved" != "$DEPLOY_HOST" ]; then
+            echo "::warning::Configured DEPLOY_HOST differs from live server-01 address; using the live Tailscale address"
+          fi
+
+          echo "Testing production SSH endpoint on the resolved Tailscale peer"
+          nc -vz -w 10 "$resolved" "$DEPLOY_PORT"
+          timeout 15 bash -c "</dev/tcp/$resolved/$DEPLOY_PORT"
+          echo "DEPLOY_HOST_RESOLVED=$resolved" >> "$GITHUB_ENV"
 
       - name: Reset failed OAuth Tailscale session
         if: ${{ steps.oauth_probe.outcome == 'failure' && env.TAILSCALE_AUTHKEY != '' }}
@@ -79,20 +104,33 @@ jobs:
       - name: Connect to Tailscale with legacy auth key fallback
         id: tailscale_legacy
         if: ${{ (steps.tailscale_oauth.outcome != 'success' || steps.oauth_probe.outcome == 'failure') && env.TAILSCALE_AUTHKEY != '' }}
+        continue-on-error: true
         uses: tailscale/github-action@v4
         with:
           authkey: ${{ env.TAILSCALE_AUTHKEY }}
+          timeout: 1m
+          retry: 1
 
-      - name: Probe production SSH over legacy auth key
+      - name: Resolve current server-01 peer and probe SSH over legacy auth key
         if: ${{ steps.tailscale_legacy.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "Tailscale status after legacy auth-key connection:"
-          tailscale status || true
-          nc -vz -w 10 "$DEPLOY_HOST" "$DEPLOY_PORT"
-          timeout 15 bash -c "</dev/tcp/$DEPLOY_HOST/$DEPLOY_PORT"
-          echo "DEPLOY_HOST_RESOLVED=$DEPLOY_HOST" >> "$GITHUB_ENV"
+          resolved="$(tailscale status --json | jq -r '
+            [
+              .Peer[]
+              | select(.HostName == "server-01" and .Online == true)
+              | (.TailscaleIPs // [])[0]
+            ]
+            | map(select(. != null))
+            | .[0] // empty
+          ')"
+          if [ -z "$resolved" ]; then
+            resolved="$DEPLOY_HOST"
+          fi
+          nc -vz -w 10 "$resolved" "$DEPLOY_PORT"
+          timeout 15 bash -c "</dev/tcp/$resolved/$DEPLOY_PORT"
+          echo "DEPLOY_HOST_RESOLVED=$resolved" >> "$GITHUB_ENV"
 
       - name: Require reachable production host
         shell: bash
