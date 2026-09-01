@@ -8,6 +8,8 @@ CONTAINER_NAME="${CONTAINER_NAME:-hawks-app}"
 IMAGE_NAME="${IMAGE_NAME:-hawks-app}"
 PORT="${PORT:-8501}"
 DEPLOY_SHA="${DEPLOY_SHA:-}"
+TRAEFIK_NETWORK="${TRAEFIK_NETWORK:-miki-stack_miki-net}"
+TRAEFIK_HOST="${TRAEFIK_HOST:-ai-baseball.f-polaris.jp}"
 
 cd "$APP_DIR"
 
@@ -22,6 +24,11 @@ if [ -n "$DEPLOY_SHA" ]; then
     echo "[deploy] expected $DEPLOY_SHA but checked out $ACTUAL_SHA"
     exit 1
   fi
+fi
+
+if ! docker network inspect "$TRAEFIK_NETWORK" >/dev/null 2>&1; then
+  echo "[deploy] required Traefik network not found: $TRAEFIK_NETWORK"
+  exit 1
 fi
 
 SHORT_SHA="$(git rev-parse --short=12 HEAD)"
@@ -40,8 +47,16 @@ start_container() {
   docker run -d \
     --name "$CONTAINER_NAME" \
     --restart unless-stopped \
+    --network "$TRAEFIK_NETWORK" \
     -p "$PORT:8501" \
     -v "$DATA_DIR:/app/data" \
+    --label "traefik.enable=true" \
+    --label "traefik.docker.network=$TRAEFIK_NETWORK" \
+    --label "traefik.http.routers.ai-baseball.rule=Host(\`$TRAEFIK_HOST\`)" \
+    --label "traefik.http.routers.ai-baseball.entrypoints=websecure" \
+    --label "traefik.http.routers.ai-baseball.tls=true" \
+    --label "traefik.http.routers.ai-baseball.tls.certresolver=letsencrypt" \
+    --label "traefik.http.services.ai-baseball.loadbalancer.server.port=8501" \
     "$image"
 }
 
