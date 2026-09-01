@@ -1,0 +1,63 @@
+name: Diagnose server-01 Tailscale read-only
+
+on:
+  push:
+    branches:
+      - diag/tailscale-server01-readonly
+    paths:
+      - .github/workflows/diag-tailscale-server01.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    env:
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+    steps:
+      - name: Connect temporary CI node
+        id: ts
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ env.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ env.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          timeout: 1m
+
+      - name: Read-only reachability checks
+        shell: bash
+        run: |
+          set -u
+          resolved="$(tailscale status --json | jq -r '
+            [
+              .Peer[]
+              | select(.HostName == "server-01" and .Online == true)
+              | (.TailscaleIPs // [])[0]
+            ]
+            | map(select(. != null))
+            | .[0] // empty
+          ')"
+
+          if [ -z "$resolved" ]; then
+            echo "SERVER01_ONLINE_PEER=false"
+            echo "TAILSCALE_PING=false"
+            echo "TCP22=false"
+            exit 2
+          fi
+
+          echo "SERVER01_ONLINE_PEER=true"
+
+          if timeout 15 tailscale ping --timeout=10s "$resolved" >/dev/null 2>&1; then
+            echo "TAILSCALE_PING=true"
+          else
+            echo "TAILSCALE_PING=false"
+          fi
+
+          if nc -z -w 10 "$resolved" 22 >/dev/null 2>&1; then
+            echo "TCP22=true"
+          else
+            echo "TCP22=false"
+            exit 3
+          fi
