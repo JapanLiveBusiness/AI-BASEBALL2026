@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: production-ai-baseball
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
