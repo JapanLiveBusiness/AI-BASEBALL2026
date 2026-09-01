@@ -9,7 +9,8 @@ IMAGE_NAME="${IMAGE_NAME:-hawks-app}"
 PORT="${PORT:-8501}"
 DEPLOY_SHA="${DEPLOY_SHA:-}"
 TRAEFIK_NETWORK="${TRAEFIK_NETWORK:-miki-stack_miki-net}"
-TRAEFIK_HOST="${TRAEFIK_HOST:-ai-baseball.f-polaris.jp}"
+TRAEFIK_HOST="${TRAEFIK_HOST:-ai-baseball-studio.f-polaris.jp}"
+TRAEFIK_LEGACY_HOST="${TRAEFIK_LEGACY_HOST:-ai-baseball.f-polaris.jp}"
 TRAEFIK_CONTAINER="${TRAEFIK_CONTAINER:-miki-traefik}"
 
 cd "$APP_DIR"
@@ -38,7 +39,8 @@ if [ -z "$TRAEFIK_IP" ]; then
   exit 1
 fi
 
-echo "[deploy] Traefik route target: $TRAEFIK_HOST via $TRAEFIK_CONTAINER on $TRAEFIK_NETWORK"
+echo "[deploy] primary route: $TRAEFIK_HOST"
+echo "[deploy] legacy route: $TRAEFIK_LEGACY_HOST"
 
 SHORT_SHA="$(git rev-parse --short=12 HEAD)"
 NEW_IMAGE="$IMAGE_NAME:$SHORT_SHA"
@@ -61,7 +63,7 @@ start_container() {
     -v "$DATA_DIR:/app/data" \
     --label "traefik.enable=true" \
     --label "traefik.docker.network=$TRAEFIK_NETWORK" \
-    --label "traefik.http.routers.ai-baseball.rule=Host(\`$TRAEFIK_HOST\`)" \
+    --label "traefik.http.routers.ai-baseball.rule=Host(\`$TRAEFIK_HOST\`) || Host(\`$TRAEFIK_LEGACY_HOST\`)" \
     --label "traefik.http.routers.ai-baseball.entrypoints=websecure" \
     --label "traefik.http.routers.ai-baseball.tls=true" \
     --label "traefik.http.routers.ai-baseball.tls.certresolver=letsencrypt" \
@@ -88,11 +90,19 @@ for attempt in $(seq 1 30); do
     if curl -k -fsS \
       --resolve "$TRAEFIK_HOST:443:$TRAEFIK_IP" \
       "https://$TRAEFIK_HOST/_stcore/health" >/dev/null; then
-      echo "[deploy] Traefik route healthy: https://$TRAEFIK_HOST/ -> $CONTAINER_NAME:8501"
+      echo "[deploy] primary Traefik route healthy: https://$TRAEFIK_HOST/ -> $CONTAINER_NAME:8501"
+    else
+      echo "[deploy] primary Traefik route health check failed for https://$TRAEFIK_HOST/"
+      rollback
+    fi
+    if curl -k -fsS \
+      --resolve "$TRAEFIK_LEGACY_HOST:443:$TRAEFIK_IP" \
+      "https://$TRAEFIK_LEGACY_HOST/_stcore/health" >/dev/null; then
+      echo "[deploy] legacy Traefik route healthy: https://$TRAEFIK_LEGACY_HOST/ -> $CONTAINER_NAME:8501"
       docker tag "$NEW_IMAGE" "$IMAGE_NAME:latest"
       exit 0
     fi
-    echo "[deploy] Traefik route health check failed for https://$TRAEFIK_HOST/"
+    echo "[deploy] legacy Traefik route health check failed for https://$TRAEFIK_LEGACY_HOST/"
     rollback
   fi
   sleep 2
