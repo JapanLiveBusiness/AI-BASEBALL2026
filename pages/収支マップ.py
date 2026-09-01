@@ -7,8 +7,18 @@ import requests
 import streamlit as st
 
 from bet_analytics import SORT_OPTIONS, calculate_hit_rate, sort_bets
+from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links, render_section
 
-st.set_page_config(page_title="収支マップ | HAWKS AI", page_icon="💰", layout="wide")
+st.set_page_config(page_title="収支マップ | MY AI BASEBALL", page_icon="💰", layout="wide")
+apply_studio_theme()
+render_topbar("PROFIT MAP")
+render_hero(
+    "収支マップ",
+    "BET履歴・的中率・ROI・累積収支をまとめて可視化。登録済みのBET機能は維持したままStudioデザインへ統合しています。",
+    kicker="AI BASEBALL STUDIO / PERFORMANCE",
+    accent="収支",
+)
+render_nav_links()
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 BETS_FILE = DATA_DIR / "bet_records.json"
@@ -41,7 +51,6 @@ def result_label(value):
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def fetch_games(selected_date):
-    """NPB公式日程ページから選択日の開催試合候補を取得する。取得失敗時は手動入力へフォールバック。"""
     from bs4 import BeautifulSoup
 
     target = selected_date.strftime("%Y%m%d")
@@ -64,9 +73,7 @@ def fetch_games(selected_date):
     return games
 
 
-st.title("💰 収支マップ")
-st.caption("BETした試合の収支確認と、当日のBET・収支を手動登録できます。")
-
+render_section("ENTRY", "当日のBET・収支を入力")
 with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
     selected_date = st.date_input("試合日", value=date.today(), key="manual_bet_date")
     games = fetch_games(selected_date)
@@ -145,11 +152,7 @@ bets = sort_bets(bets, "古い日付順")
 settled = [b for b in bets if b.get("status") == "final"]
 pending = [b for b in bets if b.get("status") != "final"]
 
-sort_option = st.selectbox(
-    "履歴の並び順",
-    SORT_OPTIONS,
-    key="profit_map_sort",
-)
+sort_option = st.selectbox("履歴の並び順", SORT_OPTIONS, key="profit_map_sort")
 sorted_settled = sort_bets(settled, sort_option)
 sorted_pending = sort_bets(pending, sort_option)
 
@@ -162,6 +165,7 @@ if settled:
     _, decided, hit_rate = calculate_hit_rate(settled)
     roi = (total_profit / total_bet * 100.0) if total_bet else 0.0
 
+    render_section("PERFORMANCE", "収支サマリー")
     s1, s2, s3, s4, s5 = st.columns(5)
     s1.metric("総収支", yen(total_profit))
     s2.metric("確定BET", f"{len(settled)}試合")
@@ -197,7 +201,7 @@ if settled:
     fig.update_yaxes(tickformat=",")
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("### BETした試合の詳細")
+    render_section("HISTORY", "BETした試合の詳細")
     for bet in sorted_settled:
         profit_value = int(bet.get("profit", 0) or 0)
         amount = float(bet.get("bet_amount", abs(float(bet.get("bet_units", 0) or 0)) * 10000) or 0)
@@ -219,8 +223,7 @@ else:
     st.info("確定済みBETはまだありません。未確定BETは下に表示されます。")
 
 if pending:
-    st.markdown("### 未確定BET")
+    render_section("PENDING", "未確定BET")
     for bet in sorted_pending:
         amount = float(bet.get("bet_amount", abs(float(bet.get("bet_units", 0) or 0)) * 10000) or 0)
-        st.write(f"⏳ {bet.get('date', '-')} {bet.get('time', '-')} ｜ {bet.get('team', '-')} vs {bet.get('opponent', '-')} ｜ "
-                 f"BET {yen(amount)} ｜ ハンディ {bet.get('handicap', 0)}")
+        st.write(f"⏳ {bet.get('date', '-')} {bet.get('time', '-')} ｜ {bet.get('team', '-')} vs {bet.get('opponent', '-')} ｜ BET {yen(amount)} ｜ ハンディ {bet.get('handicap', 0)}")
