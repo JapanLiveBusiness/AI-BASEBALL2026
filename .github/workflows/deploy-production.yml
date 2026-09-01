@@ -110,13 +110,30 @@ jobs:
             -o UserKnownHostsFile=/dev/null \
             "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
             "DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'REMOTE'
-          set -e
-          export APP_DIR="/opt/ai-baseball2026"
+          set -euo pipefail
+          export APP_DIR="/home/user/apps/AI-BASEBALL2026"
           export DATA_DIR="/opt/hawks-ai/data"
           export BRANCH="main-AI-BASEBALL"
           export CONTAINER_NAME="hawks-app"
           export IMAGE_NAME="hawks-app"
           export PORT="8501"
+          export REPO_URL="https://github.com/JapanLiveBusiness/AI-BASEBALL2026.git"
+
+          mkdir -p "$(dirname "$APP_DIR")"
+          if [ ! -d "$APP_DIR/.git" ]; then
+            if [ -e "$APP_DIR" ] && [ "$(find "$APP_DIR" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+              echo "[deploy] refusing to replace non-git directory: $APP_DIR"
+              exit 1
+            fi
+            rm -rf "$APP_DIR"
+            git clone --branch "$BRANCH" --single-branch "$REPO_URL" "$APP_DIR"
+          else
+            current_origin="$(git -C "$APP_DIR" remote get-url origin)"
+            if [ "$current_origin" != "$REPO_URL" ] && [ "$current_origin" != "${REPO_URL%.git}" ]; then
+              echo "[deploy] unexpected origin for $APP_DIR: $current_origin"
+              exit 1
+            fi
+          fi
 
           cd "$APP_DIR"
           git fetch origin "$BRANCH"
