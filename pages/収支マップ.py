@@ -22,14 +22,62 @@ REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 PROD_DATA_DIR = Path("/app/data")
 DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
 SIM_FILE = DATA_DIR / "simulation_records.json"
+LEGACY_FILE = DATA_DIR / "bet_records.json"
 
 
-def load_records():
+def _read_list(path):
     try:
-        data = json.loads(SIM_FILE.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
         return data if isinstance(data, list) else []
     except Exception:
         return []
+
+
+def _legacy_to_analysis(record):
+    try:
+        weight = abs(float(record.get("bet_units") or 0))
+    except (TypeError, ValueError):
+        weight = 0.0
+    result = record.get("result")
+    delta = weight if result == "win" else (-weight if result == "loss" else 0.0)
+    return {
+        "id": f"legacy-{record.get('date','')}-{record.get('time','')}-{record.get('team','')}-{record.get('opponent','')}",
+        "date": record.get("date"),
+        "time": record.get("time"),
+        "team": record.get("team"),
+        "opponent": record.get("opponent"),
+        "handicap": record.get("handicap", 0),
+        "simulation_points": weight,
+        "status": record.get("status", "pending"),
+        "result": result,
+        "point_delta": delta,
+        "team_score": record.get("team_score"),
+        "opponent_score": record.get("opponent_score"),
+        "predicted_result": record.get("predicted_result"),
+        "memo": record.get("memo", ""),
+        "source": "legacy-research-history",
+    }
+
+
+def load_records():
+    current = _read_list(SIM_FILE)
+    legacy = [_legacy_to_analysis(r) for r in _read_list(LEGACY_FILE)]
+
+    merged = []
+    seen = set()
+    for record in legacy + current:
+        key = (
+            str(record.get("date", "")),
+            str(record.get("time", "")),
+            str(record.get("team", "")),
+            str(record.get("opponent", "")),
+            str(record.get("handicap", "")),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(record)
+    return merged
 
 
 def result_label(value):
@@ -106,6 +154,7 @@ if settled:
         margin=dict(l=20, r=20, t=30, b=30),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#c7ccd4"),
     )
     st.plotly_chart(fig, use_container_width=True)
 
