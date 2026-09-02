@@ -1,0 +1,107 @@
+name: Remove Cloudflare Access after Clerk
+
+on:
+  push:
+    branches:
+      - private-analytics-only
+    paths:
+      - ".github/workflows/remove-cloudflare-access-after-clerk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: remove-ai-baseball-cloudflare-access
+  cancel-in-progress: false
+
+jobs:
+  remove-access:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      APP_DOMAIN: ai-baseball-studio.f-polaris.jp
+      CLERK_DISCOVERY_URL: https://clerk.ai-baseball-studio.f-polaris.jp/.well-known/openid-configuration
+    steps:
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in CF_API_TOKEN CF_ACCOUNT_ID; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not available"
+              exit 1
+            fi
+          done
+
+      - name: Verify Clerk OIDC discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          discovery="$(curl -fsS --max-time 20 "$CLERK_DISCOVERY_URL")"
+          jq -e '.issuer and .authorization_endpoint and .token_endpoint and .jwks_uri' <<<"$discovery" >/dev/null
+          echo "Clerk OIDC discovery is healthy"
+
+      - name: Remove Cloudflare Access application
+        shell: bash
+        run: |
+          set -euo pipefail
+          CF_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_ID" | tr -d '[:space:]')"
+
+          api() {
+            local method="$1"
+            local path="$2"
+            local out
+            local status
+            out="$(mktemp)"
+            status="$(curl --silent --show-error --output "$out" --write-out '%{http_code}' \
+              --request "$method" \
+              "https://api.cloudflare.com/client/v4${path}" \
+              --header "Authorization: Bearer $CF_API_TOKEN" \
+              --header "Content-Type: application/json")"
+            if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+              echo "::error::Cloudflare API $method $path returned HTTP $status" >&2
+              cat "$out" >&2
+              rm -f "$out"
+              return 22
+            fi
+            cat "$out"
+            rm -f "$out"
+          }
+
+          verify="$(api GET "/user/tokens/verify")"
+          test "$(jq -r '.result.status // empty' <<<"$verify")" = "active"
+
+          apps="$(api GET "/accounts/$CF_ACCOUNT_ID/access/apps")"
+          app_id="$(jq -r --arg domain "$APP_DOMAIN" '.result[] | select(.domain == $domain) | .id' <<<"$apps" | head -n1)"
+
+          if [ -z "$app_id" ]; then
+            echo "Cloudflare Access application is already absent for $APP_DOMAIN"
+          else
+            api DELETE "/accounts/$CF_ACCOUNT_ID/access/apps/$app_id" >/dev/null
+            echo "Removed Cloudflare Access application for $APP_DOMAIN"
+          fi
+
+          apps_after="$(api GET "/accounts/$CF_ACCOUNT_ID/access/apps")"
+          if jq -e --arg domain "$APP_DOMAIN" '.result[] | select(.domain == $domain)' <<<"$apps_after" >/dev/null; then
+            echo "::error::Cloudflare Access application still exists for $APP_DOMAIN"
+            exit 1
+          fi
+
+      - name: Verify site is reachable without Cloudflare Access
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 18); do
+            root_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "https://$APP_DOMAIN/" || true)"
+            health_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "https://$APP_DOMAIN/_stcore/health" || true)"
+            echo "attempt=$attempt root=$root_status health=$health_status"
+            if [ "$root_status" = "200" ] && [ "$health_status" = "200" ]; then
+              echo "Site is reachable directly and application health is OK"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Site did not become directly reachable after Access removal"
+          exit 1
