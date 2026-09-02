@@ -95,7 +95,7 @@ def build_prediction_metrics(data_dir: Path) -> dict[str, Any]:
         "verified_count": count,
         "hits": hits,
         "hit_rate": round(hit_rate, 1) if hit_rate is not None else None,
-        "brier_score": round(brier_score, 4) if brier_score is not None else None,
+        "brier_score": round(brier_score, 6) if brier_score is not None else None,
         "games": verified,
     }
 

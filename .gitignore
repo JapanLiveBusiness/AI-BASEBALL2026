@@ -19,6 +19,7 @@ secrets.toml
 # ===== Virtual environments =====
 venv/
 .venv/
+.backtest-venv/
 env/
 
 # ===== Logs / temporary =====
