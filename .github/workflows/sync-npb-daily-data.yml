@@ -1,6 +1,12 @@
 name: Sync NPB official daily data
 
 on:
+  push:
+    branches:
+      - private-analytics-only
+    paths:
+      - ".github/workflows/sync-npb-daily-data.yml"
+      - "scripts/update_npb_schedule.py"
   schedule:
     # GitHub cron is UTC. Runs at 06:05, 10:05, 14:05 and 16:05 JST.
     - cron: "5 21 * * *"
