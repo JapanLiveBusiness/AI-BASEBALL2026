@@ -7,6 +7,7 @@ import streamlit as st
 
 from prediction_metrics import build_prediction_metrics
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
+from team_branding import TEAM_BADGE_CSS, team_badge
 
 PROD_DATA_DIR = Path("/app/data")
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
@@ -35,7 +36,7 @@ apply_studio_theme()
 render_topbar("RESULTS / VERIFIED")
 render_hero(
     "予想結果",
-    "試合前に固定したAI予測と実際の勝敗を照合します。結果確定後に予測値を書き換えず、的中率と確率精度を検証します。",
+    "試合前に固定したAI予測と実際の勝敗を照合します。結果確定後に予測値を書き換えず、予測精度を検証します。",
     kicker="AI BASEBALL STUDIO / VERIFICATION",
     accent="結果",
 )
@@ -54,10 +55,11 @@ high_hits = sum(1 for g in high_conf if g.get("hit"))
 high_rate = (high_hits / len(high_conf) * 100.0) if high_conf else None
 
 st.markdown(
-    """
+    f"""
 <style>
-.result-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0 20px}.result-kpi{background:#fffdf8;border:1px solid #ddd5c8;border-radius:13px;padding:15px}.result-kpi span{display:block;font-size:8px;letter-spacing:.16em;color:#a77e11;font-weight:900}.result-kpi strong{display:block;font-size:24px;margin-top:7px}.result-table{display:flex;flex-direction:column;gap:8px}.result-row{display:grid;grid-template-columns:120px 1fr 110px 90px 90px;align-items:center;gap:10px;background:#fffdf8;border:1px solid #ddd5c8;border-radius:12px;padding:12px 14px}.result-row.hit{border-left:4px solid #2f8f57}.result-row.miss{border-left:4px solid #b64848}.result-date{font-size:10px;color:#746f66}.result-match strong{font-size:14px}.result-match span{display:block;font-size:9px;color:#746f66;margin-top:3px}.result-prob{font-weight:900;text-align:right}.result-actual{text-align:center;font-weight:900}.result-badge{justify-self:end;border-radius:999px;padding:5px 9px;font-size:9px;font-weight:950}.result-badge.hit{background:#e8f6ee;color:#217043}.result-badge.miss{background:#fdecec;color:#9d3636}.empty-results{padding:28px;background:#fffdf8;border:1px dashed #d8d0c3;border-radius:14px;color:#746f66;text-align:center;font-size:12px}.verify-note{padding:11px 13px;border-radius:10px;background:#191919;color:#fff;font-size:10px;line-height:1.6;margin-bottom:16px}.verify-note b{color:#f1c40f}
-@media(max-width:980px){.result-kpis{grid-template-columns:repeat(3,1fr)}.result-row{grid-template-columns:100px 1fr 90px 72px}.result-badge{display:none}}@media(max-width:650px){.result-kpis{grid-template-columns:1fr 1fr}.result-row{grid-template-columns:1fr 78px}.result-date{grid-column:1/-1}.result-match{grid-column:1}.result-prob{grid-column:2}.result-actual{grid-column:1/-1;text-align:left}.result-badge{display:none}}
+{TEAM_BADGE_CSS}
+.result-kpis{{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0 20px}}.result-kpi{{background:#11161b;border:1px solid rgba(255,255,255,.09);border-radius:13px;padding:15px}}.result-kpi span{{display:block;font-size:8px;letter-spacing:.16em;color:#d6ad39;font-weight:900}}.result-kpi strong{{display:block;font-size:24px;margin-top:7px;color:#fff}}.result-table{{display:flex;flex-direction:column;gap:8px}}.result-row{{display:grid;grid-template-columns:120px 1fr 110px 90px 90px;align-items:center;gap:10px;background:#11161b;border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:12px 14px}}.result-row.hit{{border-left:4px solid #2f8f57}}.result-row.miss{{border-left:4px solid #b64848}}.result-date{{font-size:10px;color:#8e96a0}}.result-match strong{{font-size:14px;color:#fff}}.result-match span{{display:block;font-size:9px;color:#7e8791;margin-top:3px}}.result-teams{{display:flex;align-items:center;gap:8px;flex-wrap:wrap}}.result-vs{{color:#7e8791;font-size:9px}}.result-prob{{font-weight:900;text-align:right;color:#fff}}.result-actual{{text-align:center;font-weight:900;color:#fff}}.result-badge{{justify-self:end;border-radius:999px;padding:5px 9px;font-size:9px;font-weight:950}}.result-badge.hit{{background:#163d28;color:#7ce6a2}}.result-badge.miss{{background:#42181c;color:#ff9499}}.empty-results{{padding:28px;background:#11161b;border:1px dashed rgba(255,255,255,.14);border-radius:14px;color:#8f98a2;text-align:center;font-size:12px}}.verify-note{{padding:11px 13px;border-radius:10px;background:#0b0e11;color:#fff;font-size:10px;line-height:1.6;margin-bottom:16px}}.verify-note b{{color:#f1c40f}}
+@media(max-width:980px){{.result-kpis{{grid-template-columns:repeat(3,1fr)}}.result-row{{grid-template-columns:100px 1fr 90px 72px}}.result-badge{{display:none}}}}@media(max-width:650px){{.result-kpis{{grid-template-columns:1fr 1fr}}.result-row{{grid-template-columns:1fr 78px}}.result-date{{grid-column:1/-1}}.result-match{{grid-column:1}}.result-prob{{grid-column:2}}.result-actual{{grid-column:1/-1;text-align:left}}.result-badge{{display:none}}}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -67,12 +69,12 @@ st.markdown(
     f"""
 <div class="result-kpis">
   <div class="result-kpi"><span>VERIFIED</span><strong>{verified_count}</strong></div>
-  <div class="result-kpi"><span>HITS</span><strong>{hits}</strong></div>
-  <div class="result-kpi"><span>MISSES</span><strong>{misses}</strong></div>
-  <div class="result-kpi"><span>HIT RATE</span><strong>{pct(hit_rate)}</strong></div>
+  <div class="result-kpi"><span>MATCHED</span><strong>{hits}</strong></div>
+  <div class="result-kpi"><span>NOT MATCHED</span><strong>{misses}</strong></div>
+  <div class="result-kpi"><span>ACCURACY</span><strong>{pct(hit_rate)}</strong></div>
   <div class="result-kpi"><span>BRIER SCORE</span><strong>{brier_label(brier)}</strong></div>
 </div>
-<div class="verify-note"><b>高信頼帯</b>：60%以上または40%以下の予測を対象にした的中率は <b>{pct(high_rate)}</b>（{high_hits}/{len(high_conf)}）です。Brier Scoreは低いほど確率予測の精度が高い指標です。</div>
+<div class="verify-note"><b>高信頼帯</b>：60%以上または40%以下の予測を対象にした一致率は <b>{pct(high_rate)}</b>（{high_hits}/{len(high_conf)}）です。Brier Scoreは低いほど確率予測の精度が高い指標です。</div>
 """,
     unsafe_allow_html=True,
 )
@@ -89,11 +91,12 @@ else:
     for game in sorted(games, key=lambda x: str(x.get("date") or ""), reverse=True):
         hit = bool(game.get("hit"))
         cls = "hit" if hit else "miss"
-        badge = "的中" if hit else "外れ"
+        badge = "一致" if hit else "不一致"
+        opponent = game.get("opponent") or "--"
         rows.append(
             f'''<div class="result-row {cls}">
   <div class="result-date">{game.get('date') or '--'}</div>
-  <div class="result-match"><strong>ソフトバンク vs {game.get('opponent') or '--'}</strong><span>GAME ID: {game.get('game_id') or '--'}</span></div>
+  <div class="result-match"><div class="result-teams">{team_badge('ソフトバンク', size='sm')}<strong>ソフトバンク</strong><span class="result-vs">vs</span>{team_badge(opponent, size='sm')}<strong>{opponent}</strong></div><span>GAME ID: {game.get('game_id') or '--'}</span></div>
   <div class="result-prob">AI {pct(game.get('probability'))}</div>
   <div class="result-actual">実績 {game.get('result') or '--'}</div>
   <div class="result-badge {cls}">{badge}</div>
@@ -101,7 +104,7 @@ else:
         )
     st.markdown(f'<div class="result-table">{"".join(rows)}</div>', unsafe_allow_html=True)
 
-st.caption("試合前予測は固定値として検証し、引き分け・未終了試合は的中率計算から除外します。")
+st.caption("試合前予測は固定値として検証し、引き分け・未終了試合は精度計算から除外します。")
 
 
 @st.cache_data(max_entries=2)
@@ -139,7 +142,7 @@ else:
         {
             "モデル": model_labels.get(row.get("model"), row.get("model")),
             "検証試合": int(row.get("games") or 0),
-            "的中率": float(row.get("accuracy") or 0),
+            "一致率": float(row.get("accuracy") or 0),
             "Brier Score": float(row.get("brier") or 0),
             "LogLoss": float(row.get("log_loss") or 0),
         }
@@ -149,7 +152,7 @@ else:
         overall_rows,
         hide_index=True,
         column_config={
-            "的中率": st.column_config.NumberColumn(format="%.2f%%"),
+            "一致率": st.column_config.NumberColumn(format="%.2f%%"),
             "Brier Score": st.column_config.NumberColumn(format="%.4f"),
             "LogLoss": st.column_config.NumberColumn(format="%.4f"),
         },
@@ -162,7 +165,7 @@ else:
             "モデル": model_labels.get(row.get("model"), row.get("model")),
             "学習期間": f"〜{int(row.get('train_through') or 0)}",
             "試合数": int(row.get("games") or 0),
-            "的中率": float(row.get("accuracy") or 0),
+            "一致率": float(row.get("accuracy") or 0),
             "Brier Score": float(row.get("brier") or 0),
             "LogLoss": float(row.get("log_loss") or 0),
         }
@@ -172,7 +175,7 @@ else:
         season_rows,
         hide_index=True,
         column_config={
-            "的中率": st.column_config.NumberColumn(format="%.2f%%"),
+            "一致率": st.column_config.NumberColumn(format="%.2f%%"),
             "Brier Score": st.column_config.NumberColumn(format="%.4f"),
             "LogLoss": st.column_config.NumberColumn(format="%.4f"),
         },
