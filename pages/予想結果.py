@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import streamlit as st
@@ -101,3 +102,83 @@ else:
     st.markdown(f'<div class="result-table">{"".join(rows)}</div>', unsafe_allow_html=True)
 
 st.caption("試合前予測は固定値として検証し、引き分け・未終了試合は的中率計算から除外します。")
+
+
+@st.cache_data(max_entries=2)
+def load_historical_report(path: str):
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+historical_path = active_data_dir() / "historical_backtest_report.json"
+if not historical_path.exists():
+    historical_path = REPO_DATA_DIR / "historical_backtest_report.json"
+historical = load_historical_report(str(historical_path))
+
+render_section("HISTORICAL VALIDATION", "過去データ・年度別・モデル別バックテスト")
+if not historical:
+    st.info("長期バックテスト結果はまだ生成されていません。")
+else:
+    model_labels = {
+        "historical_baseline": "過去勝率ベースライン",
+        "logistic_rolling": "ロジスティック回帰",
+        "gradient_rolling": "勾配ブースティング",
+    }
+    overall = historical.get("overall") or []
+    recommended = historical.get("recommended_model")
+    with st.container(horizontal=True):
+        st.metric("元データ", f"{int(historical.get('source_games') or 0):,}試合", border=True)
+        st.metric("公式戦評価対象", f"{int(historical.get('evaluated_games') or 0):,}試合", border=True)
+        st.metric("検証年度", f"{len(historical.get('evaluated_seasons') or [])}シーズン", border=True)
+        st.metric("推奨モデル", model_labels.get(recommended, recommended or "--"), border=True)
+
+    overall_rows = [
+        {
+            "モデル": model_labels.get(row.get("model"), row.get("model")),
+            "検証試合": int(row.get("games") or 0),
+            "的中率": float(row.get("accuracy") or 0),
+            "Brier Score": float(row.get("brier") or 0),
+            "LogLoss": float(row.get("log_loss") or 0),
+        }
+        for row in overall
+    ]
+    st.dataframe(
+        overall_rows,
+        hide_index=True,
+        column_config={
+            "的中率": st.column_config.NumberColumn(format="%.2f%%"),
+            "Brier Score": st.column_config.NumberColumn(format="%.4f"),
+            "LogLoss": st.column_config.NumberColumn(format="%.4f"),
+        },
+        key="historical_overall_models",
+    )
+
+    season_rows = [
+        {
+            "年度": int(row.get("season") or 0),
+            "モデル": model_labels.get(row.get("model"), row.get("model")),
+            "学習期間": f"〜{int(row.get('train_through') or 0)}",
+            "試合数": int(row.get("games") or 0),
+            "的中率": float(row.get("accuracy") or 0),
+            "Brier Score": float(row.get("brier") or 0),
+            "LogLoss": float(row.get("log_loss") or 0),
+        }
+        for row in historical.get("by_season") or []
+    ]
+    st.dataframe(
+        season_rows,
+        hide_index=True,
+        column_config={
+            "的中率": st.column_config.NumberColumn(format="%.2f%%"),
+            "Brier Score": st.column_config.NumberColumn(format="%.4f"),
+            "LogLoss": st.column_config.NumberColumn(format="%.4f"),
+        },
+        key="historical_by_season",
+    )
+    st.caption(
+        f"対象期間: {historical.get('source_start', '--')}〜{historical.get('source_end', '--')}。"
+        "各年度は、それ以前の年度だけで学習するウォークフォワード方式です。引き分けと未来情報は除外しています。"
+    )
