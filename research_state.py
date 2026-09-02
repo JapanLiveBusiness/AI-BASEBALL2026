@@ -13,6 +13,9 @@ REPO_DATA_DIR = Path(__file__).resolve().parent / "data"
 PROD_DATA_DIR = Path("/app/data")
 SLATE_ARCHIVE = PROD_DATA_DIR / "npb_slates_archive.json"
 
+CENTRAL_TEAMS = {"巨人", "阪神", "DeNA", "横浜", "広島", "中日", "ヤクルト"}
+PACIFIC_TEAMS = {"ソフトバンク", "ソフト", "ホークス", "日本ハム", "日ハム", "ロッテ", "楽天", "オリックス", "西武"}
+
 
 def data_path(name: str) -> Path:
     prod = PROD_DATA_DIR / name
@@ -132,11 +135,49 @@ def freshness(payload: dict, now: datetime | None = None) -> dict:
     }
 
 
+def _probability(row: dict) -> float:
+    try:
+        return float(row.get("win_probability"))
+    except (TypeError, ValueError):
+        return -1.0
+
+
+def _league_for_game(row: dict) -> str:
+    names = {
+        str(row.get("home") or ""),
+        str(row.get("away") or ""),
+        str(row.get("pick") or ""),
+    }
+    if any(any(alias in name for alias in CENTRAL_TEAMS) for name in names):
+        if not any(any(alias in name for alias in PACIFIC_TEAMS) for name in names):
+            return "セ・リーグ"
+    if any(any(alias in name for alias in PACIFIC_TEAMS) for name in names):
+        if not any(any(alias in name for alias in CENTRAL_TEAMS) for name in names):
+            return "パ・リーグ"
+    return "交流戦" if names else "NPB"
+
+
 def prediction_for_display(display_date: str | None) -> dict:
     predictions = load_json("today_ai_predictions.json", {"games": []})
     if str(predictions.get("date") or "") != str(display_date or ""):
         return {"games": [], "date": predictions.get("date"), "updated_at": predictions.get("updated_at")}
-    return predictions
+
+    games = [dict(row) for row in (predictions.get("games") or []) if isinstance(row, dict)]
+    games.sort(
+        key=lambda row: (
+            _probability(row),
+            -int(row.get("rank") or 999),
+        ),
+        reverse=True,
+    )
+    for rank, row in enumerate(games, start=1):
+        row["rank"] = rank
+        row["league"] = _league_for_game(row)
+
+    normalized = dict(predictions)
+    normalized["games"] = games
+    normalized["ranking_basis"] = "win_probability_desc_all_npb"
+    return normalized
 
 
 def data_health_rows() -> list[dict]:
