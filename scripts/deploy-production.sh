@@ -15,6 +15,8 @@ TRAEFIK_CONTAINER="${TRAEFIK_CONTAINER:-miki-traefik}"
 TRAEFIK_ROUTER_NAME="${TRAEFIK_ROUTER_NAME:-ai-baseball}"
 TRAEFIK_SERVICE_NAME="${TRAEFIK_SERVICE_NAME:-ai-baseball}"
 TRAEFIK_PRIORITY="${TRAEFIK_PRIORITY:-}"
+STREAMLIT_SECRETS_FILE="${STREAMLIT_SECRETS_FILE:-}"
+AUTH_ALLOWED_EMAILS="${AUTH_ALLOWED_EMAILS:-tsutsumi@japanlivebusiness.com}"
 
 cd "$APP_DIR"
 
@@ -25,7 +27,6 @@ git reset --hard "origin/$BRANCH"
 
 mkdir -p "$DATA_DIR"
 
-# Publish versioned historical audit artifacts into the mounted data directory.
 for artifact in \
   historical_games_2017_2026.json \
   historical_backtest_report.json \
@@ -35,9 +36,6 @@ for artifact in \
   fi
 done
 
-# The Docker data volume hides repository-bundled /app/data files. Seed a
-# non-destructive fallback only when the runtime copy is missing or empty.
-# Live/update jobs remain free to replace these files afterward.
 for artifact in \
   npb_today.json \
   today_ai_predictions.json \
@@ -68,6 +66,11 @@ if [ -z "$TRAEFIK_IP" ]; then
   exit 1
 fi
 
+if [ -n "$STREAMLIT_SECRETS_FILE" ] && [ ! -s "$STREAMLIT_SECRETS_FILE" ]; then
+  echo "[deploy] Streamlit secrets file is missing or empty: $STREAMLIT_SECRETS_FILE"
+  exit 1
+fi
+
 echo "[deploy] primary route: $TRAEFIK_HOST"
 if [ -n "$TRAEFIK_LEGACY_HOST" ]; then
   echo "[deploy] legacy route: $TRAEFIK_LEGACY_HOST"
@@ -88,6 +91,7 @@ start_container() {
   local image="$1"
   local router_rule
   local -a labels
+  local -a auth_args
 
   router_rule="Host(\`$TRAEFIK_HOST\`)"
   if [ -n "$TRAEFIK_LEGACY_HOST" ]; then
@@ -109,12 +113,18 @@ start_container() {
     labels+=(--label "traefik.http.routers.$TRAEFIK_ROUTER_NAME.priority=$TRAEFIK_PRIORITY")
   fi
 
+  auth_args=(--env "AUTH_ALLOWED_EMAILS=$AUTH_ALLOWED_EMAILS")
+  if [ -n "$STREAMLIT_SECRETS_FILE" ]; then
+    auth_args+=(--volume "$STREAMLIT_SECRETS_FILE:/app/.streamlit/secrets.toml:ro")
+  fi
+
   docker run -d \
     --name "$CONTAINER_NAME" \
     --restart unless-stopped \
     --network "$TRAEFIK_NETWORK" \
     -p "$PORT:8501" \
     -v "$DATA_DIR:/app/data" \
+    "${auth_args[@]}" \
     "${labels[@]}" \
     "$image"
 }
