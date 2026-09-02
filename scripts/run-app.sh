@@ -10,4 +10,4 @@ refresh_metrics() {
 
 python /app/prediction_metrics.py || true
 refresh_metrics &
-exec streamlit run main.py --server.port=8501 --server.address=0.0.0.0
+exec streamlit run app_entry.py --server.port=8501 --server.address=0.0.0.0
