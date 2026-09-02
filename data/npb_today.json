@@ -1,6 +1,6 @@
 {
   "date": "2026-09-03",
-  "updated_at": "2026-09-03T21:00:00+09:00",
+  "updated_at": "2026-09-03T02:15:17+09:00",
   "count": 2,
   "games": [
     {
@@ -11,10 +11,10 @@
       "away": "阪神",
       "home_score": null,
       "away_score": null,
-      "venue": "神宮",
+      "venue": "神 宮",
       "league": "セ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/bis/2026/games/gm20260903.html"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
     },
     {
       "date": "2026-09-03",
@@ -27,7 +27,13 @@
       "venue": "バンテリンドーム",
       "league": "セ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/bis/2026/games/gm20260903.html"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
     }
-  ]
+  ],
+  "source": "NPB公式",
+  "source_urls": [
+    "https://npb.jp/games/2026/schedule_09_detail.html",
+    "https://npb.jp/games/2026/schedule_10_detail.html"
+  ],
+  "selection": "today_or_next_scheduled_slate"
 }
