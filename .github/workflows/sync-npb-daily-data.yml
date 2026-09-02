@@ -1,0 +1,182 @@
+name: Sync NPB official daily data
+
+on:
+  schedule:
+    # GitHub cron is UTC. Runs at 06:05, 10:05, 14:05 and 16:05 JST.
+    - cron: "5 21 * * *"
+    - cron: "5 1 * * *"
+    - cron: "5 5 * * *"
+    - cron: "5 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-npb-official-daily-data
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+        with:
+          ref: private-analytics-only
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install schedule sync dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check requests beautifulsoup4
+
+      - name: Fetch NPB official slate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/npb-sync
+          python scripts/update_npb_schedule.py --output /tmp/npb-sync/npb_today.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('/tmp/npb-sync/npb_today.json').read_text(encoding='utf-8'))
+          assert payload.get('date'), 'date is missing'
+          games = payload.get('games') or []
+          assert games, 'game slate is empty'
+          assert payload.get('count') == len(games), 'count mismatch'
+          print(f"validated slate: {payload['date']} / {len(games)} games")
+          PY
+
+      - name: Validate SSH/Tailscale secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_USER DEPLOY_PORT DEPLOY_SSH_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not available"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ env.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ env.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          timeout: 1m
+
+      - name: Resolve server-01
+        shell: bash
+        run: |
+          set -euo pipefail
+          resolved=""
+          for attempt in $(seq 1 12); do
+            resolved="$(tailscale status --json | jq -r '
+              [.Peer[] | select(.HostName == "server-01" and .Online == true) | (.TailscaleIPs // [])[0]]
+              | map(select(. != null)) | .[0] // empty
+            ')"
+            [ -n "$resolved" ] && break
+            sleep 5
+          done
+          if [ -z "$resolved" ]; then
+            echo "::error::server-01 is not visible as an online Tailscale peer"
+            exit 1
+          fi
+          echo "DEPLOY_HOST_RESOLVED=$resolved" >> "$GITHUB_ENV"
+
+      - name: Configure SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+          ssh-keygen -y -f "$HOME/.ssh/deploy_key" >/dev/null
+
+      - name: Upload validated slate atomically
+        shell: bash
+        run: |
+          set -euo pipefail
+          SSH=(
+            ssh -i "$HOME/.ssh/deploy_key"
+            -o IdentitiesOnly=yes
+            -o BatchMode=yes
+            -o PreferredAuthentications=publickey
+            -o PasswordAuthentication=no
+            -o ConnectTimeout=15
+            -o StrictHostKeyChecking=no
+            -o UserKnownHostsFile=/dev/null
+            -p "$DEPLOY_PORT"
+          )
+          SCP=(
+            scp -i "$HOME/.ssh/deploy_key"
+            -o IdentitiesOnly=yes
+            -o BatchMode=yes
+            -o PreferredAuthentications=publickey
+            -o PasswordAuthentication=no
+            -o ConnectTimeout=15
+            -o StrictHostKeyChecking=no
+            -o UserKnownHostsFile=/dev/null
+            -P "$DEPLOY_PORT"
+          )
+
+          "${SSH[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
+            'mkdir -p /opt/hawks-ai/research-data && chmod 755 /opt/hawks-ai/research-data'
+
+          "${SCP[@]}" /tmp/npb-sync/npb_today.json \
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/opt/hawks-ai/research-data/npb_today.json.new"
+
+          "${SSH[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" <<'REMOTE'
+          set -euo pipefail
+          target=/opt/hawks-ai/research-data/npb_today.json
+          incoming=${target}.new
+          test -s "$incoming"
+          python3 - "$incoming" <<'PY'
+          import json, sys
+          from pathlib import Path
+          payload = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          if not payload.get('date') or not payload.get('games'):
+              raise SystemExit('invalid incoming NPB slate')
+          print(payload['date'], len(payload['games']))
+          PY
+          mv -f "$incoming" "$target"
+          chmod 644 "$target"
+          echo "NPB slate updated: $target"
+          REMOTE
+
+      - name: Verify deployed data file
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh \
+            -i "$HOME/.ssh/deploy_key" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -p "$DEPLOY_PORT" \
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
+            'python3 - <<'"'"'PY'"'"'
+          import json
+          from pathlib import Path
+          path = Path("/opt/hawks-ai/research-data/npb_today.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          print(f"active slate: {payload.get('date')} / {len(payload.get('games') or [])} games")
+          assert payload.get("games")
+          PY'
