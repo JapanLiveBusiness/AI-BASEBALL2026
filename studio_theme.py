@@ -52,7 +52,6 @@ h1,h2,h3 {color:var(--studio-ink) !important;}
 .studio-rank {width:38px;height:38px;border-radius:50%;background:#191919;color:var(--studio-gold);display:inline-flex;align-items:center;justify-content:center;font-weight:900;}
 .studio-pick {font-size:23px;font-weight:900;}
 
-/* Streamlit native controls */
 div[data-testid="stForm"], div[data-testid="stExpander"] {background:var(--studio-paper);border-color:var(--studio-line) !important;border-radius:14px !important;}
 div[data-testid="stMetric"] {background:var(--studio-paper);border:1px solid var(--studio-line);padding:14px;border-radius:12px;}
 div[data-testid="stMetricValue"] {color:var(--studio-ink);font-weight:850;}
@@ -91,7 +90,7 @@ def render_topbar(section="STUDIO"):
       <div class="studio-brand-sub">GAME INTELLIGENCE</div>
     </div>
   </div>
-  <nav class="studio-nav"><a href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">BET</a><a href="/収支マップ" target="_self">PERFORMANCE</a></nav>
+  <nav class="studio-nav"><a href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">SIMULATION</a><a href="/収支マップ" target="_self">SIM RESULTS</a></nav>
   <div class="studio-badge">{safe_section}</div>
 </div>
 ''',
