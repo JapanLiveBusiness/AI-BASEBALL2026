@@ -62,7 +62,7 @@ for game in games:
 
     c1, c2, c3, c4 = st.columns([0.7, 2.4, 1.8, 1.4])
     with c1:
-        st.markdown(f'<div class="studio-rank">{rank}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="studio-rank">{rank if rank is not None else "—"}</div>', unsafe_allow_html=True)
     with c2:
         st.markdown(f"### {home} vs {away}")
         st.caption(f"予想スコア {score}")
