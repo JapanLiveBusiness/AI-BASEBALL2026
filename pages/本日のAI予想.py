@@ -4,6 +4,7 @@ import streamlit as st
 
 from daily_board import coverage, merge_daily_board
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_section, render_nav_links
+from team_branding import TEAM_BADGE_CSS, team_badge
 
 st.set_page_config(page_title="AI予測 | MY AI BASEBALL", page_icon="⚾", layout="wide")
 apply_studio_theme()
@@ -19,13 +20,29 @@ render_nav_links()
 REPO_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 PROD_DATA_DIR = Path("/app/data")
 
+st.markdown(
+    f"""
+<style>
+{TEAM_BADGE_CSS}
+.ai-match-title{{display:flex;align-items:center;gap:8px;flex-wrap:wrap}}.ai-vs{{color:#7f8791;font-size:12px}}.ai-pick-label{{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:900}}.ai-best{{display:flex;align-items:center;gap:10px}}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
 
 @st.cache_data(ttl="1m", max_entries=4)
 def load_json(name, fallback):
     production = PROD_DATA_DIR / name
-    path = production if production.exists() else REPO_DATA_DIR / name
+    if production.exists() and production.stat().st_size:
+        path = production
+    else:
+        path = REPO_DATA_DIR / name
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(value, dict) and "games" in value and not value.get("games") and path != REPO_DATA_DIR / name:
+            return json.loads((REPO_DATA_DIR / name).read_text(encoding="utf-8"))
+        return value
     except (OSError, json.JSONDecodeError):
         return fallback
 
@@ -36,9 +53,6 @@ games = merge_daily_board(schedule, payload)
 status = coverage(games)
 display_date = schedule.get("date") or payload.get("date") or ""
 render_section("DAILY BOARD", f"{display_date} NPB 全開催試合の予想と結果")
-
-source_url = next((row.get("source_url") for row in schedule.get("games") or [] if row.get("source_url")), "https://handenomori.com/jpb/")
-st.markdown(f"ハンデ情報: [ハンデの森]({source_url})（各試合の開始100分前までに一度取得し、取得値を固定）")
 
 if not games:
     st.info("本日の試合データを同期中です。")
@@ -64,10 +78,17 @@ for game in games:
     with c1:
         st.markdown(f'<div class="studio-rank">{rank if rank is not None else "—"}</div>', unsafe_allow_html=True)
     with c2:
-        st.markdown(f"### {home} vs {away}")
+        st.markdown(
+            f'<div class="ai-match-title">{team_badge(home, size="md")}<strong>{home}</strong><span class="ai-vs">vs</span>{team_badge(away, size="md")}<strong>{away}</strong></div>',
+            unsafe_allow_html=True,
+        )
         st.caption(f"予想スコア {score}")
     with c3:
-        st.metric("勝利予想", pick, f"{prob}%")
+        st.markdown(
+            f'<div class="ai-pick-label">{team_badge(pick, size="sm")}<span>{pick}</span></div>',
+            unsafe_allow_html=True,
+        )
+        st.caption(f"推定勝率 {prob}%")
     with c4:
         st.metric("信頼度", confidence)
     if pick and isinstance(prob, (int, float)):
@@ -75,7 +96,7 @@ for game in games:
     else:
         st.caption("予想生成待ち")
     if result != "未確定":
-        verdict = "的中" if verified is True else "外れ" if verified is False else "判定対象外"
+        verdict = "一致" if verified is True else "不一致" if verified is False else "判定対象外"
         st.markdown(f"結果: **{away} {away_score} - {home_score} {home}** ／ 勝者 **{result}** ／ {verdict}")
     else:
         st.caption(f"試合結果: 未確定（{game.get('status') or '開始前'}）")
@@ -86,7 +107,10 @@ best = max(ranked, key=lambda row: float(row.get("win_probability") or 0)) if ra
 render_section("TOP RECOMMENDATION", "本日の最上位予想")
 if best:
     left, mid, right = st.columns([1.6, 1, 1])
-    left.markdown(f"## {best.get('pick', '-')}")
+    left.markdown(
+        f'<div class="ai-best">{team_badge(best.get("pick"), size="lg")}<h2 style="margin:0">{best.get("pick", "-")}</h2></div>',
+        unsafe_allow_html=True,
+    )
     left.caption(f"{best.get('home', '-')} vs {best.get('away', '-')} / 予想スコア {best.get('predicted_score', '-')}")
     mid.metric("推定勝率", f"{best.get('win_probability', '-')}%")
     right.metric("信頼度", best.get("confidence", "-"))
