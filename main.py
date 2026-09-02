@@ -7,7 +7,7 @@ import json
 import streamlit as st
 
 from bet_analytics import calculate_hit_rate, point_delta
-from studio_theme import apply_studio_theme, render_topbar, render_hero, render_section
+from studio_theme import apply_studio_theme, render_topbar, render_hero
 
 JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -39,142 +39,187 @@ def esc(value, fallback="-"):
     return html.escape(str(value))
 
 
+def legacy_to_analysis(record):
+    try:
+        weight = abs(float(record.get("bet_units") or 0))
+    except (TypeError, ValueError):
+        weight = 0.0
+    result = record.get("result")
+    delta = weight if result == "win" else (-weight if result == "loss" else 0.0)
+    return {
+        "date": record.get("date"),
+        "time": record.get("time"),
+        "team": record.get("team"),
+        "opponent": record.get("opponent"),
+        "handicap": record.get("handicap", 0),
+        "status": record.get("status", "pending"),
+        "result": result,
+        "point_delta": delta,
+        "team_score": record.get("team_score"),
+        "opponent_score": record.get("opponent_score"),
+    }
+
+
+def load_analysis_records():
+    current = load_json("simulation_records.json", [])
+    legacy = load_json("bet_records.json", [])
+    if not isinstance(current, list):
+        current = []
+    if not isinstance(legacy, list):
+        legacy = []
+
+    merged = []
+    seen = set()
+    for record in [legacy_to_analysis(r) for r in legacy] + current:
+        key = (
+            str(record.get("date", "")),
+            str(record.get("time", "")),
+            str(record.get("team", "")),
+            str(record.get("opponent", "")),
+            str(record.get("handicap", "")),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(record)
+    return merged
+
+
 predictions = load_json("today_ai_predictions.json", {"games": []})
 npb_today = load_json("npb_today.json", {"games": []})
-analysis_records = load_json("simulation_records.json", [])
+analysis_records = load_analysis_records()
 
 prediction_games = predictions.get("games") or []
 today_games = npb_today.get("games") or []
-if not isinstance(analysis_records, list):
-    analysis_records = []
-
 settled = [r for r in analysis_records if r.get("status") == "final"]
 _, _, success_rate = calculate_hit_rate(settled)
 total_delta = sum(point_delta(r) for r in settled)
 now = datetime.now(JST)
-
 ranked = sorted(prediction_games, key=lambda g: g.get("rank", 999))
-best = ranked[0] if ranked else {}
-best_pick = esc(best.get("pick"), "データ待ち")
-best_match = (
-    f"{esc(best.get('home'))} vs {esc(best.get('away'))}"
-    if best
-    else "本日の予測データを準備中"
-)
-best_probability = best.get("win_probability")
-best_probability_text = (
-    f"{float(best_probability):.1f}%"
-    if isinstance(best_probability, (int, float))
-    else "--"
-)
 
-render_topbar("PRIVATE RESEARCH")
+prediction_lookup = {}
+for game in prediction_games:
+    key = (str(game.get("home", "")), str(game.get("away", "")))
+    prediction_lookup[key] = game
+
+render_topbar("リサーチモード")
 render_hero(
-    "AI BASEBALL RESEARCH STUDIO",
-    "NPBの試合情報・AI予測・得点補正の感度分析を、ひとつの研究画面で素早く確認できます。",
-    kicker=f"NPB 2026 / {now.strftime('%Y.%m.%d')} / JST {now.strftime('%H:%M')}",
-    accent="RESEARCH",
+    "野球AI分析 × 得点補正シミュレーション",
+    "AIによる勝率予測と得点補正による感度分析で、仮説の検証とモデル精度の確認をサポートします。",
+    kicker=f"{now.strftime('%Y年%m月%d日')} / データ更新 {now.strftime('%H:%M')}",
 )
 
-# Overview
-left, right = st.columns([1.45, 0.75])
-with left:
-    render_section("OVERVIEW", "今日の分析状況")
-    k1, k2 = st.columns(2)
-    k3, k4 = st.columns(2)
-    k1.metric("本日の試合", len(today_games))
-    k2.metric("AI予測カード", len(prediction_games))
-    k3.metric("確定シナリオ", len(settled))
-    k4.metric("仮説成立率", f"{success_rate:.1f}%" if success_rate is not None else "-")
-
-with right:
+# KPI row
+st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
+kpis = [
+    ("🗓", "本日の試合数", f"{len(today_games)}", "試合"),
+    ("🏆", "AI評価数", f"{len(prediction_games)}", "本日の予測"),
+    ("📈", "分析シミュレーション", f"{len(analysis_records)}", "累計シナリオ"),
+    ("🎯", "仮説成立率", f"{success_rate:.1f}%" if success_rate is not None else "-", "確定データ"),
+    ("◎", "総評価スコア差", f"{total_delta:+.1f}", "研究指標"),
+]
+for icon, label, value, note in kpis:
+    value_cls = " gold" if label == "総評価スコア差" else ""
     st.markdown(
-        f'''
-<div style="height:100%;min-height:272px;background:linear-gradient(145deg,#171b21,#201a0d);border:1px solid rgba(242,201,76,.20);border-radius:22px;padding:24px;box-shadow:0 16px 38px rgba(0,0,0,.18);display:flex;flex-direction:column;justify-content:space-between;">
-  <div>
-    <div style="font-size:8px;letter-spacing:.24em;color:#d9b94c;font-weight:950;">TODAY'S TOP AI SIGNAL</div>
-    <div style="font-size:12px;color:#8f97a3;margin-top:20px;">{best_match}</div>
-    <div style="font-size:30px;font-weight:950;color:#fff;margin-top:5px;line-height:1.1;">{best_pick}</div>
-  </div>
-  <div style="display:flex;align-items:end;justify-content:space-between;border-top:1px solid rgba(255,255,255,.08);padding-top:18px;margin-top:20px;">
-    <div><div style="font-size:8px;color:#8f97a3;">AI WIN PROBABILITY</div><div style="font-size:11px;color:#c7ccd4;margin-top:4px;">最高評価カード</div></div>
-    <div style="font-size:34px;color:#f2c94c;font-weight:950;">{best_probability_text}</div>
-  </div>
-</div>
-''',
+        f'<div class="kpi-card"><div class="kpi-icon">{icon}</div><div><div class="kpi-label">{label}</div><div class="kpi-value{value_cls}">{value}</div><div class="kpi-note">{note}</div></div></div>',
+        unsafe_allow_html=True,
+    )
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Middle row: games + top AI
+left, right = st.columns([1.65, 0.85], gap="small")
+with left:
+    rows = []
+    for game in sorted(today_games, key=lambda g: str(g.get("time", "99:99"))):
+        home = str(game.get("home", "-"))
+        away = str(game.get("away", "-"))
+        pred = prediction_lookup.get((home, away), {})
+        pick = str(pred.get("pick", "-"))
+        probability = pred.get("win_probability")
+        try:
+            p = float(probability)
+        except (TypeError, ValueError):
+            p = None
+
+        if p is None:
+            home_prob = away_prob = "-"
+        elif pick == home:
+            home_prob, away_prob = f"{p:.1f}%", f"{100-p:.1f}%"
+        elif pick == away:
+            home_prob, away_prob = f"{100-p:.1f}%", f"{p:.1f}%"
+        else:
+            home_prob = away_prob = "-"
+
+        rows.append(
+            f"<tr><td>{esc(game.get('time'))}</td><td><span class='team-strong'>{esc(home)}</span>　vs　<span class='team-strong'>{esc(away)}</span></td><td>{esc(game.get('venue'))}</td><td class='prob-gold'>{home_prob}</td><td class='prob-muted'>{away_prob}</td><td><span class='pick-chip'>{esc(pick, 'AI分析中')}</span></td></tr>"
+        )
+
+    table_html = "".join(rows) if rows else "<tr><td colspan='6'>本日の試合データはありません。</td></tr>"
+    st.markdown(
+        f'''<div class="dashboard-panel">
+<div class="dashboard-title">⚾ 今日の試合カード</div>
+<table class="match-table"><thead><tr><th>開始時間</th><th>対戦カード</th><th>球場</th><th>AI勝率（ホーム）</th><th>AI勝率（ビジター）</th><th>AI評価</th></tr></thead><tbody>{table_html}</tbody></table>
+<a class="research-link" href="/試合" target="_self">全試合を見る　›</a>
+</div>''',
         unsafe_allow_html=True,
     )
 
-render_section("WORKSPACE", "研究メニュー")
-w1, w2, w3, w4 = st.columns(4)
-with w1:
-    st.page_link("pages/試合.py", label="⚾ 試合情報", use_container_width=True)
-    st.caption("対戦カード・開始時刻・試合状況")
-with w2:
-    st.page_link("pages/本日のAI予想.py", label="🤖 AI予測", use_container_width=True)
-    st.caption("勝率・予測スコア・評価順位")
-with w3:
-    st.page_link("pages/BET入力.py", label="🧪 感度分析", use_container_width=True)
-    st.caption("得点補正値と評価ウェイトを登録")
-with w4:
-    st.page_link("pages/収支マップ.py", label="📊 分析結果", use_container_width=True)
-    st.caption("成立率・補正値比較・スコア推移")
+with right:
+    top_rows = []
+    for idx, game in enumerate(ranked[:3], start=1):
+        probability = game.get("win_probability")
+        probability_text = f"{float(probability):.1f}%" if isinstance(probability, (int, float)) else "-"
+        top_rows.append(
+            f'''<div class="top-ai-row"><div class="top-ai-rank">{idx}</div><div><div class="top-ai-name">{esc(game.get('pick'))}</div><div class="top-ai-meta">{esc(game.get('home'))} vs {esc(game.get('away'))}</div></div><div><div class="top-ai-prob">{probability_text}</div><div class="top-ai-meta" style="text-align:right">AI勝率</div></div></div>'''
+        )
+    st.markdown(
+        f'''<div class="top-ai-card"><div class="dashboard-title gold">🏆 今日のTOP AI評価 <span style="margin-left:auto;font-size:9px;background:#3a2c0a;padding:5px 9px;border-radius:5px">TOP 3</span></div>{''.join(top_rows) if top_rows else '<div class="dashboard-subtle">予測データ準備中</div>'}<a class="research-link" href="/本日のAI予想" target="_self">AIランキングを見る　›</a></div>''',
+        unsafe_allow_html=True,
+    )
 
-rank_col, recent_col = st.columns([1.1, 0.9])
+# Bottom row: research menu + recent analysis
+st.markdown('<div class="section-gap"></div>', unsafe_allow_html=True)
+left2, right2 = st.columns([1.65, 0.85], gap="small")
+with left2:
+    st.markdown('<div class="dashboard-panel"><div class="dashboard-title">🧪 研究・分析メニュー</div><div class="research-grid">', unsafe_allow_html=True)
+    cards = [
+        ("⚙", "得点補正シミュレーション", "得点補正値を設定してモデル結果の変化を分析", "/BET入力", "シミュレーション開始"),
+        ("▥", "感度分析結果", "補正値ごとの成立率・評価スコアを確認", "/収支マップ", "結果を見る"),
+        ("↶", "シミュレーション履歴", "これまでの分析シナリオと結果を確認", "/予想結果", "履歴を見る"),
+        ("▤", "統計・レポート", "AI評価・精度・履歴をまとめて確認", "/本日のAI予想", "レポートを見る"),
+    ]
+    for icon, title, desc, href, cta in cards:
+        st.markdown(
+            f'''<div class="research-card"><div><div class="research-title">{title}</div><div class="research-icon">{icon}</div><div class="research-desc">{desc}</div></div><a class="research-link" href="{href}" target="_self">{cta}　›</a></div>''',
+            unsafe_allow_html=True,
+        )
+    st.markdown('</div></div>', unsafe_allow_html=True)
 
-with rank_col:
-    render_section("AI RANKING", "本日のAI評価")
-    if not ranked:
-        st.info("本日のAI予測データはまだありません。")
-    else:
-        for idx, game in enumerate(ranked[:5], start=1):
-            home = esc(game.get("home"))
-            away = esc(game.get("away"))
-            pick = esc(game.get("pick"))
-            probability = game.get("win_probability")
-            probability_text = f"{float(probability):.1f}%" if isinstance(probability, (int, float)) else "-"
-            st.markdown(
-                f'''
-<div style="display:grid;grid-template-columns:46px 1fr 86px;gap:12px;align-items:center;background:#12161c;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:13px 15px;margin-bottom:9px;">
-  <div style="width:38px;height:38px;border-radius:12px;background:#f2c94c;color:#111;display:grid;place-items:center;font-weight:950;">{idx}</div>
-  <div><div style="font-size:15px;font-weight:900;color:#fff;">{home} vs {away}</div><div style="font-size:10px;color:#8f97a3;margin-top:4px;">AI評価: {pick}</div></div>
-  <div style="text-align:right;"><div style="font-size:20px;font-weight:950;color:#fff;">{probability_text}</div><div style="font-size:8px;color:#8f97a3;margin-top:2px;">WIN RATE</div></div>
-</div>
-''',
-                unsafe_allow_html=True,
-            )
-
-with recent_col:
-    render_section("SENSITIVITY", "最近の感度分析")
-    if not analysis_records:
-        st.info("分析シナリオはまだありません。")
-    else:
-        recent = sorted(
-            analysis_records,
-            key=lambda r: (str(r.get("date", "")), str(r.get("time", "")), str(r.get("created_at", ""))),
-            reverse=True,
-        )[:5]
-        for record in recent:
-            status = "確定" if record.get("status") == "final" else "未確定"
-            delta = f"{point_delta(record):+.0f}" if record.get("status") == "final" else "-"
-            st.markdown(
-                f'''
-<div style="background:#12161c;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px 15px;margin-bottom:9px;">
-  <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
-    <div><div style="font-size:13px;font-weight:900;color:#fff;">{esc(record.get('team'))} vs {esc(record.get('opponent'))}</div><div style="font-size:9px;color:#8f97a3;margin-top:4px;">{esc(record.get('date'))} {esc(record.get('time'))} / 補正 {esc(record.get('handicap'), '0')}</div></div>
-    <div style="text-align:right;"><div style="font-size:16px;font-weight:950;color:#f2c94c;">{delta}</div><div style="font-size:8px;color:#8f97a3;">{status}</div></div>
-  </div>
-</div>
-''',
-                unsafe_allow_html=True,
-            )
+with right2:
+    recent = sorted(
+        analysis_records,
+        key=lambda r: (str(r.get("date", "")), str(r.get("time", ""))),
+        reverse=True,
+    )[:5]
+    recent_rows = []
+    for record in recent:
+        result = record.get("result")
+        if result == "win":
+            chip = '<span class="status-chip status-win">成立</span>'
+        elif result == "loss":
+            chip = '<span class="status-chip status-loss">不成立</span>'
+        else:
+            chip = '<span class="status-chip status-pending">未確定</span>'
+        delta = point_delta(record) if record.get("status") == "final" else 0.0
+        recent_rows.append(
+            f'''<div class="analysis-row"><div>{esc(record.get('date'))[-5:]} {esc(record.get('time'))}</div><div>{esc(record.get('team'))} vs {esc(record.get('opponent'))}</div><div>補正 {esc(record.get('handicap'), '0')}</div><div>{delta:+.1f}</div><div>{chip}</div></div>'''
+        )
+    st.markdown(
+        f'''<div class="dashboard-panel"><div class="dashboard-title">📈 最近の感度分析結果 <a href="/収支マップ" target="_self" style="margin-left:auto;color:#9ca4ae;font-size:9px;text-decoration:none">すべて見る</a></div><div class="analysis-list">{''.join(recent_rows) if recent_rows else '<div class="dashboard-subtle">分析履歴はまだありません。</div>'}</div><a class="research-link" href="/収支マップ" target="_self">すべての履歴を見る　›</a></div>''',
+        unsafe_allow_html=True,
+    )
 
 st.markdown(
-    f'''
-<div style="margin-top:28px;padding:14px 2px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#737b86;font-size:9px;">
-  <span>AI BASEBALL STUDIO / PRIVATE RESEARCH</span>
-  <span>Last view update: {now.strftime('%Y-%m-%d %H:%M:%S')} JST / Score delta: {total_delta:+.0f}</span>
-</div>
-''',
+    '<div class="footer-line"><span>ⓘ 本システムは研究・仮説検証を目的とした分析環境です。</span><span>© 2026 AI BASEBALL STUDIO.</span></div>',
     unsafe_allow_html=True,
 )
