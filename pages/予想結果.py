@@ -20,10 +20,6 @@ st.set_page_config(
 )
 
 
-def active_data_dir() -> Path:
-    return PROD_DATA_DIR if (PROD_DATA_DIR / "game_history.json").exists() else REPO_DATA_DIR
-
-
 def pct(value):
     return "--" if value is None else f"{float(value):.1f}%"
 
@@ -42,7 +38,7 @@ render_hero(
 )
 render_nav_links()
 
-metrics = build_prediction_metrics(active_data_dir())
+metrics = build_prediction_metrics(PROD_DATA_DIR, fallback_data_dir=REPO_DATA_DIR)
 games = metrics.get("games") or []
 verified_count = int(metrics.get("verified_count") or 0)
 hits = int(metrics.get("hits") or 0)
@@ -104,7 +100,7 @@ else:
         )
     st.markdown(f'<div class="result-table">{"".join(rows)}</div>', unsafe_allow_html=True)
 
-st.caption("試合前予測は固定値として検証し、引き分け・未終了試合は精度計算から除外します。")
+st.caption("本番共有データを優先し、不足時はリポジトリ内の保存履歴を補完して表示します。引き分け・未終了試合は精度計算から除外します。")
 
 
 @st.cache_data(max_entries=2)
@@ -116,8 +112,8 @@ def load_historical_report(path: str):
     return payload if isinstance(payload, dict) else {}
 
 
-historical_path = active_data_dir() / "historical_backtest_report.json"
-if not historical_path.exists():
+historical_path = PROD_DATA_DIR / "historical_backtest_report.json"
+if not historical_path.exists() or not historical_path.stat().st_size:
     historical_path = REPO_DATA_DIR / "historical_backtest_report.json"
 historical = load_historical_report(str(historical_path))
 
