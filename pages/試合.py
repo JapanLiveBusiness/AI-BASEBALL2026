@@ -11,6 +11,7 @@ import streamlit.components.v1 as components
 
 from display_games import select_display_games
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
+from team_branding import TEAM_BADGE_CSS, team_badge
 
 JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
@@ -28,7 +29,9 @@ st.set_page_config(
 
 def data_path(name: str) -> Path:
     prod = PROD_DATA_DIR / name
-    return prod if prod.exists() else REPO_DATA_DIR / name
+    if prod.exists() and prod.stat().st_size:
+        return prod
+    return REPO_DATA_DIR / name
 
 
 def load_json(name: str, fallback):
@@ -93,10 +96,11 @@ updated_at = payload.get("updated_at") or "--"
 live_games = [game for game in games if is_live(game)]
 
 st.markdown(
-    """
+    f"""
 <style>
-.game-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 18px}.game-kpi{background:#fffdf8;border:1px solid #ddd5c8;border-radius:13px;padding:14px}.game-kpi span{display:block;font-size:8px;letter-spacing:.18em;color:#a77e11;font-weight:900}.game-kpi strong{display:block;margin-top:7px;font-size:22px}.game-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.game-card{background:#fffdf8;border:1px solid #ddd5c8;border-radius:15px;padding:17px;box-shadow:0 8px 24px rgba(35,29,18,.04)}.game-card.live{border-color:#d5aa14;box-shadow:0 0 0 2px rgba(241,196,15,.10)}.game-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}.game-time{font-size:10px;color:#746f66}.game-status{font-size:9px;font-weight:950;border-radius:999px;padding:5px 9px;background:#efebe3;color:#5d574e}.game-status.live{background:#171717;color:#f1c40f}.game-status.final{background:#ebe7df;color:#333}.matchup{display:grid;grid-template-columns:1fr 56px 1fr;gap:8px;align-items:center}.team-side{min-width:0}.team-side.right{text-align:right}.team-name{font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.team-score{font-size:31px;font-weight:950;line-height:1;margin-top:6px}.vs{text-align:center;color:#9b9387;font-size:10px;font-weight:900}.game-meta{border-top:1px solid #e4ddd2;margin-top:14px;padding-top:12px;display:flex;justify-content:space-between;gap:12px;font-size:9px;color:#746f66}.prediction{margin-top:11px;padding:10px 12px;border-radius:10px;background:#191919;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px}.prediction span{font-size:9px;color:#bbb}.prediction strong{font-size:14px;color:#f1c40f}.empty-games{padding:28px;background:#fffdf8;border:1px dashed #d8d0c3;border-radius:14px;color:#746f66;text-align:center;font-size:12px}.sync-note{margin:10px 0 16px;padding:10px 12px;border-radius:10px;background:#fff7d4;border:1px solid #e6cd69;font-size:10px;color:#65551b}
-@media(max-width:850px){.game-summary{grid-template-columns:repeat(2,1fr)}.game-grid{grid-template-columns:1fr}}@media(max-width:520px){.game-summary{grid-template-columns:1fr 1fr}.team-name{font-size:15px}.team-score{font-size:27px}.matchup{grid-template-columns:1fr 42px 1fr}.game-meta{flex-direction:column;gap:4px}}
+{TEAM_BADGE_CSS}
+.game-summary{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 18px}}.game-kpi{{background:#11161b;border:1px solid rgba(255,255,255,.09);border-radius:13px;padding:14px}}.game-kpi span{{display:block;font-size:8px;letter-spacing:.18em;color:#d6ad39;font-weight:900}}.game-kpi strong{{display:block;margin-top:7px;font-size:22px;color:#fff}}.game-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}.game-card{{background:#11161b;border:1px solid rgba(255,255,255,.09);border-radius:15px;padding:17px;box-shadow:0 8px 24px rgba(0,0,0,.12)}}.game-card.live{{border-color:#d5aa14;box-shadow:0 0 0 2px rgba(241,196,15,.10)}}.game-head{{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}}.game-time{{font-size:10px;color:#9199a3}}.game-status{{font-size:9px;font-weight:950;border-radius:999px;padding:5px 9px;background:#242a31;color:#cbd1d7}}.game-status.live{{background:#171717;color:#f1c40f}}.game-status.final{{background:#242a31;color:#d8dde2}}.matchup{{display:grid;grid-template-columns:1fr 56px 1fr;gap:8px;align-items:center}}.team-side{{min-width:0}}.team-side.right{{text-align:right}}.team-heading{{display:flex;align-items:center;gap:9px;min-width:0}}.team-side.right .team-heading{{justify-content:flex-end}}.team-name{{font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}}.team-score{{font-size:31px;font-weight:950;line-height:1;margin-top:6px;color:#fff}}.vs{{text-align:center;color:#9b9387;font-size:10px;font-weight:900}}.game-meta{{border-top:1px solid rgba(255,255,255,.08);margin-top:14px;padding-top:12px;display:flex;justify-content:space-between;gap:12px;font-size:9px;color:#929aa4}}.prediction{{margin-top:11px;padding:10px 12px;border-radius:10px;background:#0b0e11;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px}}.prediction span{{font-size:9px;color:#bbb}}.prediction strong{{font-size:14px;color:#f1c40f;display:flex;align-items:center;gap:7px}}.empty-games{{padding:28px;background:#11161b;border:1px dashed rgba(255,255,255,.14);border-radius:14px;color:#8f98a2;text-align:center;font-size:12px}}.sync-note{{margin:10px 0 16px;padding:10px 12px;border-radius:10px;background:#2b240d;border:1px solid #6f5a18;font-size:10px;color:#dfc46b}}
+@media(max-width:850px){{.game-summary{{grid-template-columns:repeat(2,1fr)}}.game-grid{{grid-template-columns:1fr}}}}@media(max-width:520px){{.game-summary{{grid-template-columns:1fr 1fr}}.team-name{{font-size:15px}}.team-score{{font-size:27px}}.matchup{{grid-template-columns:1fr 42px 1fr}}.game-meta{{flex-direction:column;gap:4px}}}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -140,25 +144,28 @@ if not games:
 else:
     cards = []
     for game in games:
-        home = html.escape(str(game.get("home") or "---"))
-        away = html.escape(str(game.get("away") or "---"))
+        home_raw = str(game.get("home") or "---")
+        away_raw = str(game.get("away") or "---")
+        home = html.escape(home_raw)
+        away = html.escape(away_raw)
         venue = html.escape(str(game.get("venue") or "会場未定"))
         game_date = html.escape(str(game.get("date") or payload.get("date") or ""))
         label, cls = status_label(game)
-        pred = pred_by_game.get((str(game.get("home") or ""), str(game.get("away") or "")), {})
-        pick = html.escape(str(pred.get("pick") or ""))
+        pred = pred_by_game.get((home_raw, away_raw), {})
+        pick_raw = str(pred.get("pick") or "")
+        pick = html.escape(pick_raw)
         prob = pred.get("win_probability")
         pred_html = ""
         if pick:
             prob_label = f"{float(prob):.1f}%" if isinstance(prob, (int, float)) else "--"
-            pred_html = f'<div class="prediction"><span>AI PICK</span><strong>{pick} · {prob_label}</strong></div>'
+            pred_html = f'<div class="prediction"><span>AI PICK</span><strong>{team_badge(pick_raw, size="sm")}{pick} · {prob_label}</strong></div>'
         cards.append(
             f'''<article class="game-card {"live" if cls == "live" else ""}">
   <div class="game-head"><div class="game-time">{game_date} · {html.escape(str(game.get("time") or "--:--"))} · {venue}</div><div class="game-status {cls}">{html.escape(label)}</div></div>
   <div class="matchup">
-    <div class="team-side"><div class="team-name">{away}</div><div class="team-score">{score_text(game.get("away_score"))}</div></div>
+    <div class="team-side"><div class="team-heading">{team_badge(away_raw, size="md")}<div class="team-name">{away}</div></div><div class="team-score">{score_text(game.get("away_score"))}</div></div>
     <div class="vs">VS</div>
-    <div class="team-side right"><div class="team-name">{home}</div><div class="team-score">{score_text(game.get("home_score"))}</div></div>
+    <div class="team-side right"><div class="team-heading"><div class="team-name">{home}</div>{team_badge(home_raw, size="md")}</div><div class="team-score">{score_text(game.get("home_score"))}</div></div>
   </div>
   <div class="game-meta"><span>STATUS: {html.escape(str(game.get("status") or "scheduled"))}</span><span>RESULT: {html.escape(str(game.get("result_source") or "NPB公式"))}</span></div>
   {pred_html}
