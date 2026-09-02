@@ -110,7 +110,6 @@ ranked = sorted(prediction_games, key=lambda g: g.get("rank", 999))
 
 prediction_lookup = {(str(g.get("home", "")), str(g.get("away", ""))): g for g in prediction_games}
 
-# Match rows
 match_rows = []
 for game in sorted(today_games, key=lambda g: str(g.get("time", "99:99"))):
     home = str(game.get("home", "-"))
@@ -139,7 +138,6 @@ for game in sorted(today_games, key=lambda g: str(g.get("time", "99:99"))):
     )
 match_html = "".join(match_rows) if match_rows else "<tr><td colspan='6'>本日の試合データはありません。</td></tr>"
 
-# Top 3 rows
 top_rows = []
 for idx, game in enumerate(ranked[:3], start=1):
     probability = game.get("win_probability")
@@ -152,7 +150,6 @@ for idx, game in enumerate(ranked[:3], start=1):
     )
 top_html = "".join(top_rows) if top_rows else "<div style='font-size:9px;color:#929aa4;padding:10px'>AI予測データ準備中</div>"
 
-# Recent analysis rows
 recent = sorted(analysis_records, key=lambda r: (str(r.get("date", "")), str(r.get("time", ""))), reverse=True)[:5]
 recent_rows = []
 for record in recent:
@@ -246,4 +243,7 @@ page_html = f'''
 </div>
 '''
 
+# Streamlit's Markdown parser treats indented HTML after blank lines as code blocks.
+# Collapse the generated markup before rendering so every panel stays real HTML.
+page_html = "".join(line.strip() for line in page_html.splitlines())
 st.markdown(page_html, unsafe_allow_html=True)
