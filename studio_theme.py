@@ -25,7 +25,8 @@ h1,h2,h3,h4{color:#fff!important}
 p,label,.stCaption{color:#aab1bb!important}
 
 .studio-topbar{margin:0 -28px 18px;min-height:76px;padding:0 28px;background:#07090b;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:22px}
-.studio-brand{display:flex;align-items:center;gap:12px;min-width:285px}
+.studio-brand{display:flex;align-items:center;gap:12px;min-width:285px;text-decoration:none}
+.studio-brand:hover .studio-brand-title{color:#ffd45a}
 .studio-mark{width:42px;height:42px;border:2px solid var(--studio-gold);border-radius:50%;display:grid;place-items:center;color:var(--studio-gold);font-size:13px;font-weight:1000;background:transparent}
 .studio-brand-title{font-size:17px;font-weight:950;letter-spacing:.05em;color:var(--studio-gold)}
 .studio-brand-sub{font-size:8px;color:#a4abb4;margin-top:4px}
@@ -86,10 +87,10 @@ def render_topbar(section="RESEARCH MODE"):
     safe_section = html.escape(str(section))
     st.markdown(f'''
 <div class="studio-topbar">
-  <div class="studio-brand">
+  <a class="studio-brand" href="/" target="_self" aria-label="トップページへ戻る">
     <div class="studio-mark">⚾</div>
     <div><div class="studio-brand-title">AI BASEBALL STUDIO</div><div class="studio-brand-sub">AI野球分析・シミュレーション研究所</div></div>
-  </div>
+  </a>
   <nav class="studio-nav">
     <a href="/" target="_self">DASHBOARD</a>
     <a href="/試合" target="_self">GAMES</a>
@@ -97,6 +98,7 @@ def render_topbar(section="RESEARCH MODE"):
     <a href="/BET入力" target="_self">SIMULATION</a>
     <a href="/収支マップ" target="_self">ANALYSIS</a>
     <a href="/予想結果" target="_self">HISTORY</a>
+    <a href="/設定" target="_self">SETTINGS</a>
   </nav>
   <div class="studio-badge">{safe_section}<br><span style="font-size:7px;color:#bfa75f;">研究・仮説検証用</span></div>
 </div>''', unsafe_allow_html=True)
