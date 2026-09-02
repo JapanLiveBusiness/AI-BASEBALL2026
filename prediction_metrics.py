@@ -16,25 +16,60 @@ def _load_json(path: Path) -> Any:
         return []
 
 
-def build_prediction_metrics(data_dir: Path) -> dict[str, Any]:
-    """Build verification metrics from the locally mounted production data.
+def _merge_rows(fallback_rows: Any, primary_rows: Any) -> list[dict[str, Any]]:
+    """Merge fallback + primary rows, with primary data taking precedence."""
+    merged: dict[str, dict[str, Any]] = {}
 
-    game_history is authoritative for completed games. Pregame probability is
-    read from each history row first, then matched against pregame_predictions
-    by date/opponent as a fallback. Draws and unfinished games are excluded.
+    def put(rows: Any) -> None:
+        if not isinstance(rows, list):
+            return
+        for index, row in enumerate(rows):
+            if not isinstance(row, dict):
+                continue
+            game_id = str(row.get("game_id") or "").strip()
+            date = str(row.get("date") or "").strip()
+            opponent = str(row.get("opponent") or "").strip()
+            key = game_id or f"{date}|{opponent}|{index}"
+            if key in merged:
+                current = dict(merged[key])
+                current.update(row)
+                merged[key] = current
+            else:
+                merged[key] = dict(row)
+
+    put(fallback_rows)
+    put(primary_rows)
+    return list(merged.values())
+
+
+def build_prediction_metrics(
+    data_dir: Path,
+    fallback_data_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Build verification metrics from mounted production data plus fallback data.
+
+    Production data is authoritative when the same game exists in both sources.
+    Repository fallback data fills gaps when the mounted research data is empty,
+    stale, partially populated, or temporarily malformed.
     """
-    history = _load_json(data_dir / "game_history.json")
-    predictions = _load_json(data_dir / "pregame_predictions.json")
-
-    if not isinstance(history, list):
-        history = []
-    if not isinstance(predictions, list):
-        predictions = []
+    fallback_history = (
+        _load_json(fallback_data_dir / "game_history.json")
+        if fallback_data_dir is not None
+        else []
+    )
+    fallback_predictions = (
+        _load_json(fallback_data_dir / "pregame_predictions.json")
+        if fallback_data_dir is not None
+        else []
+    )
+    history = _merge_rows(fallback_history, _load_json(data_dir / "game_history.json"))
+    predictions = _merge_rows(
+        fallback_predictions,
+        _load_json(data_dir / "pregame_predictions.json"),
+    )
 
     prediction_index: dict[tuple[str, str], float] = {}
     for row in predictions:
-        if not isinstance(row, dict):
-            continue
         date = str(row.get("date") or "")
         opponent = str(row.get("opponent") or "")
         if not date or not opponent or opponent == "取得中":
@@ -47,8 +82,6 @@ def build_prediction_metrics(data_dir: Path) -> dict[str, Any]:
 
     verified: list[dict[str, Any]] = []
     for game in history:
-        if not isinstance(game, dict):
-            continue
         result = str(game.get("result") or "")
         if result not in VALID_RESULTS:
             continue
@@ -81,6 +114,7 @@ def build_prediction_metrics(data_dir: Path) -> dict[str, Any]:
             }
         )
 
+    verified.sort(key=lambda row: str(row.get("date") or ""), reverse=True)
     count = len(verified)
     hits = sum(1 for row in verified if row["hit"])
     hit_rate = (hits / count * 100.0) if count else None
@@ -90,7 +124,7 @@ def build_prediction_metrics(data_dir: Path) -> dict[str, Any]:
 
     return {
         "status": "ready" if count else "waiting",
-        "source": "local-production-data",
+        "source": "merged-production-and-fallback-data" if fallback_data_dir else "local-production-data",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "verified_count": count,
         "hits": hits,
@@ -103,8 +137,9 @@ def build_prediction_metrics(data_dir: Path) -> dict[str, Any]:
 def write_prediction_metrics(
     data_dir: Path = Path("/app/data"),
     output_path: Path = Path("/app/static/prediction_metrics.json"),
+    fallback_data_dir: Path | None = None,
 ) -> dict[str, Any]:
-    payload = build_prediction_metrics(data_dir)
+    payload = build_prediction_metrics(data_dir, fallback_data_dir=fallback_data_dir)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
     temp_path.write_text(
