@@ -177,12 +177,16 @@ jobs:
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
             -p "$DEPLOY_PORT" \
-            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
-            'python3 - <<'"'"'PY'"'"'
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" <<'REMOTE'
+          set -euo pipefail
+          python3 - <<'PY'
           import json
           from pathlib import Path
-          path = Path("/opt/hawks-ai/research-data/npb_today.json")
-          payload = json.loads(path.read_text(encoding="utf-8"))
-          print(f"active slate: {payload.get('date')} / {len(payload.get('games') or [])} games")
-          assert payload.get("games")
-          PY'
+          path = Path('/opt/hawks-ai/research-data/npb_today.json')
+          payload = json.loads(path.read_text(encoding='utf-8'))
+          games = payload.get('games') or []
+          if not payload.get('date') or not games:
+              raise SystemExit('active slate is invalid')
+          print('active slate:', payload.get('date'), '/', len(games), 'games')
+          PY
+          REMOTE
