@@ -40,6 +40,7 @@ for artifact in \
   npb_today.json \
   today_ai_predictions.json \
   pregame_predictions.json \
+  game_history.json \
   bet_records.json; do
   if [ ! -s "$DATA_DIR/$artifact" ] && [ -s "$APP_DIR/data/$artifact" ]; then
     install -m 0644 "$APP_DIR/data/$artifact" "$DATA_DIR/$artifact"
