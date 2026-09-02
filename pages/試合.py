@@ -9,13 +9,14 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 import streamlit.components.v1 as components
 
-from display_games import select_display_games
+from display_games import select_display_context
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
 from team_branding import TEAM_BADGE_CSS, team_badge
 
 JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 PROD_DATA_DIR = Path("/app/data")
+SLATE_ARCHIVE = PROD_DATA_DIR / "npb_slates_archive.json"
 LIVE_STATUSES = {"live", "in_progress", "playing", "試合中", "開催中"}
 FINAL_STATUSES = {"final", "finished", "completed", "終了", "試合終了"}
 
@@ -39,6 +40,40 @@ def load_json(name: str, fallback):
         return json.loads(data_path(name).read_text(encoding="utf-8"))
     except Exception:
         return fallback
+
+
+def load_archive() -> list[dict]:
+    try:
+        data = json.loads(SLATE_ARCHIVE.read_text(encoding="utf-8"))
+        return list(data if isinstance(data, list) else [])
+    except Exception:
+        return []
+
+
+def archive_current_slate(payload: dict) -> list[dict]:
+    """Keep dated slates so the previous card survives the next sync overwrite."""
+    archive = load_archive()
+    slate_date = str(payload.get("date") or "")
+    games = list(payload.get("games") or [])
+    if not slate_date or not games:
+        return archive
+
+    compact = {
+        "date": slate_date,
+        "updated_at": payload.get("updated_at"),
+        "games": games,
+    }
+    archive = [row for row in archive if str(row.get("date") or "") != slate_date]
+    archive.append(compact)
+    archive.sort(key=lambda row: str(row.get("date") or ""))
+    archive = archive[-14:]
+
+    try:
+        PROD_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        SLATE_ARCHIVE.write_text(json.dumps(archive, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+    return archive
 
 
 def status_key(game: dict) -> str:
@@ -81,7 +116,7 @@ apply_studio_theme()
 render_topbar("GAMES / LIVE")
 render_hero(
     "本日の試合",
-    "NPBの対戦カード、開始時刻、球場、スコア、AI予測を一画面で確認。リアルタイム更新は試合中だけ有効になります。",
+    "次の試合日の最初の試合開始2時間前までは、直前の試合カードをプレビュー表示します。切替後は当日の対戦カードへ自動で移行します。",
     kicker="AI BASEBALL STUDIO / MATCH CENTER",
     accent="試合",
 )
@@ -89,9 +124,16 @@ render_nav_links()
 
 payload = load_json("npb_today.json", {"games": []})
 predictions = load_json("today_ai_predictions.json", {"games": []})
-games = select_display_games(payload)
-pred_by_game = prediction_index(predictions)
+archive = archive_current_slate(payload)
+previous_payloads = [row for row in archive if str(row.get("date") or "") != str(payload.get("date") or "")]
 now = datetime.now(JST)
+display = select_display_context(payload, previous_payloads=previous_payloads, now=now, lead_hours=2)
+games = display["games"]
+display_date = display["display_date"]
+next_date = display["next_date"]
+switch_at = display["switch_at"]
+is_previous_preview = display["is_previous_preview"]
+pred_by_game = prediction_index(predictions)
 updated_at = payload.get("updated_at") or "--"
 live_games = [game for game in games if is_live(game)]
 
@@ -99,7 +141,7 @@ st.markdown(
     f"""
 <style>
 {TEAM_BADGE_CSS}
-.game-summary{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 18px}}.game-kpi{{background:#11161b;border:1px solid rgba(255,255,255,.09);border-radius:13px;padding:14px}}.game-kpi span{{display:block;font-size:8px;letter-spacing:.18em;color:#d6ad39;font-weight:900}}.game-kpi strong{{display:block;margin-top:7px;font-size:22px;color:#fff}}.game-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}.game-card{{background:#11161b;border:1px solid rgba(255,255,255,.09);border-radius:15px;padding:17px;box-shadow:0 8px 24px rgba(0,0,0,.12)}}.game-card.live{{border-color:#d5aa14;box-shadow:0 0 0 2px rgba(241,196,15,.10)}}.game-head{{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}}.game-time{{font-size:10px;color:#9199a3}}.game-status{{font-size:9px;font-weight:950;border-radius:999px;padding:5px 9px;background:#242a31;color:#cbd1d7}}.game-status.live{{background:#171717;color:#f1c40f}}.game-status.final{{background:#242a31;color:#d8dde2}}.matchup{{display:grid;grid-template-columns:1fr 56px 1fr;gap:8px;align-items:center}}.team-side{{min-width:0}}.team-side.right{{text-align:right}}.team-heading{{display:flex;align-items:center;gap:9px;min-width:0}}.team-side.right .team-heading{{justify-content:flex-end}}.team-name{{font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}}.team-score{{font-size:31px;font-weight:950;line-height:1;margin-top:6px;color:#fff}}.vs{{text-align:center;color:#9b9387;font-size:10px;font-weight:900}}.game-meta{{border-top:1px solid rgba(255,255,255,.08);margin-top:14px;padding-top:12px;display:flex;justify-content:space-between;gap:12px;font-size:9px;color:#929aa4}}.prediction{{margin-top:11px;padding:10px 12px;border-radius:10px;background:#0b0e11;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px}}.prediction span{{font-size:9px;color:#bbb}}.prediction strong{{font-size:14px;color:#f1c40f;display:flex;align-items:center;gap:7px}}.empty-games{{padding:28px;background:#11161b;border:1px dashed rgba(255,255,255,.14);border-radius:14px;color:#8f98a2;text-align:center;font-size:12px}}.sync-note{{margin:10px 0 16px;padding:10px 12px;border-radius:10px;background:#2b240d;border:1px solid #6f5a18;font-size:10px;color:#dfc46b}}
+.game-summary{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 18px}}.game-kpi{{background:#11161b;border:1px solid rgba(255,255,255,.09);border-radius:13px;padding:14px}}.game-kpi span{{display:block;font-size:8px;letter-spacing:.18em;color:#d6ad39;font-weight:900}}.game-kpi strong{{display:block;margin-top:7px;font-size:22px;color:#fff}}.game-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}.game-card{{background:#11161b;border:1px solid rgba(255,255,255,.09);border-radius:15px;padding:17px;box-shadow:0 8px 24px rgba(0,0,0,.12)}}.game-card.live{{border-color:#d5aa14;box-shadow:0 0 0 2px rgba(241,196,15,.10)}}.game-head{{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}}.game-time{{font-size:10px;color:#9199a3}}.game-status{{font-size:9px;font-weight:950;border-radius:999px;padding:5px 9px;background:#242a31;color:#cbd1d7}}.game-status.live{{background:#171717;color:#f1c40f}}.game-status.final{{background:#242a31;color:#d8dde2}}.matchup{{display:grid;grid-template-columns:1fr 56px 1fr;gap:8px;align-items:center}}.team-side{{min-width:0}}.team-side.right{{text-align:right}}.team-heading{{display:flex;align-items:center;gap:9px;min-width:0}}.team-side.right .team-heading{{justify-content:flex-end}}.team-name{{font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}}.team-score{{font-size:31px;font-weight:950;line-height:1;margin-top:6px;color:#fff}}.vs{{text-align:center;color:#9b9387;font-size:10px;font-weight:900}}.game-meta{{border-top:1px solid rgba(255,255,255,.08);margin-top:14px;padding-top:12px;display:flex;justify-content:space-between;gap:12px;font-size:9px;color:#929aa4}}.prediction{{margin-top:11px;padding:10px 12px;border-radius:10px;background:#0b0e11;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px}}.prediction span{{font-size:9px;color:#bbb}}.prediction strong{{font-size:14px;color:#f1c40f;display:flex;align-items:center;gap:7px}}.empty-games{{padding:28px;background:#11161b;border:1px dashed rgba(255,255,255,.14);border-radius:14px;color:#8f98a2;text-align:center;font-size:12px}}.sync-note{{margin:10px 0 16px;padding:10px 12px;border-radius:10px;background:#2b240d;border:1px solid #6f5a18;font-size:10px;color:#dfc46b}}.preview-note{{margin:10px 0 16px;padding:11px 13px;border-radius:10px;background:#111b25;border:1px solid #28435d;font-size:10px;color:#b9d8f5}}.preview-note strong{{color:#fff}}
 @media(max-width:850px){{.game-summary{{grid-template-columns:repeat(2,1fr)}}.game-grid{{grid-template-columns:1fr}}}}@media(max-width:520px){{.game-summary{{grid-template-columns:1fr 1fr}}.team-name{{font-size:15px}}.team-score{{font-size:27px}}.matchup{{grid-template-columns:1fr 42px 1fr}}.game-meta{{flex-direction:column;gap:4px}}}}
 </style>
 """,
@@ -111,12 +153,18 @@ st.markdown(
 <div class="game-summary">
   <div class="game-kpi"><span>DISPLAY GAMES</span><strong>{len(games)}</strong></div>
   <div class="game-kpi"><span>LIVE NOW</span><strong>{len(live_games)}</strong></div>
-  <div class="game-kpi"><span>DATA UPDATED</span><strong style="font-size:13px">{html.escape(str(updated_at))}</strong></div>
+  <div class="game-kpi"><span>DISPLAY DATE</span><strong style="font-size:13px">{html.escape(str(display_date or "--"))}</strong></div>
   <div class="game-kpi"><span>JST</span><strong>{now.strftime('%H:%M')}</strong></div>
 </div>
 """,
     unsafe_allow_html=True,
 )
+
+if is_previous_preview and switch_at is not None:
+    st.markdown(
+        f'<div class="preview-note">現在は <strong>{html.escape(str(display_date))}</strong> の試合をプレビュー表示中です。次の試合カード <strong>{html.escape(str(next_date))}</strong> は、最初の試合開始2時間前の <strong>{switch_at.strftime("%m/%d %H:%M")}</strong> に自動切替します。</div>',
+        unsafe_allow_html=True,
+    )
 
 if live_games:
     st.markdown(
@@ -138,7 +186,7 @@ render_section("MATCH CENTER", "試合一覧")
 
 if not games:
     st.markdown(
-        '<div class="empty-games">本日または直近の試合データがありません。次回データ同期後に自動表示されます。</div>',
+        '<div class="empty-games">表示できる直近の試合データがありません。次回データ同期後に自動表示されます。</div>',
         unsafe_allow_html=True,
     )
 else:
@@ -149,9 +197,9 @@ else:
         home = html.escape(home_raw)
         away = html.escape(away_raw)
         venue = html.escape(str(game.get("venue") or "会場未定"))
-        game_date = html.escape(str(game.get("date") or payload.get("date") or ""))
+        game_date = html.escape(str(game.get("date") or display_date or ""))
         label, cls = status_label(game)
-        pred = pred_by_game.get((home_raw, away_raw), {})
+        pred = pred_by_game.get((home_raw, away_raw), {}) if str(game.get("date") or display_date or "") == str(payload.get("date") or "") else {}
         pick_raw = str(pred.get("pick") or "")
         pick = html.escape(pick_raw)
         prob = pred.get("win_probability")
@@ -173,4 +221,4 @@ else:
         )
     st.markdown(f'<div class="game-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
 
-st.caption("リアルタイム更新は試合中のみ。表示データは本番共有データを優先して読み込みます。")
+st.caption(f"切替基準: 次の試合日の最初の試合開始2時間前。データ最終更新: {updated_at}")
