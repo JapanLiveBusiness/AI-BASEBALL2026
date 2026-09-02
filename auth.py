@@ -6,7 +6,10 @@ import streamlit as st
 
 ALLOWED_EMAILS = {
     email.strip().lower()
-    for email in os.getenv("AUTH_ALLOWED_EMAILS", "tsutsumi@japanlivebusiness.com").split(",")
+    for email in os.getenv(
+        "AUTH_ALLOWED_EMAILS",
+        "tsutsumi@japanlivebusiness.com,tsutsumi41@gmail.com",
+    ).split(",")
     if email.strip()
 }
 
