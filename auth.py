@@ -4,6 +4,8 @@ import os
 
 import streamlit as st
 
+AUTH_MODE = os.getenv("AUTH_MODE", "cloudflare").strip().lower()
+
 ALLOWED_EMAILS = {
     email.strip().lower()
     for email in os.getenv(
@@ -22,7 +24,10 @@ def _user_email() -> str:
 
 
 def require_login() -> None:
-    """Require Clerk OIDC login and restrict access to the configured email allowlist."""
+    """Use Clerk when enabled; otherwise rely on the existing Cloudflare Access gate."""
+    if AUTH_MODE != "clerk":
+        return
+
     try:
         logged_in = bool(st.user.is_logged_in)
     except Exception:
@@ -46,7 +51,7 @@ def require_login() -> None:
             try:
                 st.login("clerk")
             except Exception:
-                st.error("Clerk OIDC設定がまだ完了していません。管理者が接続情報を設定してください。")
+                st.error("Clerk OIDC設定を確認しています。時間をおいて再度お試しください。")
         st.stop()
 
     email = _user_email()
@@ -58,6 +63,8 @@ def require_login() -> None:
 
 
 def current_username() -> str:
+    if AUTH_MODE != "clerk":
+        return "Private research user"
     try:
         return _user_email() or str(st.user.get("name") or "Clerk user")
     except Exception:
@@ -65,4 +72,5 @@ def current_username() -> str:
 
 
 def logout() -> None:
-    st.logout()
+    if AUTH_MODE == "clerk":
+        st.logout()
