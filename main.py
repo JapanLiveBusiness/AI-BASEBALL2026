@@ -138,9 +138,9 @@ for game in sorted(today_games, key=lambda g: str(g.get("time", "99:99"))):
         hc = ac = ""
     match_rows.append(
         f"<tr><td>{esc(game.get('time'))}</td>"
-        f"<td><div class='matchup'>{team_badge(home)}<span class='vs'>vs</span>{team_badge(away)}</div></td>"
+        f"<td><div class='matchup'><b>{esc(home)}</b><span class='vs'>vs</span><b>{esc(away)}</b></div></td>"
         f"<td>{esc(game.get('venue'))}</td><td class='{hc}'>{hp}</td><td class='{ac}'>{ap}</td>"
-        f"<td><span class='pick'>{team_badge(pick, show_name=False, size='xs')}{esc(pick, '分析中')} 有利</span></td></tr>"
+        f"<td><span class='pick'>{esc(pick, '分析中')} 有利</span></td></tr>"
     )
 match_html = "".join(match_rows) or "<tr><td colspan='6' class='empty'>本日の試合データはありません。</td></tr>"
 
