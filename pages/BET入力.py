@@ -8,41 +8,42 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 
+from bet_analytics import classify_result
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
 
 JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 PROD_DATA_DIR = Path("/app/data")
 DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
-BETS_FILE = DATA_DIR / "bet_records.json"
+SIM_FILE = DATA_DIR / "bet_records.json"
 TEAM_NAMES = [
     "ソフトバンク", "日本ハム", "楽天", "西武", "ロッテ", "オリックス",
     "巨人", "阪神", "DeNA", "広島", "ヤクルト", "中日",
 ]
 
-st.set_page_config(page_title="BET入力 | MY AI BASEBALL", page_icon="✍️", layout="wide")
+st.set_page_config(page_title="シミュレーション入力 | MY AI BASEBALL", page_icon="🧪", layout="wide")
 apply_studio_theme()
-render_topbar("BET MANAGEMENT")
+render_topbar("SIMULATION LAB")
 render_hero(
-    "BET・収支入力",
-    "当日のNPBカードからBET先・ハンデ・金額・結果を登録し、収支マップへ即時反映します。",
-    kicker="AI BASEBALL STUDIO / BET INPUT",
-    accent="BET",
+    "ハンデ仮説シミュレーション",
+    "実際の試合カードに仮想ハンデと仮想ポイントを設定し、予測仮説の精度を検証します。実際の賭けや金銭取引には接続しません。",
+    kicker="AI BASEBALL STUDIO / HYPOTHESIS TEST",
+    accent="SIM",
 )
 render_nav_links()
 
 
-def load_bets():
+def load_records():
     try:
-        value = json.loads(BETS_FILE.read_text(encoding="utf-8"))
+        value = json.loads(SIM_FILE.read_text(encoding="utf-8"))
         return value if isinstance(value, list) else []
     except Exception:
         return []
 
 
-def save_bets(records):
+def save_records(records):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    BETS_FILE.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
+    SIM_FILE.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -88,18 +89,18 @@ if games:
     team_options = [game["team1"], game["team2"]]
     default_time = game["time"]
 else:
-    st.info("指定日の試合を自動取得できませんでした。チーム名を手動入力できます。")
+    st.info("指定日の試合を自動取得できませんでした。対戦カードを手動入力できます。")
     team_options = []
     default_time = "18:00"
 
-with st.form("manual_bet_form"):
+with st.form("simulation_form"):
     c1, c2 = st.columns(2)
     if team_options:
-        bet_team = c1.selectbox("BET先", team_options)
-        opponent = team_options[1] if bet_team == team_options[0] else team_options[0]
+        subject_team = c1.selectbox("検証対象チーム", team_options)
+        opponent = team_options[1] if subject_team == team_options[0] else team_options[0]
         c2.text_input("対戦相手", value=opponent, disabled=True)
     else:
-        bet_team = c1.text_input("BET先 / チーム")
+        subject_team = c1.text_input("検証対象チーム")
         opponent = c2.text_input("対戦相手")
 
     try:
@@ -109,46 +110,51 @@ with st.form("manual_bet_form"):
 
     c3, c4, c5 = st.columns(3)
     game_time = c3.time_input("開始時刻", value=time_value)
-    bet_amount = c4.number_input("BET金額（円）", min_value=0, value=10000, step=1000)
-    handicap = c5.number_input("ハンディ", value=0.0, step=0.1)
+    simulation_points = c4.number_input("仮想投入ポイント", min_value=0, value=100, step=10)
+    handicap = c5.number_input("仮想ハンデ", value=0.0, step=0.1)
 
-    c6, c7, c8 = st.columns(3)
+    c6, c7 = st.columns(2)
     status_label = c6.selectbox("状態", ["未確定", "確定"])
-    result_label = c7.selectbox("結果", ["未確定", "WIN", "LOSE", "PUSH"])
-    profit = c8.number_input("損益（円）", value=0, step=1000)
+    predicted_result = c7.selectbox("事前仮説", ["対象チーム側", "相手側", "引き分け相当"])
 
-    c9, c10 = st.columns(2)
-    team_score = c9.number_input("BET先チーム得点", min_value=0, value=0, step=1)
-    opponent_score = c10.number_input("対戦相手得点", min_value=0, value=0, step=1)
-    memo = st.text_area("その他情報", placeholder="オッズ、BET理由、ブックメーカー、補足など")
-    submitted = st.form_submit_button("BET・収支を保存", type="primary", use_container_width=True)
+    c8, c9 = st.columns(2)
+    team_score = c8.number_input("対象チーム得点", min_value=0, value=0, step=1)
+    opponent_score = c9.number_input("対戦相手得点", min_value=0, value=0, step=1)
+    memo = st.text_area("仮説メモ", placeholder="予測根拠、モデル条件、注目指標など")
+    submitted = st.form_submit_button("シミュレーションを保存", type="primary", use_container_width=True)
 
 if submitted:
-    if not str(bet_team).strip() or not str(opponent).strip():
-        st.error("BET先と対戦相手を入力してください。")
-    elif status_label == "確定" and result_label == "未確定":
-        st.error("確定の場合は WIN / LOSE / PUSH を選択してください。")
+    if not str(subject_team).strip() or not str(opponent).strip():
+        st.error("検証対象チームと対戦相手を入力してください。")
     else:
-        result_map = {"WIN": "win", "LOSE": "loss", "PUSH": "push", "未確定": None}
-        records = load_bets()
+        actual_result = None
+        point_delta = 0.0
+        if status_label == "確定":
+            actual_result = classify_result(team_score, opponent_score, handicap)
+            if actual_result == "win":
+                point_delta = float(simulation_points)
+            elif actual_result == "loss":
+                point_delta = -float(simulation_points)
+
+        records = load_records()
         created_at = datetime.now(JST)
         records.append({
-            "id": f"manual-{created_at.strftime('%Y%m%d%H%M%S%f')}",
+            "id": f"sim-{created_at.strftime('%Y%m%d%H%M%S%f')}",
             "date": selected_date.isoformat(),
             "time": game_time.strftime("%H:%M"),
-            "team": str(bet_team).strip(),
+            "team": str(subject_team).strip(),
             "opponent": str(opponent).strip(),
             "handicap": float(handicap),
-            "bet_units": float(bet_amount) / 10000.0,
-            "bet_amount": int(bet_amount),
+            "simulation_points": int(simulation_points),
             "status": "final" if status_label == "確定" else "pending",
-            "result": result_map[result_label],
-            "profit": int(profit) if status_label == "確定" else 0,
+            "predicted_result": predicted_result,
+            "result": actual_result,
+            "point_delta": point_delta,
             "team_score": int(team_score) if status_label == "確定" else None,
             "opponent_score": int(opponent_score) if status_label == "確定" else None,
             "memo": memo.strip(),
-            "source": "manual-page",
+            "source": "simulation-page",
             "created_at": created_at.isoformat(timespec="seconds"),
         })
-        save_bets(records)
-        st.success("BET・収支を保存しました。収支マップにも反映されます。")
+        save_records(records)
+        st.success("仮説シミュレーションを保存しました。結果画面で命中率と累積ポイントを確認できます。")
