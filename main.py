@@ -1,13 +1,14 @@
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-import json
 import html
+import json
 
 import streamlit as st
 
 JST = ZoneInfo("Asia/Tokyo")
-DATA_DIR = Path(__file__).resolve().parent / "data"
+REPO_DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIRS = [Path("/app/data"), REPO_DATA_DIR]
 
 st.set_page_config(
     page_title="AI BASEBALL STUDIO | GAME INTELLIGENCE",
@@ -18,141 +19,193 @@ st.set_page_config(
 
 
 def load_json(name, fallback):
-    try:
-        return json.loads((DATA_DIR / name).read_text(encoding="utf-8"))
-    except Exception:
-        return fallback
+    for directory in DATA_DIRS:
+        try:
+            path = directory / name
+            if path.exists():
+                return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+    return fallback
+
+
+def safe(value, fallback="--"):
+    if value in (None, ""):
+        value = fallback
+    return html.escape(str(value))
 
 
 predictions = load_json("today_ai_predictions.json", {"games": []})
 npb_today = load_json("npb_today.json", {"games": []})
 bet_summary = load_json("bet_summary.json", {})
 
-prediction_games = sorted(predictions.get("games") or [], key=lambda x: x.get("rank", 999))
+prediction_games = sorted(
+    predictions.get("games") or [],
+    key=lambda game: game.get("rank", 999),
+)
 today_games = npb_today.get("games") or []
 best = prediction_games[0] if prediction_games else {}
 now = datetime.now(JST)
 
-best_pick = html.escape(str(best.get("pick") or "データ同期中"))
-best_match = html.escape(
-    f"{best.get('home', '---')} vs {best.get('away', '---')}" if best else "本日の予測データを取得中"
+best_pick = safe(best.get("pick"), "データ同期中")
+best_match = safe(
+    f"{best.get('home', '---')} vs {best.get('away', '---')}"
+    if best
+    else "本日の予測データを取得中"
 )
 best_prob = best.get("win_probability")
-best_prob_label = f"{float(best_prob):.1f}%" if isinstance(best_prob, (int, float)) else "--"
-updated_at = html.escape(str(predictions.get("updated_at") or npb_today.get("updated_at") or "--"))
+best_prob_label = (
+    f"{float(best_prob):.1f}%"
+    if isinstance(best_prob, (int, float))
+    else "--"
+)
+updated_at = safe(
+    predictions.get("updated_at") or npb_today.get("updated_at"),
+    "同期待ち",
+)
 weekly_profit = bet_summary.get("weekly_unsettled_profit")
-profit_label = f"¥{int(weekly_profit):,}" if isinstance(weekly_profit, (int, float)) else "--"
+profit_label = (
+    f"¥{int(weekly_profit):,}"
+    if isinstance(weekly_profit, (int, float))
+    else "--"
+)
 
 teams = [
-    ("H", "ソフトバンク"), ("F", "日本ハム"), ("E", "楽天"), ("L", "西武"),
-    ("M", "ロッテ"), ("B", "オリックス"), ("G", "巨人"), ("T", "阪神"),
-    ("DB", "DeNA"), ("C", "広島"), ("S", "ヤクルト"), ("D", "中日"),
+    ("H", "ソフトバンク"), ("F", "日本ハム"), ("E", "楽天"),
+    ("L", "西武"), ("M", "ロッテ"), ("B", "オリックス"),
+    ("G", "巨人"), ("T", "阪神"), ("DB", "DeNA"),
+    ("C", "広島"), ("S", "ヤクルト"), ("D", "中日"),
 ]
 
 rank_cards = []
 for idx, game in enumerate(prediction_games[:3], start=1):
-    rank_cards.append(
-        f'''<div class="pick-row"><div class="rank">{idx}</div><div class="pick-main"><strong>{html.escape(str(game.get('pick') or '--'))}</strong><span>{html.escape(str(game.get('home') or '--'))} vs {html.escape(str(game.get('away') or '--'))}</span></div><div class="pick-prob">{game.get('win_probability', '--')}%</div></div>'''
+    probability = game.get("win_probability")
+    probability_label = (
+        f"{float(probability):.1f}%"
+        if isinstance(probability, (int, float))
+        else "--"
     )
-rank_html = "".join(rank_cards) or '<div class="empty">予測データを同期中です。</div>'
+    rank_cards.append(
+        f"""
+        <article class="ranking-card">
+          <div class="ranking-no">{idx}</div>
+          <div class="ranking-copy">
+            <strong>{safe(game.get('pick'))}</strong>
+            <span>{safe(game.get('home'))} vs {safe(game.get('away'))}</span>
+          </div>
+          <div class="ranking-score"><b>{probability_label}</b><small>AI勝率</small></div>
+        </article>
+        """
+    )
+
+rank_html = "".join(rank_cards) or """
+<div class="empty-state">
+  <b>本日の予測データを準備中</b>
+  <span>データ取得後、勝率の高い順に最大3試合を表示します。</span>
+</div>
+"""
+
 team_html = "".join(
-    f'<div class="team"><b>{abbr}</b><span>{name}</span></div>' for abbr, name in teams
+    f'<div class="team"><b>{abbr}</b><span>{name}</span></div>'
+    for abbr, name in teams
 )
 
 st.markdown(
-    r'''
+    r"""
 <style>
-:root{--bg:#f2eee6;--paper:#fffdf9;--ink:#151515;--muted:#746e64;--line:#dcd4c7;--gold:#f3c400;--gold2:#b98a13;--dark:#171717;--dark2:#222;}
+:root{
+  --bg:#f4f1ea;--paper:#fffdf9;--ink:#111827;--muted:#6b7280;
+  --line:#ddd6c9;--gold:#f3c400;--gold-dark:#a97900;
+  --dark:#121212;--soft:#f8f6f1;
+}
 [data-testid="stHeader"],[data-testid="stToolbar"],footer,[data-testid="stSidebar"]{display:none!important}
 [data-testid="stAppViewContainer"]{background:var(--bg)!important;color:var(--ink)!important}
-.block-container{max-width:1480px!important;padding:0 24px 46px!important}
+.block-container{max-width:1460px!important;padding:0 28px 42px!important}
 
-.topbar{height:66px;margin:0 -24px;background:#141414;color:#fff;display:flex;align-items:center;padding:0 26px;border-bottom:2px solid rgba(243,196,0,.4);gap:22px}
-.brand{display:flex;align-items:center;gap:11px;min-width:260px}.logo{width:38px;height:38px;border-radius:10px;background:var(--gold);color:#111;display:grid;place-items:center;font-weight:1000;font-size:20px;font-style:italic}.brand-title{font-size:14px;font-weight:950;letter-spacing:.12em}.brand-sub{font-size:7px;color:#aaa;letter-spacing:.35em;margin-top:4px}.nav{display:flex;gap:22px;align-items:center;justify-content:center;flex:1}.nav span{font-size:10px;color:#bbb;white-space:nowrap}.nav .active{color:var(--gold);font-weight:900}.status{font-size:9px;border:1px solid #444;border-radius:999px;padding:7px 10px;color:#ddd}
+.topbar{height:68px;margin:0 -28px;background:var(--dark);color:#fff;display:flex;align-items:center;padding:0 28px;border-bottom:2px solid rgba(243,196,0,.55);gap:24px}
+.brand{display:flex;align-items:center;gap:12px;min-width:270px}.logo{width:40px;height:40px;border-radius:11px;background:var(--gold);color:#111;display:grid;place-items:center;font-size:20px;font-weight:1000;font-style:italic}.brand-title{font-size:14px;font-weight:950;letter-spacing:.13em}.brand-sub{font-size:7px;color:#9ca3af;letter-spacing:.36em;margin-top:4px}
+.nav{display:flex;justify-content:center;align-items:center;gap:26px;flex:1}.nav a{font-size:10px;color:#a7a7a7;white-space:nowrap;text-decoration:none}.nav a:hover{color:#fff}.nav .active{color:var(--gold);font-weight:950}.status{font-size:9px;border:1px solid #404040;border-radius:999px;padding:8px 11px;color:#e5e7eb}
 
-.shell{padding-top:18px}.hero-grid{display:grid;grid-template-columns:7fr 5fr;gap:14px}.hero{min-height:214px;border-radius:18px;background:radial-gradient(circle at 82% 20%,rgba(194,143,24,.48),transparent 36%),linear-gradient(135deg,#111 0%,#18140d 55%,#382a0c 100%);color:#fff;padding:28px 30px;position:relative;overflow:hidden}.hero:after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);background-size:34px 34px}.eyebrow{position:relative;z-index:1;font-size:9px;letter-spacing:.27em;color:#f4cf52;font-weight:900}.hero h1{position:relative;z-index:1;font-size:44px!important;line-height:1!important;margin:10px 0 8px!important;color:#fff!important;font-style:italic;letter-spacing:-.04em}.hero h1 em{color:var(--gold);font-style:normal}.hero p{position:relative;z-index:1;font-size:12px;color:#cfcac0;line-height:1.65;max-width:640px}.chips{position:relative;z-index:1;display:flex;gap:7px;flex-wrap:wrap;margin-top:18px}.chip{font-size:9px;border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:6px 9px;background:rgba(0,0,0,.2)}.chip.hot{background:var(--gold);border-color:var(--gold);color:#111;font-weight:900}
+.dashboard{padding-top:18px}.overview{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,.85fr);gap:14px;align-items:stretch}
+.hero{min-height:232px;border-radius:20px;padding:30px 34px;position:relative;overflow:hidden;color:#fff;background:radial-gradient(circle at 84% 12%,rgba(214,165,30,.48),transparent 35%),linear-gradient(135deg,#101010 0%,#17130c 58%,#3c2c0a 100%);display:flex;flex-direction:column;justify-content:center}
+.hero:after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:35px 35px;pointer-events:none}.eyebrow,.hero h1,.hero p,.chips{position:relative;z-index:1}.eyebrow{font-size:9px;letter-spacing:.26em;color:#f6d65c;font-weight:950}.hero h1{font-size:45px!important;line-height:1!important;margin:12px 0 12px!important;color:#fff!important;letter-spacing:-.04em;font-style:italic}.hero h1 em{color:var(--gold);font-style:normal}.hero p{font-size:12px;line-height:1.75;color:#d1d5db;max-width:690px;margin:0}.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:20px}.chip{font-size:9px;border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:6px 10px;background:rgba(0,0,0,.2)}.chip.hot{background:var(--gold);border-color:var(--gold);color:#111;font-weight:950}
 
-.snapshot{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:17px;min-height:102px}.metric-card.dark{background:var(--dark);border-color:#282828;color:#fff}.label{font-size:8px;letter-spacing:.2em;color:var(--gold2);font-weight:950}.metric-card.dark .label{color:#f4ce46}.value{font-size:29px;font-weight:950;margin:9px 0 2px;line-height:1}.metric-card.dark .value{color:#fff}.desc{font-size:10px;color:var(--muted);line-height:1.5}.metric-card.dark .desc{color:#aaa}
+.featured{border-radius:20px;background:var(--dark);color:#fff;padding:24px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 14px 30px rgba(17,24,39,.12)}.featured-label{font-size:9px;letter-spacing:.22em;color:#f6d65c;font-weight:950}.featured-match{font-size:12px;color:#aeb4bd;margin-top:16px}.featured-pick{font-size:31px;font-weight:950;line-height:1.15;margin-top:5px}.featured-bottom{display:flex;align-items:end;justify-content:space-between;border-top:1px solid #303030;margin-top:22px;padding-top:18px}.featured-bottom small{color:#aeb4bd;font-size:9px}.featured-bottom strong{font-size:34px;color:var(--gold)}
 
-.main-grid{display:grid;grid-template-columns:7fr 5fr;gap:14px;margin-top:14px}.panel{background:rgba(255,255,255,.54);border:1px solid var(--line);border-radius:16px;padding:14px}.panel-title{display:flex;justify-content:space-between;align-items:end;margin:2px 2px 10px}.panel-title h2{font-size:21px!important;margin:0!important}.panel-title small{font-size:9px;color:var(--muted)}
-.pick-row{display:grid;grid-template-columns:42px 1fr 72px;align-items:center;gap:11px;background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:12px 13px;margin-bottom:7px}.rank{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#181818;color:var(--gold);font-weight:950}.pick-main{display:flex;flex-direction:column}.pick-main strong{font-size:16px}.pick-main span{font-size:9px;color:var(--muted);margin-top:3px}.pick-prob{text-align:right;font-size:18px;font-weight:950}.empty{background:var(--paper);border:1px dashed var(--line);border-radius:11px;padding:20px;color:var(--muted);font-size:11px}
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}.kpi{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:17px 19px;display:flex;align-items:center;justify-content:space-between;min-height:83px}.kpi-copy span{font-size:8px;letter-spacing:.18em;color:var(--gold-dark);font-weight:950}.kpi-copy b{display:block;font-size:25px;margin-top:5px}.kpi small{font-size:9px;color:var(--muted);text-align:right;line-height:1.45}
 
-.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.action{min-height:114px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:15px}.action.primary{background:#181818;color:#fff;border-color:#282828}.action b{display:block;font-size:15px;margin:8px 0 5px}.action p{font-size:9px;line-height:1.55;color:var(--muted);margin:0}.action.primary p{color:#aaa}.action .arrow{font-size:19px;color:var(--gold);font-weight:900}
+.content-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);gap:14px;margin-top:14px}.panel{background:rgba(255,255,255,.64);border:1px solid var(--line);border-radius:18px;padding:18px}.panel-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:14px}.panel-head h2{font-size:21px!important;margin:0!important;color:var(--ink)!important}.panel-head span{font-size:8px;letter-spacing:.15em;color:var(--muted)}
+.ranking-list{display:grid;gap:8px}.ranking-card{display:grid;grid-template-columns:42px 1fr 90px;gap:12px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:13px 15px}.ranking-no{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#171717;color:var(--gold);font-weight:950}.ranking-copy{display:flex;flex-direction:column}.ranking-copy strong{font-size:16px}.ranking-copy span{font-size:10px;color:var(--muted);margin-top:3px}.ranking-score{text-align:right}.ranking-score b{display:block;font-size:20px}.ranking-score small{font-size:8px;color:var(--muted)}.empty-state{background:var(--paper);border:1px dashed #cfc6b7;border-radius:13px;padding:22px;display:flex;flex-direction:column;gap:5px}.empty-state b{font-size:14px}.empty-state span{font-size:10px;color:var(--muted)}
 
-.teams-wrap{margin-top:14px}.teams-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.teams-head b{font-size:11px}.teams-head span{font-size:9px;color:var(--muted)}.teams{display:grid;grid-template-columns:repeat(12,1fr);gap:6px}.team{background:var(--paper);border:1px solid var(--line);border-radius:9px;min-height:64px;padding:7px 4px;text-align:center;display:flex;flex-direction:column;justify-content:center}.team b{width:29px;height:29px;border-radius:50%;background:#1a1a1a;color:var(--gold);display:grid;place-items:center;margin:0 auto 4px;font-size:9px}.team span{font-size:7px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.actions{display:grid;gap:8px}.action{text-decoration:none;color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:14px 15px;display:grid;grid-template-columns:35px 1fr 18px;align-items:center;gap:10px;min-height:69px}.action.primary{background:#171717;color:#fff;border-color:#282828}.action-icon{width:34px;height:34px;border-radius:9px;background:#f5ebbd;color:#8a6700;display:grid;place-items:center;font-weight:950}.action.primary .action-icon{background:var(--gold);color:#111}.action-copy b{display:block;font-size:14px}.action-copy span{display:block;font-size:9px;color:var(--muted);margin-top:3px}.action.primary .action-copy span{color:#aeb4bd}.action-arrow{color:#b08b00;font-weight:950}
 
-.footer-grid{display:grid;grid-template-columns:8fr 4fr;gap:14px;margin-top:14px}.system{background:#181818;border-radius:14px;color:#fff;padding:18px 20px;display:flex;justify-content:space-between;align-items:center}.system strong{font-size:17px}.system p{font-size:9px;color:#aaa;margin:4px 0 0}.live{color:var(--gold);font-size:10px;border:1px solid #444;border-radius:999px;padding:9px 12px;font-weight:900}.domain-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px}.domain-card strong{font-size:12px}.domain-card div{font-size:9px;color:var(--muted);margin-top:6px;overflow-wrap:anywhere}
+.teams-panel{margin-top:14px}.teams{display:grid;grid-template-columns:repeat(12,1fr);gap:7px}.team{background:var(--paper);border:1px solid var(--line);border-radius:10px;min-height:68px;padding:8px 5px;text-align:center;display:flex;flex-direction:column;justify-content:center}.team b{width:30px;height:30px;border-radius:50%;background:#171717;color:var(--gold);display:grid;place-items:center;margin:0 auto 5px;font-size:9px}.team span{font-size:7px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-div[data-testid="stPageLink"] a{background:var(--paper)!important;color:var(--ink)!important;border:1px solid var(--line)!important;border-radius:999px!important;font-weight:850!important;padding:9px 13px!important}div[data-testid="stPageLink"] a:hover{border-color:var(--gold)!important}
-.links{margin-top:16px}
+.system-row{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:14px;margin-top:14px}.system{background:#171717;border-radius:15px;color:#fff;padding:17px 20px;display:flex;align-items:center;justify-content:space-between}.system strong{font-size:15px}.system p{font-size:9px;color:#aeb4bd;margin:4px 0 0}.live{font-size:9px;color:var(--gold);border:1px solid #444;border-radius:999px;padding:8px 11px;font-weight:950}.domain{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:17px}.domain strong{font-size:11px}.domain div{font-size:9px;color:var(--muted);margin-top:5px;overflow-wrap:anywhere}
 
-@media(max-width:1100px){.nav{display:none}.brand{flex:1}.hero-grid,.main-grid,.footer-grid{grid-template-columns:1fr}.teams{grid-template-columns:repeat(6,1fr)}}
-@media(max-width:700px){.block-container{padding:0 10px 34px!important}.topbar{margin:0 -10px;padding:0 12px;height:60px}.status{display:none}.shell{padding-top:10px}.hero{min-height:194px;padding:22px 18px}.hero h1{font-size:34px!important}.snapshot{grid-template-columns:1fr 1fr}.metric-card{min-height:92px;padding:14px}.value{font-size:24px}.main-grid{gap:10px}.action-grid{grid-template-columns:1fr}.teams{grid-template-columns:repeat(4,1fr)}.system{align-items:flex-start;gap:12px}.live{font-size:8px}}
+div[data-testid="stPageLink"] a{background:var(--paper)!important;color:var(--ink)!important;border:1px solid var(--line)!important;border-radius:12px!important;font-weight:850!important;padding:11px 14px!important}div[data-testid="stPageLink"] a:hover{border-color:var(--gold)!important;box-shadow:0 4px 14px rgba(169,121,0,.10)!important}.links{margin-top:14px}
+
+@media(max-width:1100px){.nav{display:none}.brand{flex:1}.overview,.content-grid{grid-template-columns:1fr}.featured{min-height:200px}.teams{grid-template-columns:repeat(6,1fr)}}
+@media(max-width:700px){.block-container{padding:0 10px 30px!important}.topbar{margin:0 -10px;padding:0 12px;height:60px}.status{display:none}.dashboard{padding-top:10px}.hero{min-height:210px;padding:22px 18px}.hero h1{font-size:34px!important}.featured{min-height:180px;padding:20px}.featured-pick{font-size:26px}.kpi-row{grid-template-columns:1fr}.kpi{min-height:74px}.content-grid{gap:10px}.panel{padding:13px}.ranking-card{grid-template-columns:38px 1fr 72px;padding:11px}.ranking-score b{font-size:17px}.teams{grid-template-columns:repeat(4,1fr)}.system-row{grid-template-columns:1fr}.system{align-items:flex-start;gap:10px}.system p{max-width:220px}}
 </style>
-''',
+""",
     unsafe_allow_html=True,
 )
 
 st.markdown(
-    f'''
+    f"""
 <div class="topbar">
   <div class="brand"><div class="logo">M</div><div><div class="brand-title">AI BASEBALL STUDIO</div><div class="brand-sub">GAME INTELLIGENCE</div></div></div>
-  <div class="nav"><span class="active">HOME</span><span>GAMES</span><span>AI PREDICTION</span><span>RESULTS</span><span>BET</span><span>PERFORMANCE</span></div>
+  <nav class="nav"><a class="active" href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">BET</a><a href="/収支マップ" target="_self">PERFORMANCE</a></nav>
   <div class="status">JST {now.strftime('%H:%M')} · LIVE</div>
 </div>
-<div class="shell">
-  <div class="hero-grid">
-    <section class="hero">
+
+<main class="dashboard">
+  <section class="overview">
+    <div class="hero">
       <div class="eyebrow">AI BASEBALL STUDIO / NPB 2026</div>
       <h1>GAME <em>INTELLIGENCE</em></h1>
-      <p>試合、AI予測、ハンデ、BET、収支を一つの画面に集約。重要な判断材料を先に、詳細分析をその次に配置するダッシュボードへ再設計しました。</p>
+      <p>今日の試合、AI予測、ハンデ、BET、収支を一つの画面で確認。最重要情報から詳細分析へ、迷わず進めるダッシュボードです。</p>
       <div class="chips"><span class="chip hot">PRODUCTION</span><span class="chip">UPDATE {now.strftime('%H:%M:%S')}</span><span class="chip">DATA {updated_at}</span></div>
-    </section>
-    <section class="snapshot">
-      <div class="metric-card dark"><div class="label">TOP AI PICK</div><div class="value">{best_pick}</div><div class="desc">{best_match}</div></div>
-      <div class="metric-card"><div class="label">WIN PROBABILITY</div><div class="value">{best_prob_label}</div><div class="desc">本日の最高評価</div></div>
-      <div class="metric-card"><div class="label">TODAY GAMES</div><div class="value">{len(today_games)}</div><div class="desc">NPB 対象試合</div></div>
-      <div class="metric-card"><div class="label">WEEKLY P/L</div><div class="value">{profit_label}</div><div class="desc">BET集計</div></div>
-    </section>
-  </div>
+    </div>
+    <aside class="featured">
+      <div><div class="featured-label">TODAY'S BEST AI PICK</div><div class="featured-match">{best_match}</div><div class="featured-pick">{best_pick}</div></div>
+      <div class="featured-bottom"><small>本日の最高AI評価</small><strong>{best_prob_label}</strong></div>
+    </aside>
+  </section>
 
-  <div class="main-grid">
-    <section class="panel">
-      <div class="panel-title"><h2>今日のAIランキング</h2><small>TOP 3 / CONFIDENCE</small></div>
-      {rank_html}
-    </section>
-    <section class="panel">
-      <div class="panel-title"><h2>クイック操作</h2><small>WORKSPACE</small></div>
-      <div class="action-grid">
-        <div class="action primary"><span class="arrow">↗</span><b>AI予測</b><p>勝率・予測スコア・信頼度を確認</p></div>
-        <div class="action"><span class="arrow">＋</span><b>BET入力</b><p>当日のBETとハンデを登録</p></div>
-        <div class="action"><span class="arrow">⌁</span><b>収支マップ</b><p>的中率・ROI・累積収支を確認</p></div>
-        <div class="action"><span class="arrow">◎</span><b>AI詳細</b><p>詳細分析と試合データを確認</p></div>
+  <section class="kpi-row">
+    <div class="kpi"><div class="kpi-copy"><span>TODAY GAMES</span><b>{len(today_games)}</b></div><small>NPB<br>対象試合</small></div>
+    <div class="kpi"><div class="kpi-copy"><span>AI PREDICTIONS</span><b>{len(prediction_games)}</b></div><small>取得済み<br>予測カード</small></div>
+    <div class="kpi"><div class="kpi-copy"><span>WEEKLY P/L</span><b>{profit_label}</b></div><small>BET<br>未精算集計</small></div>
+  </section>
+
+  <section class="content-grid">
+    <div class="panel">
+      <div class="panel-head"><h2>今日のAIランキング</h2><span>TOP 3 / CONFIDENCE</span></div>
+      <div class="ranking-list">{rank_html}</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>クイック操作</h2><span>WORKSPACE</span></div>
+      <div class="actions">
+        <a class="action primary" href="/本日のAI予想" target="_self"><div class="action-icon">AI</div><div class="action-copy"><b>AI予測を見る</b><span>勝率・予測スコア・信頼度</span></div><div class="action-arrow">›</div></a>
+        <a class="action" href="/BET入力" target="_self"><div class="action-icon">＋</div><div class="action-copy"><b>BETを入力</b><span>当日のBETとハンデを登録</span></div><div class="action-arrow">›</div></a>
+        <a class="action" href="/収支マップ" target="_self"><div class="action-icon">¥</div><div class="action-copy"><b>収支を確認</b><span>的中率・ROI・累積収支</span></div><div class="action-arrow">›</div></a>
+        <a class="action" href="/AI詳細" target="_self"><div class="action-icon">◎</div><div class="action-copy"><b>AI詳細を開く</b><span>試合データと根拠を確認</span></div><div class="action-arrow">›</div></a>
       </div>
-    </section>
-  </div>
+    </div>
+  </section>
 
-  <section class="panel teams-wrap">
-    <div class="teams-head"><b>12球団クイックビュー</b><span>NPB TEAMS</span></div>
+  <section class="panel teams-panel">
+    <div class="panel-head"><h2>12球団クイックビュー</h2><span>NPB TEAMS</span></div>
     <div class="teams">{team_html}</div>
   </section>
 
-  <div class="footer-grid">
-    <section class="system"><div><strong>AI prediction engine</strong><p>先発・直近成績・対戦相性・球場・ハンデ・BET結果を継続同期</p></div><div class="live">● MONITORING</div></section>
-    <section class="domain-card"><strong>Production</strong><div>ai-baseball-studio.f-polaris.jp</div></section>
-  </div>
-</div>
-''',
+  <section class="system-row">
+    <div class="system"><div><strong>AI prediction engine</strong><p>先発・直近成績・対戦相性・球場・ハンデ・BET結果を継続同期</p></div><div class="live">● MONITORING</div></div>
+    <div class="domain"><strong>Production</strong><div>ai-baseball-studio.f-polaris.jp</div></div>
+  </section>
+</main>
+""",
     unsafe_allow_html=True,
 )
-
-st.markdown('<div class="links"></div>', unsafe_allow_html=True)
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    st.page_link("pages/本日のAI予想.py", label="AI予測を開く", icon="🤖", use_container_width=True)
-with c2:
-    st.page_link("pages/BET入力.py", label="BET入力を開く", icon="✍️", use_container_width=True)
-with c3:
-    st.page_link("pages/収支マップ.py", label="収支マップ", icon="📈", use_container_width=True)
-with c4:
-    st.page_link("pages/AI詳細.py", label="AI詳細", icon="⚾", use_container_width=True)

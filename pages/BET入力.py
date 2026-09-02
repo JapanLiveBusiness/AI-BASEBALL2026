@@ -11,7 +11,9 @@ from bs4 import BeautifulSoup
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
 
 JST = ZoneInfo("Asia/Tokyo")
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+PROD_DATA_DIR = Path("/app/data")
+DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
 BETS_FILE = DATA_DIR / "bet_records.json"
 TEAM_NAMES = [
     "ソフトバンク", "日本ハム", "楽天", "西武", "ロッテ", "オリックス",
