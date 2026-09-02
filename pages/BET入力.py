@@ -15,20 +15,20 @@ JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 PROD_DATA_DIR = Path("/app/data")
 DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
-SIM_FILE = DATA_DIR / "bet_records.json"
+SIM_FILE = DATA_DIR / "simulation_records.json"
 TEAM_NAMES = [
     "ソフトバンク", "日本ハム", "楽天", "西武", "ロッテ", "オリックス",
     "巨人", "阪神", "DeNA", "広島", "ヤクルト", "中日",
 ]
 
-st.set_page_config(page_title="シミュレーション入力 | MY AI BASEBALL", page_icon="🧪", layout="wide")
+st.set_page_config(page_title="感度分析入力 | AI BASEBALL RESEARCH", page_icon="🧪", layout="wide")
 apply_studio_theme()
-render_topbar("SIMULATION LAB")
+render_topbar("SENSITIVITY LAB")
 render_hero(
-    "ハンデ仮説シミュレーション",
-    "実際の試合カードに仮想ハンデと仮想ポイントを設定し、予測仮説の精度を検証します。実際の賭けや金銭取引には接続しません。",
-    kicker="AI BASEBALL STUDIO / HYPOTHESIS TEST",
-    accent="SIM",
+    "得点補正・感度分析",
+    "実際の試合カードに任意の得点補正値を設定し、予測仮説が結果にどの程度敏感かを検証する研究画面です。",
+    kicker="AI BASEBALL STUDIO / SENSITIVITY TEST",
+    accent="分析",
 )
 render_nav_links()
 
@@ -110,31 +110,31 @@ with st.form("simulation_form"):
 
     c3, c4, c5 = st.columns(3)
     game_time = c3.time_input("開始時刻", value=time_value)
-    simulation_points = c4.number_input("仮想投入ポイント", min_value=0, value=100, step=10)
-    handicap = c5.number_input("仮想ハンデ", value=0.0, step=0.1)
+    evaluation_weight = c4.number_input("評価ウェイト", min_value=0, value=100, step=10)
+    score_adjustment = c5.number_input("得点補正値", value=0.0, step=0.1, help="対象チームの得点に加える仮想的な補正値です。")
 
     c6, c7 = st.columns(2)
     status_label = c6.selectbox("状態", ["未確定", "確定"])
-    predicted_result = c7.selectbox("事前仮説", ["対象チーム側", "相手側", "引き分け相当"])
+    predicted_result = c7.selectbox("事前仮説", ["対象チーム優勢", "相手チーム優勢", "拮抗"])
 
     c8, c9 = st.columns(2)
     team_score = c8.number_input("対象チーム得点", min_value=0, value=0, step=1)
     opponent_score = c9.number_input("対戦相手得点", min_value=0, value=0, step=1)
     memo = st.text_area("仮説メモ", placeholder="予測根拠、モデル条件、注目指標など")
-    submitted = st.form_submit_button("シミュレーションを保存", type="primary", use_container_width=True)
+    submitted = st.form_submit_button("分析シナリオを保存", type="primary", use_container_width=True)
 
 if submitted:
     if not str(subject_team).strip() or not str(opponent).strip():
         st.error("検証対象チームと対戦相手を入力してください。")
     else:
         actual_result = None
-        point_delta = 0.0
+        score_delta = 0.0
         if status_label == "確定":
-            actual_result = classify_result(team_score, opponent_score, handicap)
+            actual_result = classify_result(team_score, opponent_score, score_adjustment)
             if actual_result == "win":
-                point_delta = float(simulation_points)
+                score_delta = float(evaluation_weight)
             elif actual_result == "loss":
-                point_delta = -float(simulation_points)
+                score_delta = -float(evaluation_weight)
 
         records = load_records()
         created_at = datetime.now(JST)
@@ -144,17 +144,17 @@ if submitted:
             "time": game_time.strftime("%H:%M"),
             "team": str(subject_team).strip(),
             "opponent": str(opponent).strip(),
-            "handicap": float(handicap),
-            "simulation_points": int(simulation_points),
+            "handicap": float(score_adjustment),
+            "simulation_points": int(evaluation_weight),
             "status": "final" if status_label == "確定" else "pending",
             "predicted_result": predicted_result,
             "result": actual_result,
-            "point_delta": point_delta,
+            "point_delta": score_delta,
             "team_score": int(team_score) if status_label == "確定" else None,
             "opponent_score": int(opponent_score) if status_label == "確定" else None,
             "memo": memo.strip(),
-            "source": "simulation-page",
+            "source": "sensitivity-analysis",
             "created_at": created_at.isoformat(timespec="seconds"),
         })
         save_records(records)
-        st.success("仮説シミュレーションを保存しました。結果画面で命中率と累積ポイントを確認できます。")
+        st.success("分析シナリオを保存しました。結果画面で成立率と評価スコア推移を確認できます。")
