@@ -23,14 +23,29 @@ git fetch origin "$BRANCH"
 git checkout "$BRANCH"
 git reset --hard "origin/$BRANCH"
 
-# Publish versioned historical audit artifacts into the mounted data directory.
 mkdir -p "$DATA_DIR"
+
+# Publish versioned historical audit artifacts into the mounted data directory.
 for artifact in \
   historical_games_2017_2026.json \
   historical_backtest_report.json \
   historical_backtest_predictions.csv; do
   if [ -f "$APP_DIR/data/$artifact" ]; then
     install -m 0644 "$APP_DIR/data/$artifact" "$DATA_DIR/$artifact"
+  fi
+done
+
+# The Docker data volume hides repository-bundled /app/data files. Seed a
+# non-destructive fallback only when the runtime copy is missing or empty.
+# Live/update jobs remain free to replace these files afterward.
+for artifact in \
+  npb_today.json \
+  today_ai_predictions.json \
+  pregame_predictions.json \
+  bet_records.json; do
+  if [ ! -s "$DATA_DIR/$artifact" ] && [ -s "$APP_DIR/data/$artifact" ]; then
+    install -m 0644 "$APP_DIR/data/$artifact" "$DATA_DIR/$artifact"
+    echo "[deploy] seeded fallback dashboard data: $artifact"
   fi
 done
 
