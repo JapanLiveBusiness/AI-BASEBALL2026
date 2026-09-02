@@ -135,9 +135,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SSH_OPTS=(
+          COMMON_OPTS=(
             -i "$HOME/.ssh/deploy_key"
-            -p "$DEPLOY_PORT"
             -o IdentitiesOnly=yes
             -o BatchMode=yes
             -o PreferredAuthentications=publickey
@@ -146,8 +145,8 @@ jobs:
             -o StrictHostKeyChecking=no
             -o UserKnownHostsFile=/dev/null
           )
-          scp "${SSH_OPTS[@]}" data/npb_today.json "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/npb_today.json"
-          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" 'bash -s' <<'REMOTE'
+          scp -P "$DEPLOY_PORT" "${COMMON_OPTS[@]}" data/npb_today.json "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/npb_today.json"
+          ssh -p "$DEPLOY_PORT" "${COMMON_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" 'bash -s' <<'REMOTE'
           set -euo pipefail
           DATA_DIR="/opt/hawks-ai/research-data"
           mkdir -p "$DATA_DIR"
