@@ -6,11 +6,14 @@ on:
       - private-analytics-only
     paths:
       - "main.py"
+      - "app_entry.py"
+      - "auth.py"
       - "bet_analytics.py"
       - "studio_theme.py"
+      - "requirements.txt"
       - "pages/**"
       - "scripts/deploy-production.sh"
-      - ".github/workflows/deploy-private-research-push.yml"
+      - "scripts/run-app.sh"
   workflow_dispatch:
 
 concurrency:
@@ -30,6 +33,7 @@ jobs:
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      CLERK_CLIENT_SECRET: ${{ secrets.CLERK_CLIENT_SECRET }}
       RESEARCH_BRANCH: private-analytics-only
 
     steps:
@@ -38,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_PORT DEPLOY_SSH_KEY; do
+          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_PORT DEPLOY_SSH_KEY CLERK_CLIENT_SECRET; do
             if [ -z "${!name:-}" ]; then
               echo "::error::$name is not available to this workflow"
               missing=1
@@ -87,6 +91,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          CLERK_CLIENT_SECRET_B64="$(printf '%s' "$CLERK_CLIENT_SECRET" | base64 -w0)"
           ssh \
             -i "$HOME/.ssh/deploy_key" \
             -o IdentitiesOnly=yes \
@@ -97,13 +102,17 @@ jobs:
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
             "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
-            "RESEARCH_BRANCH='$RESEARCH_BRANCH' bash -s" <<'REMOTE'
+            "RESEARCH_BRANCH='$RESEARCH_BRANCH' CLERK_CLIENT_SECRET_B64='$CLERK_CLIENT_SECRET_B64' bash -s" <<'REMOTE'
           set -euo pipefail
           APP_DIR="/home/user/apps/AI-BASEBALL2026-research"
           REPO_URL="https://github.com/JapanLiveBusiness/AI-BASEBALL2026.git"
           BRANCH="$RESEARCH_BRANCH"
+          AUTH_DIR="/opt/hawks-ai/research-auth"
+          AUTH_SECRETS_FILE="$AUTH_DIR/secrets.toml"
+          COOKIE_SECRET_FILE="$AUTH_DIR/cookie_secret"
 
-          mkdir -p "$(dirname "$APP_DIR")"
+          mkdir -p "$(dirname "$APP_DIR")" "$AUTH_DIR"
+          chmod 700 "$AUTH_DIR"
           if [ ! -d "$APP_DIR/.git" ]; then
             rm -rf "$APP_DIR"
             git clone --branch "$BRANCH" --single-branch "$REPO_URL" "$APP_DIR"
@@ -120,8 +129,40 @@ jobs:
           git checkout "$BRANCH"
           git reset --hard "origin/$BRANCH"
 
+          if [ ! -s "$COOKIE_SECRET_FILE" ]; then
+            umask 077
+            openssl rand -hex 32 > "$COOKIE_SECRET_FILE"
+          fi
+
+          export CLERK_CLIENT_SECRET="$(printf '%s' "$CLERK_CLIENT_SECRET_B64" | base64 -d)"
+          export COOKIE_SECRET="$(cat "$COOKIE_SECRET_FILE")"
+          export AUTH_SECRETS_FILE
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ["AUTH_SECRETS_FILE"])
+          content = "\n".join([
+              "[auth]",
+              'redirect_uri = "https://ai-baseball-studio.f-polaris.jp/oauth2callback"',
+              f"cookie_secret = {json.dumps(os.environ['COOKIE_SECRET'])}",
+              "",
+              "[auth.clerk]",
+              'client_id = "eAIZapL1bjewmFOF"',
+              f"client_secret = {json.dumps(os.environ['CLERK_CLIENT_SECRET'])}",
+              'server_metadata_url = "https://clerk.ai-baseball-studio.f-polaris.jp/.well-known/openid-configuration"',
+              'client_kwargs = { scope = "openid profile email" }',
+              "",
+          ])
+          path.write_text(content, encoding="utf-8")
+          path.chmod(0o600)
+          PY
+          unset CLERK_CLIENT_SECRET COOKIE_SECRET
+
           APP_DIR="$APP_DIR" \
           DATA_DIR="/opt/hawks-ai/research-data" \
+          STREAMLIT_SECRETS_FILE="$AUTH_SECRETS_FILE" \
           BRANCH="$BRANCH" \
           CONTAINER_NAME="hawks-research-app" \
           IMAGE_NAME="hawks-research-app" \
