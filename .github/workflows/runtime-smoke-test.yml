@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main-AI-BASEBALL
+      - private-analytics-only
       - refactor/**
   pull_request:
     branches:
       - main-AI-BASEBALL
+      - private-analytics-only
 
 jobs:
   smoke-test:
@@ -16,9 +18,38 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Python syntax check
+        shell: bash
         run: |
-          python -m py_compile app.py storage/*.py
-          if [ -d ui ]; then python -m py_compile ui/*.py; fi
+          set -euo pipefail
+          python -m py_compile *.py
+          find pages scripts -type f -name '*.py' -print0 | xargs -0 -r python -m py_compile
+          if [ -d storage ]; then find storage -type f -name '*.py' -print0 | xargs -0 -r python -m py_compile; fi
+          if [ -d ui ]; then find ui -type f -name '*.py' -print0 | xargs -0 -r python -m py_compile; fi
+
+      - name: Verify internal page targets exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('.')
+          missing = []
+          targets = []
+          for path in [root / 'main.py', root / 'studio_theme.py', *sorted((root / 'pages').glob('*.py'))]:
+              text = path.read_text(encoding='utf-8')
+              for target in re.findall(r'st\.page_link\(["\']([^"\']+)["\']', text):
+                  targets.append((path, target))
+              for target in re.findall(r'st\.switch_page\(["\']([^"\']+)["\']', text):
+                  targets.append((path, target))
+          for source, target in targets:
+              if not (root / target).exists():
+                  missing.append(f'{source}: {target}')
+          if missing:
+              raise SystemExit('Missing page targets:\n' + '\n'.join(missing))
+          print(f'Checked {len(targets)} page targets')
+          PY
 
       - name: Build Docker image
         run: docker build -t ai-baseball2026-smoke .
