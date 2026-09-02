@@ -51,6 +51,31 @@ jobs:
           print(f'Checked {len(targets)} page targets')
           PY
 
+      - name: Guard game page HTML rendering
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('pages/試合.py')
+          text = path.read_text(encoding='utf-8')
+          errors = []
+
+          if 'st.html(page_html)' not in text:
+              errors.append('pages/試合.py must render the composed game page with st.html(page_html)')
+          if 'st.markdown(feature_html' in text:
+              errors.append('pages/試合.py must not render feature_html with st.markdown; it can expose raw HTML')
+          if 'from research_state import current_slate' not in text:
+              errors.append('pages/試合.py must use the shared current_slate state')
+          if 'prediction_for_display(display_date)' not in text:
+              errors.append('pages/試合.py must use date-matched AI predictions')
+
+          if errors:
+              raise SystemExit('\n'.join(errors))
+          print('Game page HTML rendering guard passed')
+          PY
+
       - name: Build Docker image
         run: docker build -t ai-baseball2026-smoke .
 
