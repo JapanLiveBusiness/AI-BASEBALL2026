@@ -35,13 +35,25 @@ jobs:
             fi
           done
 
-      - name: Verify Clerk OIDC discovery
+      - name: Wait for Clerk OIDC discovery and TLS
         shell: bash
         run: |
           set -euo pipefail
-          discovery="$(curl -fsS --max-time 20 "$CLERK_DISCOVERY_URL")"
-          jq -e '.issuer and .authorization_endpoint and .token_endpoint and .jwks_uri' <<<"$discovery" >/dev/null
-          echo "Clerk OIDC discovery is healthy"
+          for attempt in $(seq 1 30); do
+            echo "Clerk discovery check $attempt/30"
+            if discovery="$(curl -fsS --connect-timeout 10 --max-time 20 "$CLERK_DISCOVERY_URL" 2>/tmp/clerk-curl.err)"; then
+              if jq -e '.issuer and .authorization_endpoint and .token_endpoint and .jwks_uri' <<<"$discovery" >/dev/null 2>&1; then
+                echo "Clerk OIDC discovery and TLS are healthy"
+                exit 0
+              fi
+              echo "Discovery endpoint answered but metadata is not ready yet"
+            else
+              cat /tmp/clerk-curl.err || true
+            fi
+            sleep 10
+          done
+          echo "::error::Clerk custom-domain TLS/OIDC discovery did not become ready; Cloudflare Access was NOT removed"
+          exit 1
 
       - name: Remove Cloudflare Access application
         shell: bash
