@@ -74,11 +74,15 @@ start_container() {
     -v "$DATA_DIR:/app/data" \
     --label "traefik.enable=true" \
     --label "traefik.docker.network=$TRAEFIK_NETWORK" \
-    --label "traefik.http.routers.ai-baseball.rule=Host(\`$TRAEFIK_HOST\`) || Host(\`$TRAEFIK_LEGACY_HOST\`)" \
-    --label "traefik.http.routers.ai-baseball.entrypoints=websecure" \
-    --label "traefik.http.routers.ai-baseball.tls=true" \
-    --label "traefik.http.routers.ai-baseball.tls.certresolver=letsencrypt" \
-    --label "traefik.http.services.ai-baseball.loadbalancer.server.port=8501" \
+    --label "traefik.http.routers.ai-baseball-production.rule=Host(\`$TRAEFIK_HOST\`) || Host(\`$TRAEFIK_LEGACY_HOST\`)" \
+    --label "traefik.http.routers.ai-baseball-production.entrypoints=websecure" \
+    --label "traefik.http.routers.ai-baseball-production.priority=10000" \
+    --label "traefik.http.routers.ai-baseball-production.tls=true" \
+    --label "traefik.http.routers.ai-baseball-production.tls.certresolver=letsencrypt" \
+    --label "traefik.http.routers.ai-baseball-production.service=ai-baseball-production" \
+    --label "traefik.http.routers.ai-baseball-production.middlewares=ai-baseball-deploy-marker" \
+    --label "traefik.http.middlewares.ai-baseball-deploy-marker.headers.customresponseheaders.X-AI-Baseball-Deploy=$SHORT_SHA" \
+    --label "traefik.http.services.ai-baseball-production.loadbalancer.server.port=8501" \
     "$image"
 }
 
@@ -98,17 +102,17 @@ start_container "$NEW_IMAGE"
 for attempt in $(seq 1 30); do
   if curl -fsS "http://127.0.0.1:$PORT/_stcore/health" >/dev/null; then
     echo "[deploy] app healthy: $NEW_IMAGE"
-    if curl -k -fsS \
+    if curl -k -fsSI \
       --resolve "$TRAEFIK_HOST:443:$TRAEFIK_IP" \
-      "https://$TRAEFIK_HOST/_stcore/health" >/dev/null; then
+      "https://$TRAEFIK_HOST/_stcore/health" | grep -Fqi "x-ai-baseball-deploy: $SHORT_SHA"; then
       echo "[deploy] primary Traefik route healthy: https://$TRAEFIK_HOST/ -> $CONTAINER_NAME:8501"
     else
       echo "[deploy] primary Traefik route health check failed for https://$TRAEFIK_HOST/"
       rollback
     fi
-    if curl -k -fsS \
+    if curl -k -fsSI \
       --resolve "$TRAEFIK_LEGACY_HOST:443:$TRAEFIK_IP" \
-      "https://$TRAEFIK_LEGACY_HOST/_stcore/health" >/dev/null; then
+      "https://$TRAEFIK_LEGACY_HOST/_stcore/health" | grep -Fqi "x-ai-baseball-deploy: $SHORT_SHA"; then
       echo "[deploy] legacy Traefik route healthy: https://$TRAEFIK_LEGACY_HOST/ -> $CONTAINER_NAME:8501"
       docker tag "$NEW_IMAGE" "$IMAGE_NAME:latest"
       exit 0
