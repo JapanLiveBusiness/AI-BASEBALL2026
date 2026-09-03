@@ -9,7 +9,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 JST = ZoneInfo("Asia/Tokyo")
 STARTER_URL = "https://npb.jp/announcement/starter/"
@@ -33,6 +33,27 @@ DATE_RE = re.compile(r"(?P<month>\d{1,2})月(?P<day>\d{1,2})日")
 
 def clean(value: str) -> str:
     return re.sub(r"\s+", " ", value.replace("\u3000", " ")).strip()
+
+
+def canonical_team_from_alt(value: str) -> str | None:
+    text = clean(value)
+    return next((short for full, short in TEAM_ALIASES.items() if full in text), None)
+
+
+def player_link_after_team_image(img: Tag) -> Tag | None:
+    """Find the player profile link before the next team logo image."""
+    for node in img.next_elements:
+        if node is img:
+            continue
+        if isinstance(node, Tag) and node.name == "img":
+            if canonical_team_from_alt(str(node.get("alt") or "")):
+                return None
+        if isinstance(node, Tag) and node.name == "a":
+            href = str(node.get("href") or "")
+            text = clean(node.get_text(" ", strip=True))
+            if "/bis/players/" in href and text:
+                return node
+    return None
 
 
 def fetch_starters() -> dict:
@@ -71,19 +92,18 @@ def fetch_starters() -> dict:
 
     starters: dict[str, str] = {}
     for img in heading.find_all_next("img"):
-        alt = clean(str(img.get("alt") or ""))
-        team = next((short for full, short in TEAM_ALIASES.items() if full in alt), None)
+        team = canonical_team_from_alt(str(img.get("alt") or ""))
         if not team or team in starters:
             continue
 
-        player_link = img.find_next("a")
-        while player_link is not None and not clean(player_link.get_text(" ", strip=True)):
-            player_link = player_link.find_next("a")
+        player_link = player_link_after_team_image(img)
         if player_link is None:
             continue
         pitcher = clean(player_link.get_text(" ", strip=True))
-        if pitcher and pitcher not in TEAM_ALIASES:
+        if pitcher:
             starters[team] = pitcher
+        if len(starters) >= 12:
+            break
 
     if not starters:
         raise RuntimeError("NPB probable-starter page returned no pitcher names")
