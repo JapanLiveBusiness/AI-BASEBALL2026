@@ -1,6 +1,12 @@
 import unittest
 
-from bet_analytics import bet_amount, calculate_hit_rate, sort_bets
+from bet_analytics import (
+    bet_amount,
+    calculate_hit_rate,
+    profit_for_result,
+    settle_bet,
+    sort_bets,
+)
 
 
 class BetAnalyticsTest(unittest.TestCase):
@@ -33,6 +39,19 @@ class BetAnalyticsTest(unittest.TestCase):
 
     def test_legacy_units_are_converted_to_yen(self):
         self.assertEqual(bet_amount({"bet_units": -25}), 250000)
+
+    def test_settlement_subtracts_handicap_from_selected_team(self):
+        self.assertEqual(settle_bet(5, 3, 1.5), (3.5, "win"))
+        self.assertEqual(settle_bet(4, 3, 1.0), (3.0, "push"))
+        self.assertEqual(settle_bet(3, 3, 0.5), (2.5, "loss"))
+
+    def test_negative_handicap_adds_to_selected_team(self):
+        self.assertEqual(settle_bet(2, 3, -1.5), (3.5, "win"))
+
+    def test_profit_uses_existing_even_money_rule(self):
+        self.assertEqual(profit_for_result("win", 10000), 10000)
+        self.assertEqual(profit_for_result("loss", 10000), -10000)
+        self.assertEqual(profit_for_result("push", 10000), 0)
 
 
 if __name__ == "__main__":

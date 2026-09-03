@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
-from bet_analytics import SORT_OPTIONS, calculate_hit_rate, sort_bets
+from bet_analytics import SORT_OPTIONS, calculate_hit_rate, profit_for_result, settle_bet, sort_bets
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links, render_section
 
 st.set_page_config(page_title="収支マップ | MY AI BASEBALL", page_icon="💰", layout="wide")
@@ -102,10 +102,8 @@ with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
         bet_amount = c4.number_input("BET金額（円）", min_value=0, step=1000, value=10000)
         handicap = c5.number_input("ハンディ", step=0.5, value=0.0)
 
-        c6, c7, c8 = st.columns(3)
-        status_label = c6.selectbox("状態", ["未確定", "確定"])
-        result_display = c7.selectbox("結果", ["未確定", "WIN", "LOSE", "PUSH"])
-        profit = c8.number_input("当日の損益（円）", step=1000, value=0)
+        status_label = st.selectbox("状態", ["未確定", "確定"])
+        st.caption("確定時は、BET先得点からハンディを差し引いて結果と損益を自動計算します。")
 
         c9, c10 = st.columns(2)
         team_score = c9.number_input("BET先チーム得点", min_value=0, step=1, value=0)
@@ -117,10 +115,14 @@ with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
     if submitted:
         if not team.strip() or not opponent.strip():
             st.error("BET先と対戦相手を入力してください。")
-        elif status_label == "確定" and result_display == "未確定":
-            st.error("確定BETでは結果（WIN / LOSE / PUSH）を選択してください。")
         else:
-            result_map = {"WIN": "win", "LOSE": "loss", "PUSH": "push", "未確定": None}
+            is_final = status_label == "確定"
+            adjusted_score, result = (
+                settle_bet(team_score, opponent_score, handicap)
+                if is_final
+                else (None, None)
+            )
+            calculated_profit = profit_for_result(result, bet_amount) if is_final else 0
             record = {
                 "id": f"manual-{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
                 "date": selected_date.isoformat(),
@@ -130,11 +132,12 @@ with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
                 "handicap": handicap,
                 "bet_units": float(bet_amount) / 10000.0,
                 "bet_amount": int(bet_amount),
-                "status": "final" if status_label == "確定" else "pending",
-                "result": result_map[result_display],
-                "profit": int(profit) if status_label == "確定" else 0,
-                "team_score": int(team_score) if status_label == "確定" else None,
-                "opponent_score": int(opponent_score) if status_label == "確定" else None,
+                "status": "final" if is_final else "pending",
+                "result": result,
+                "profit": calculated_profit,
+                "team_score": int(team_score) if is_final else None,
+                "opponent_score": int(opponent_score) if is_final else None,
+                "adjusted_score": adjusted_score,
                 "memo": memo.strip(),
                 "source": "manual",
                 "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -142,7 +145,10 @@ with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
             current = load_bets()
             current.append(record)
             save_bets(current)
-            st.success(f"{selected_date.isoformat()} {team} vs {opponent} のBETを保存しました。")
+            if is_final:
+                st.success(f"ハンデ込みで {result.upper()}、損益 {calculated_profit:+,}円として保存しました。")
+            else:
+                st.success(f"{selected_date.isoformat()} {team} vs {opponent} の未確定BETを保存しました。")
             st.rerun()
 
 bets = load_bets()

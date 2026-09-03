@@ -8,6 +8,7 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 
+from bet_analytics import profit_for_result, settle_bet
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -112,10 +113,8 @@ with st.form("manual_bet_form"):
     bet_amount = c4.number_input("BET金額（円）", min_value=0, value=10000, step=1000)
     handicap = c5.number_input("ハンディ", value=0.0, step=0.1)
 
-    c6, c7, c8 = st.columns(3)
-    status_label = c6.selectbox("状態", ["未確定", "確定"])
-    result_label = c7.selectbox("結果", ["未確定", "WIN", "LOSE", "PUSH"])
-    profit = c8.number_input("損益（円）", value=0, step=1000)
+    status_label = st.selectbox("状態", ["未確定", "確定"])
+    st.caption("確定時は、BET先得点からハンディを差し引いて結果と損益を自動計算します。")
 
     c9, c10 = st.columns(2)
     team_score = c9.number_input("BET先チーム得点", min_value=0, value=0, step=1)
@@ -126,10 +125,14 @@ with st.form("manual_bet_form"):
 if submitted:
     if not str(bet_team).strip() or not str(opponent).strip():
         st.error("BET先と対戦相手を入力してください。")
-    elif status_label == "確定" and result_label == "未確定":
-        st.error("確定の場合は WIN / LOSE / PUSH を選択してください。")
     else:
-        result_map = {"WIN": "win", "LOSE": "loss", "PUSH": "push", "未確定": None}
+        is_final = status_label == "確定"
+        adjusted_score, result = (
+            settle_bet(team_score, opponent_score, handicap)
+            if is_final
+            else (None, None)
+        )
+        calculated_profit = profit_for_result(result, bet_amount) if is_final else 0
         records = load_bets()
         created_at = datetime.now(JST)
         records.append({
@@ -141,14 +144,18 @@ if submitted:
             "handicap": float(handicap),
             "bet_units": float(bet_amount) / 10000.0,
             "bet_amount": int(bet_amount),
-            "status": "final" if status_label == "確定" else "pending",
-            "result": result_map[result_label],
-            "profit": int(profit) if status_label == "確定" else 0,
-            "team_score": int(team_score) if status_label == "確定" else None,
-            "opponent_score": int(opponent_score) if status_label == "確定" else None,
+            "status": "final" if is_final else "pending",
+            "result": result,
+            "profit": calculated_profit,
+            "team_score": int(team_score) if is_final else None,
+            "opponent_score": int(opponent_score) if is_final else None,
+            "adjusted_score": adjusted_score,
             "memo": memo.strip(),
             "source": "manual-page",
             "created_at": created_at.isoformat(timespec="seconds"),
         })
         save_bets(records)
-        st.success("BET・収支を保存しました。収支マップにも反映されます。")
+        if is_final:
+            st.success(f"ハンデ込みで {result.upper()}、損益 {calculated_profit:+,}円として保存しました。")
+        else:
+            st.success("未確定BETを保存しました。収支マップにも反映されます。")

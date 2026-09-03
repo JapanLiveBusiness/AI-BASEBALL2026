@@ -24,6 +24,32 @@ def bet_amount(record):
     return abs(_number(record.get("bet_units"))) * 10000
 
 
+def settle_bet(team_score, opponent_score, handicap=0):
+    """Settle a bet after subtracting the handicap from the selected team."""
+    adjusted_score = _number(team_score) - _number(handicap)
+    opponent = _number(opponent_score)
+    margin = adjusted_score - opponent
+
+    if abs(margin) < 1e-9:
+        result = "push"
+    elif margin > 0:
+        result = "win"
+    else:
+        result = "loss"
+
+    return round(adjusted_score, 3), result
+
+
+def profit_for_result(result, amount):
+    """Return even-money profit used by the existing BET records."""
+    stake = abs(_number(amount))
+    if result == "win":
+        return int(round(stake))
+    if result == "loss":
+        return -int(round(stake))
+    return 0
+
+
 def calculate_hit_rate(records):
     """Return wins, decided bets and hit rate; pushes/pending are excluded."""
     results = [
