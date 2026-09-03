@@ -182,3 +182,273 @@ else:
         f"対象期間: {historical.get('source_start', '--')}〜{historical.get('source_end', '--')}。"
         "各年度は、それ以前の年度だけで学習するウォークフォワード方式です。引き分けと未来情報は除外しています。"
     )
+
+# ============================================================
+# 全NPB AI予測成績
+# ============================================================
+
+AI_PERFORMANCE_FILE = (
+    active_data_dir()
+    / "ai_prediction_performance.json"
+)
+
+AI_HISTORY_FILE = (
+    active_data_dir()
+    / "ai_prediction_history.json"
+)
+
+
+def _load_optional_json(path, default):
+    try:
+        return json.loads(
+            path.read_text(encoding="utf-8")
+        )
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+    ):
+        return default
+
+
+st.markdown("---")
+st.subheader("全NPB AI予測パフォーマンス")
+
+ai_perf = _load_optional_json(
+    AI_PERFORMANCE_FILE,
+    {},
+)
+
+ai_history = _load_optional_json(
+    AI_HISTORY_FILE,
+    [],
+)
+
+if not isinstance(ai_history, list):
+    ai_history = []
+
+settled_games = int(
+    ai_perf.get("settled_games") or 0
+)
+
+hits = int(
+    ai_perf.get("hits") or 0
+)
+
+hit_rate = ai_perf.get("hit_rate")
+brier_score = ai_perf.get("brier_score")
+score_mae = ai_perf.get("score_mae")
+
+c1, c2, c3, c4 = st.columns(4)
+
+c1.metric(
+    "確定試合",
+    f"{settled_games}試合",
+)
+
+c2.metric(
+    "的中",
+    f"{hits}試合",
+)
+
+c3.metric(
+    "的中率",
+    (
+        f"{hit_rate:.1f}%"
+        if hit_rate is not None
+        else "-"
+    ),
+)
+
+c4.metric(
+    "Brier Score",
+    (
+        f"{brier_score:.4f}"
+        if brier_score is not None
+        else "-"
+    ),
+)
+
+if score_mae is not None:
+    st.caption(
+        "平均スコア誤差: "
+        f"{float(score_mae):.2f}点"
+    )
+
+confidence = ai_perf.get("confidence") or {}
+
+if confidence:
+    st.markdown("#### 信頼度別成績")
+
+    confidence_rows = []
+
+    labels = {
+        "HIGH": "HIGH",
+        "MEDIUM": "MEDIUM",
+        "LOW": "LOW",
+    }
+
+    for level in (
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+    ):
+        row = confidence.get(level) or {}
+
+        confidence_rows.append(
+            {
+                "信頼度": labels[level],
+                "試合数": int(
+                    row.get("games") or 0
+                ),
+                "的中": int(
+                    row.get("hits") or 0
+                ),
+                "的中率": (
+                    float(row["hit_rate"])
+                    if row.get("hit_rate")
+                    is not None
+                    else None
+                ),
+            }
+        )
+
+    st.dataframe(
+        confidence_rows,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "的中率":
+                st.column_config.NumberColumn(
+                    format="%.1f%%"
+                )
+        },
+    )
+
+pending = [
+    row
+    for row in ai_history
+    if isinstance(row, dict)
+    and row.get("status") == "pending"
+]
+
+if pending:
+    st.markdown("#### 本日の固定予測")
+
+    pending_rows = []
+
+    for row in sorted(
+        pending,
+        key=lambda x: (
+            str(x.get("date") or ""),
+            str(x.get("time") or ""),
+        ),
+    ):
+        pending_rows.append(
+            {
+                "日付": row.get("date"),
+                "開始": row.get("time"),
+                "対戦":
+                    f'{row.get("away", "-")} @ '
+                    f'{row.get("home", "-")}',
+                "予想": row.get("pick"),
+                "勝率":
+                    row.get("win_probability"),
+                "予想スコア":
+                    row.get("predicted_score"),
+                "信頼度":
+                    row.get("confidence"),
+                "モデル":
+                    row.get("model"),
+            }
+        )
+
+    st.dataframe(
+        pending_rows,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "勝率":
+                st.column_config.NumberColumn(
+                    format="%.1f%%"
+                )
+        },
+    )
+
+final_rows = [
+    row
+    for row in ai_history
+    if isinstance(row, dict)
+    and row.get("status") == "final"
+]
+
+if final_rows:
+    st.markdown("#### 全NPB AI予測履歴")
+
+    display_rows = []
+
+    for row in sorted(
+        final_rows,
+        key=lambda x: (
+            str(x.get("date") or ""),
+            str(x.get("time") or ""),
+        ),
+        reverse=True,
+    ):
+        result_text = (
+            "○"
+            if row.get("hit") is True
+            else "×"
+        )
+
+        display_rows.append(
+            {
+                "日付": row.get("date"),
+                "対戦":
+                    f'{row.get("away", "-")} @ '
+                    f'{row.get("home", "-")}',
+                "予想": row.get("pick"),
+                "勝率":
+                    row.get("win_probability"),
+                "予想スコア":
+                    row.get("predicted_score"),
+                "実スコア":
+                    f'{row.get("actual_home_score", "-")}'
+                    f'-'
+                    f'{row.get("actual_away_score", "-")}',
+                "結果": result_text,
+                "Brier":
+                    row.get("brier"),
+                "スコア誤差":
+                    row.get("score_error"),
+            }
+        )
+
+    st.dataframe(
+        display_rows,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "勝率":
+                st.column_config.NumberColumn(
+                    format="%.1f%%"
+                ),
+            "Brier":
+                st.column_config.NumberColumn(
+                    format="%.4f"
+                ),
+            "スコア誤差":
+                st.column_config.NumberColumn(
+                    format="%.2f"
+                ),
+        },
+    )
+
+if (
+    not settled_games
+    and pending
+):
+    st.info(
+        "試合終了後、的中率・Brier Score・"
+        "予想スコア誤差が自動集計されます。"
+    )
