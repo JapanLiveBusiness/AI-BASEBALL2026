@@ -59,13 +59,26 @@ def official_ranges(path: Path | None) -> dict[int, tuple[pd.Timestamp, pd.Times
 def load_games(path: Path, range_path: Path | None = None) -> pd.DataFrame:
     frame = pd.DataFrame(json.loads(path.read_text(encoding="utf-8")))
     frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
-    ranges = official_ranges(range_path)
-    has_type = frame.get("game_type", pd.Series(index=frame.index, dtype="object")).notna()
-    typed_official = has_type & frame.get("game_type", pd.Series(index=frame.index, dtype="object")).isin(OFFICIAL_TYPES)
-    range_official = pd.Series(False, index=frame.index)
-    for season, (start, end) in ranges.items():
-        range_official |= (~has_type) & (frame["date"] >= start) & (frame["date"] <= end) & (frame["date"].dt.year == season)
-    frame = frame[typed_official | range_official].copy()
+    game_type = frame.get(
+        "game_type",
+        pd.Series(index=frame.index, dtype="object"),
+    )
+
+    has_type = game_type.notna()
+
+    typed_official = (
+        has_type
+        & game_type.isin(OFFICIAL_TYPES)
+    )
+
+    # historical_games_2017_2026.json には、
+    # game_type 未設定の正式なNPB試合も含まれる。
+    # ホークス専用の context 期間で全12球団を切らない。
+    untyped_official = ~has_type
+
+    frame = frame[
+        typed_official | untyped_official
+    ].copy()
     frame = frame.dropna(subset=["date", "home", "away", "home_score", "away_score"])
     frame = frame.sort_values(["date", "home", "away"]).drop_duplicates(
         ["date", "home", "away"], keep="last"
