@@ -60,3 +60,5 @@ def render_section(label, title):
 
 def render_nav_links():
     return None
+
+# Deployment refresh marker: 2026-09-03 JST
