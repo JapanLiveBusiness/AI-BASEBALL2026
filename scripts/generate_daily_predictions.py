@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import re
 from datetime import datetime
 from pathlib import Path
@@ -55,6 +54,8 @@ TEAM_ALIASES = {
     "楽天": "楽天",
 }
 
+CANONICAL_TEAMS = set(TEAM_ALIASES.values())
+
 
 def normalize_team(value: Any) -> str:
     text = re.sub(r"\s+", "", str(value or ""))
@@ -83,6 +84,19 @@ def parse_pct(value: str) -> float | None:
         return None
 
 
+def select_league_standings_table(soup: BeautifulSoup):
+    """Return the regular league standings table, excluding interleague standings."""
+    for table in soup.select("table"):
+        header_text = " ".join(
+            re.sub(r"\s+", " ", cell.get_text(" ", strip=True)).strip()
+            for cell in table.select("tr:first-child th, tr:first-child td")
+        )
+        required = ("チーム", "試合", "勝利", "敗北", "勝率", "差", "ホーム", "ロード")
+        if all(token in header_text for token in required):
+            return table
+    raise RuntimeError("regular league standings table was not found")
+
+
 def fetch_standings(url: str, league: str) -> dict[str, dict[str, Any]]:
     response = requests.get(
         url,
@@ -92,14 +106,18 @@ def fetch_standings(url: str, league: str) -> dict[str, dict[str, Any]]:
     response.raise_for_status()
     response.encoding = response.apparent_encoding or "utf-8"
     soup = BeautifulSoup(response.text, "html.parser")
+    table = select_league_standings_table(soup)
 
     result: dict[str, dict[str, Any]] = {}
-    for row in soup.select("tr"):
-        cells = [re.sub(r"\s+", " ", cell.get_text(" ", strip=True)).strip() for cell in row.select("th,td")]
+    for row in table.select("tr"):
+        cells = [
+            re.sub(r"\s+", " ", cell.get_text(" ", strip=True)).strip()
+            for cell in row.select("th,td")
+        ]
         if len(cells) < 9:
             continue
         team = normalize_team(cells[0])
-        if team not in set(TEAM_ALIASES.values()):
+        if team not in CANONICAL_TEAMS:
             continue
 
         pct = parse_pct(cells[5])
@@ -129,18 +147,15 @@ def fetch_standings(url: str, league: str) -> dict[str, dict[str, Any]]:
             "source_url": url,
         }
 
-    if len(result) < 6:
-        raise RuntimeError(f"standings parser returned only {len(result)} teams for {league}")
+    if len(result) != 6:
+        raise RuntimeError(f"regular standings parser returned {len(result)} teams for {league}; expected 6")
     return result
 
 
 def adjusted_strength(row: dict[str, Any], split: str) -> float:
     overall = float(row["pct"])
     venue_rate = row.get(split)
-    if venue_rate is None:
-        value = overall
-    else:
-        value = overall * 0.70 + float(venue_rate) * 0.30
+    value = overall if venue_rate is None else overall * 0.70 + float(venue_rate) * 0.30
     return min(0.78, max(0.22, value))
 
 
@@ -148,8 +163,6 @@ def log5_probability(home_strength: float, away_strength: float) -> float:
     numerator = home_strength * (1.0 - away_strength)
     denominator = numerator + (1.0 - home_strength) * away_strength
     raw = numerator / denominator if denominator else 0.5
-    # Standings-only models can become overconfident late in the season.
-    # Shrink the raw Log5 estimate toward 50% for a more conservative baseline.
     shrunk = 0.5 + 0.72 * (raw - 0.5)
     return min(0.72, max(0.28, shrunk))
 
@@ -181,11 +194,7 @@ def score_scenario(probability: float) -> str:
 def build_prediction(game: dict[str, Any], standings: dict[str, dict[str, Any]]) -> dict[str, Any]:
     home = normalize_team(game.get("home"))
     away = normalize_team(game.get("away"))
-    base = {
-        "home": home,
-        "away": away,
-        "league": game.get("league") or "NPB",
-    }
+    base = {"home": home, "away": away, "league": game.get("league") or "NPB"}
 
     home_row = standings.get(home)
     away_row = standings.get(away)
