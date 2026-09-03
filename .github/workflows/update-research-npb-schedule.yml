@@ -11,6 +11,8 @@ on:
     - cron: "0 6 * * *"  # 15:00 JST
   workflow_dispatch:
 
+# The research generator explicitly selects the regular league standings table,
+# excluding the interleague standings table on the same NPB page.
 permissions:
   contents: write
 
