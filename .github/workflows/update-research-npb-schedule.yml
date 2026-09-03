@@ -1,4 +1,4 @@
-name: Update research NPB schedule
+name: Update research NPB schedule and predictions
 
 on:
   push:
@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install schedule dependencies
+      - name: Install data dependencies
         shell: bash
         run: |
           set -euo pipefail
@@ -67,18 +67,42 @@ jobs:
           print(f"schedule date={payload['date']} games={len(games)}")
           PY
 
-      - name: Save schedule snapshot to research branch
+      - name: Generate official-standings prediction baseline
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- data/npb_today.json; then
-            echo "No repository schedule change"
+          python scripts/generate_daily_predictions.py \
+            --schedule data/npb_today.json \
+            --output data/today_ai_predictions.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          schedule = json.loads(Path("data/npb_today.json").read_text(encoding="utf-8"))
+          pred = json.loads(Path("data/today_ai_predictions.json").read_text(encoding="utf-8"))
+          games = pred.get("games") or []
+          if pred.get("date") != schedule.get("date"):
+              raise SystemExit("prediction date does not match schedule date")
+          if len(games) != len(schedule.get("games") or []):
+              raise SystemExit("prediction game count does not match schedule")
+          ready = [row for row in games if row.get("status") == "ready"]
+          if not ready:
+              raise SystemExit("no games received a baseline prediction")
+          print(f"predictions date={pred['date']} ready={len(ready)}/{len(games)} model={pred.get('model')}")
+          PY
+
+      - name: Save daily snapshot to research branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- data/npb_today.json data/today_ai_predictions.json; then
+            echo "No repository data change"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/npb_today.json
-          git commit -m "Update official NPB schedule"
+          git add data/npb_today.json data/today_ai_predictions.json
+          git commit -m "Update official NPB daily research data"
           git push origin HEAD:"$RESEARCH_BRANCH"
 
       - name: Validate deployment secrets
@@ -131,7 +155,7 @@ jobs:
           chmod 600 "$HOME/.ssh/deploy_key"
           ssh-keygen -y -f "$HOME/.ssh/deploy_key" >/dev/null
 
-      - name: Publish schedule to research data volume
+      - name: Publish schedule and predictions to research data volume
         shell: bash
         run: |
           set -euo pipefail
@@ -145,22 +169,37 @@ jobs:
             -o StrictHostKeyChecking=no
             -o UserKnownHostsFile=/dev/null
           )
-          scp -P "$DEPLOY_PORT" "${COMMON_OPTS[@]}" data/npb_today.json "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/npb_today.json"
+          scp -P "$DEPLOY_PORT" "${COMMON_OPTS[@]}" \
+            data/npb_today.json \
+            data/today_ai_predictions.json \
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/"
           ssh -p "$DEPLOY_PORT" "${COMMON_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" 'bash -s' <<'REMOTE'
           set -euo pipefail
           DATA_DIR="/opt/hawks-ai/research-data"
           mkdir -p "$DATA_DIR"
-          install -m 0644 /tmp/npb_today.json "$DATA_DIR/npb_today.json.tmp"
-          mv "$DATA_DIR/npb_today.json.tmp" "$DATA_DIR/npb_today.json"
-          rm -f /tmp/npb_today.json
+          for name in npb_today.json today_ai_predictions.json; do
+            install -m 0644 "/tmp/$name" "$DATA_DIR/$name.tmp"
+            mv "$DATA_DIR/$name.tmp" "$DATA_DIR/$name"
+            rm -f "/tmp/$name"
+          done
           python3 - <<'PY'
           import json
           from pathlib import Path
-          payload = json.loads(Path("/opt/hawks-ai/research-data/npb_today.json").read_text(encoding="utf-8"))
-          games = payload.get("games") or []
-          if not payload.get("date") or not games:
+
+          data_dir = Path("/opt/hawks-ai/research-data")
+          schedule = json.loads((data_dir / "npb_today.json").read_text(encoding="utf-8"))
+          pred = json.loads((data_dir / "today_ai_predictions.json").read_text(encoding="utf-8"))
+          games = pred.get("games") or []
+          if not schedule.get("date") or not schedule.get("games"):
               raise SystemExit("remote schedule verification failed")
-          print(f"remote schedule date={payload['date']} games={len(games)}")
+          if pred.get("date") != schedule.get("date"):
+              raise SystemExit("remote prediction date mismatch")
+          if len(games) != len(schedule.get("games") or []):
+              raise SystemExit("remote prediction count mismatch")
+          ready = sum(1 for row in games if row.get("status") == "ready")
+          if not ready:
+              raise SystemExit("remote prediction payload has no ready games")
+          print(f"remote date={schedule['date']} games={len(games)} ready={ready} model={pred.get('model')}")
           PY
           curl -fsS --max-time 15 http://127.0.0.1:8502/_stcore/health
           REMOTE
