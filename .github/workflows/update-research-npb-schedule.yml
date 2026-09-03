@@ -69,6 +69,44 @@ jobs:
           print(f"schedule date={payload['date']} games={len(games)}")
           PY
 
+      - name: Fetch and merge official probable starters
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/fetch_npb_starters.py --output data/npb_starters.json || {
+            echo "::warning::NPB probable starters are not available yet; continuing without starter names"
+            printf '{"date":null,"starters":{},"source":"NPB公式 予告先発"}\n' > data/npb_starters.json
+          }
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          schedule_path = Path("data/npb_today.json")
+          starters_path = Path("data/npb_starters.json")
+          schedule = json.loads(schedule_path.read_text(encoding="utf-8"))
+          starters_payload = json.loads(starters_path.read_text(encoding="utf-8"))
+          starters = starters_payload.get("starters") or {}
+
+          merged = 0
+          if starters_payload.get("date") == schedule.get("date"):
+              for game in schedule.get("games") or []:
+                  home = str(game.get("home") or "")
+                  away = str(game.get("away") or "")
+                  if starters.get(home):
+                      game["home_starter"] = starters[home]
+                      merged += 1
+                  if starters.get(away):
+                      game["away_starter"] = starters[away]
+                      merged += 1
+                  if game.get("home_starter") or game.get("away_starter"):
+                      game["starter_source"] = starters_payload.get("source") or "NPB公式 予告先発"
+                      game["starter_source_url"] = starters_payload.get("source_url")
+          schedule["starter_updated_at"] = starters_payload.get("updated_at")
+          schedule["starter_count"] = merged
+          schedule_path.write_text(json.dumps(schedule, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print(f"starter names merged={merged} schedule_date={schedule.get('date')} starter_date={starters_payload.get('date')}")
+          PY
+
       - name: Generate official-standings prediction baseline
         shell: bash
         run: |
@@ -97,13 +135,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- data/npb_today.json data/today_ai_predictions.json; then
+          if git diff --quiet -- data/npb_today.json data/npb_starters.json data/today_ai_predictions.json; then
             echo "No repository data change"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/npb_today.json data/today_ai_predictions.json
+          git add data/npb_today.json data/npb_starters.json data/today_ai_predictions.json
           git commit -m "Update official NPB daily research data"
           git push origin HEAD:"$RESEARCH_BRANCH"
 
@@ -173,13 +211,14 @@ jobs:
           )
           scp -P "$DEPLOY_PORT" "${COMMON_OPTS[@]}" \
             data/npb_today.json \
+            data/npb_starters.json \
             data/today_ai_predictions.json \
             "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/"
           ssh -p "$DEPLOY_PORT" "${COMMON_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" 'bash -s' <<'REMOTE'
           set -euo pipefail
           DATA_DIR="/opt/hawks-ai/research-data"
           mkdir -p "$DATA_DIR"
-          for name in npb_today.json today_ai_predictions.json; do
+          for name in npb_today.json npb_starters.json today_ai_predictions.json; do
             install -m 0644 "/tmp/$name" "$DATA_DIR/$name.tmp"
             mv "$DATA_DIR/$name.tmp" "$DATA_DIR/$name"
             rm -f "/tmp/$name"
@@ -190,6 +229,7 @@ jobs:
 
           data_dir = Path("/opt/hawks-ai/research-data")
           schedule = json.loads((data_dir / "npb_today.json").read_text(encoding="utf-8"))
+          starters = json.loads((data_dir / "npb_starters.json").read_text(encoding="utf-8"))
           pred = json.loads((data_dir / "today_ai_predictions.json").read_text(encoding="utf-8"))
           games = pred.get("games") or []
           if not schedule.get("date") or not schedule.get("games"):
@@ -201,7 +241,7 @@ jobs:
           ready = sum(1 for row in games if row.get("status") == "ready")
           if not ready:
               raise SystemExit("remote prediction payload has no ready games")
-          print(f"remote date={schedule['date']} games={len(games)} ready={ready} model={pred.get('model')}")
+          print(f"remote date={schedule['date']} games={len(games)} ready={ready} starter_date={starters.get('date')} starter_count={schedule.get('starter_count', 0)}")
           PY
           curl -fsS --max-time 15 http://127.0.0.1:8502/_stcore/health
           REMOTE
