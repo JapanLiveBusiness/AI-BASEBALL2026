@@ -25,7 +25,6 @@ git reset --hard "origin/$BRANCH"
 # result files maintained by the running service.
 mkdir -p "$DATA_DIR"
 for artifact in \
-  historical_games_2017_2026.json \
   historical_backtest_report.json \
   historical_backtest_predictions.csv; do
   install -m 0644 "$APP_DIR/data/$artifact" "$DATA_DIR/$artifact"
