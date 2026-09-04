@@ -6,6 +6,7 @@ from pathlib import Path
 import streamlit as st
 
 from prediction_metrics import build_prediction_metrics
+from prediction_results import archive_predictions, build_performance, settle_predictions
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
 
 PROD_DATA_DIR = Path("/app/data")
@@ -227,6 +228,12 @@ ai_history = _load_optional_json(
 if not isinstance(ai_history, list):
     ai_history = []
 
+current_predictions = _load_optional_json(active_data_dir() / "today_ai_predictions.json", {})
+current_schedule = _load_optional_json(active_data_dir() / "npb_today.json", {})
+ai_history, _ = archive_predictions(ai_history, current_predictions, current_schedule)
+ai_history, _ = settle_predictions(ai_history, current_schedule)
+ai_perf = build_performance(ai_history)
+
 settled_games = int(
     ai_perf.get("settled_games") or 0
 )
@@ -239,35 +246,12 @@ hit_rate = ai_perf.get("hit_rate")
 brier_score = ai_perf.get("brier_score")
 score_mae = ai_perf.get("score_mae")
 
-c1, c2, c3, c4 = st.columns(4)
-
-c1.metric(
-    "確定試合",
-    f"{settled_games}試合",
-)
-
-c2.metric(
-    "的中",
-    f"{hits}試合",
-)
-
-c3.metric(
-    "的中率",
-    (
-        f"{hit_rate:.1f}%"
-        if hit_rate is not None
-        else "-"
-    ),
-)
-
-c4.metric(
-    "Brier Score",
-    (
-        f"{brier_score:.4f}"
-        if brier_score is not None
-        else "-"
-    ),
-)
+with st.container(horizontal=True):
+    st.metric("固定予測", f"{len(ai_history)}試合", border=True)
+    st.metric("確定試合", f"{settled_games}試合", border=True)
+    st.metric("的中", f"{hits}試合", border=True)
+    st.metric("的中率", f"{hit_rate:.1f}%" if hit_rate is not None else "-", border=True)
+    st.metric("Brier Score", f"{brier_score:.4f}" if brier_score is not None else "-", border=True)
 
 if score_mae is not None:
     st.caption(
@@ -288,16 +272,12 @@ if confidence:
         "LOW": "LOW",
     }
 
-    for level in (
-        "HIGH",
-        "MEDIUM",
-        "LOW",
-    ):
+    for level in confidence:
         row = confidence.get(level) or {}
 
         confidence_rows.append(
             {
-                "信頼度": labels[level],
+                "信頼度": labels.get(level, level),
                 "試合数": int(
                     row.get("games") or 0
                 ),
@@ -315,7 +295,7 @@ if confidence:
 
     st.dataframe(
         confidence_rows,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "的中率":
@@ -365,7 +345,7 @@ if pending:
 
     st.dataframe(
         pending_rows,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "勝率":
@@ -426,7 +406,7 @@ if final_rows:
 
     st.dataframe(
         display_rows,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "勝率":
@@ -452,3 +432,8 @@ if (
         "試合終了後、的中率・Brier Score・"
         "予想スコア誤差が自動集計されます。"
     )
+
+st.caption(
+    f"固定予測 {len(ai_history)}件・未確定 {len(pending)}件。"
+    "試合日程データを60秒ごとに確認し、終了スコアが届くと自動で照合します。"
+)

@@ -3,6 +3,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 import html
 import json
+from urllib.parse import quote
 
 import streamlit as st
 
@@ -120,7 +121,7 @@ rank_html = "".join(rank_cards) or """
 """
 
 team_html = "".join(
-    f'<div class="team"><b>{abbr}</b><span>{name}</span></div>'
+    f'<a class="team" href="/球団別詳細?team={quote(name)}" target="_self"><b>{abbr}</b><span>{name}</span></a>'
     for abbr, name in teams
 )
 
@@ -162,7 +163,7 @@ st.markdown(
 
 .actions{display:grid;gap:8px}.action{text-decoration:none;color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:14px 15px;display:grid;grid-template-columns:35px 1fr 18px;align-items:center;gap:10px;min-height:69px}.action.primary{background:#171717;color:#fff;border-color:#282828}.action-icon{width:34px;height:34px;border-radius:9px;background:#f5ebbd;color:#8a6700;display:grid;place-items:center;font-weight:950}.action.primary .action-icon{background:var(--gold);color:#111}.action-copy b{display:flex;align-items:center;gap:7px;font-size:14px}.action-copy>span{display:block;font-size:9px;color:var(--muted);margin-top:3px}.action.primary .action-copy>span{color:#aeb4bd}.action-arrow{color:#b08b00;font-weight:950}.readiness{display:inline-flex!important;margin:0!important;padding:2px 6px;border-radius:999px;font-size:7px!important;line-height:1.2;font-weight:900;background:#e8e3d8;color:#625d54!important}.readiness.live{background:#dff4e7;color:#176b3a!important}.readiness.beta{background:#fff0bd;color:#765800!important}.readiness.preview{background:#e9e2ff;color:#5b3ca5!important}
 
-.teams-panel{margin-top:14px}.teams{display:grid;grid-template-columns:repeat(12,1fr);gap:7px}.team{background:var(--paper);border:1px solid var(--line);border-radius:10px;min-height:68px;padding:8px 5px;text-align:center;display:flex;flex-direction:column;justify-content:center}.team b{width:30px;height:30px;border-radius:50%;background:#171717;color:var(--gold);display:grid;place-items:center;margin:0 auto 5px;font-size:9px}.team span{font-size:7px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.teams-panel{margin-top:14px}.teams{display:grid;grid-template-columns:repeat(12,1fr);gap:7px}.team{background:var(--paper);border:1px solid var(--line);border-radius:10px;min-height:68px;padding:8px 5px;text-align:center;display:flex;flex-direction:column;justify-content:center;text-decoration:none;color:inherit;transition:.15s ease}.team:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 5px 14px rgba(169,121,0,.12)}.team b{width:30px;height:30px;border-radius:50%;background:#171717;color:var(--gold);display:grid;place-items:center;margin:0 auto 5px;font-size:9px}.team span{font-size:7px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .system-row{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:14px;margin-top:14px}.system{background:#171717;border-radius:15px;color:#fff;padding:17px 20px;display:flex;align-items:center;justify-content:space-between}.system strong{font-size:15px}.system p{font-size:9px;color:#aeb4bd;margin:4px 0 0}.live{font-size:9px;color:var(--gold);border:1px solid #444;border-radius:999px;padding:8px 11px;font-weight:950}.domain{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:17px}.domain strong{font-size:11px}.domain div{font-size:9px;color:var(--muted);margin-top:5px;overflow-wrap:anywhere}
 
@@ -179,7 +180,7 @@ st.markdown(
     f"""
 <div class="topbar">
   <div class="brand"><div class="logo">M</div><div><div class="brand-title">AI BASEBALL STUDIO</div><div class="brand-sub">GAME INTELLIGENCE</div></div></div>
-  <nav class="nav"><a class="active" href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">BET</a><a href="/収支マップ" target="_self">PERFORMANCE</a><a href="/AI詳細" target="_self">AI DETAIL</a></nav>
+  <nav class="nav"><a class="active" href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">BET</a><a href="/収支マップ" target="_self">PERFORMANCE</a><a href="/球団別詳細" target="_self">TEAMS</a><a href="/AI詳細" target="_self">AI DETAIL</a></nav>
   <div class="status">JST {now.strftime('%H:%M')} · LIVE</div>
 </div>
 
@@ -220,7 +221,7 @@ st.markdown(
   </section>
 
   <section class="panel teams-panel">
-    <div class="panel-head"><h2>12球団一覧</h2><span>球団別詳細は実装予定</span></div>
+    <div class="panel-head"><h2>12球団一覧</h2><span>球団を選択して戦績・次戦・直近成績を表示</span></div>
     <div class="teams">{team_html}</div>
   </section>
 

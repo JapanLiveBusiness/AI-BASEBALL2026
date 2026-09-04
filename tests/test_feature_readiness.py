@@ -15,9 +15,11 @@ class FeatureReadinessTests(unittest.TestCase):
 
     def test_completed_bet_work_is_removed_from_implementation_queue(self):
         queue = implementation_queue()
-        self.assertEqual(queue[0].key, "results")
+        self.assertEqual(queue[0].key, "ai_detail")
         self.assertNotIn("bet_entry", [item.key for item in queue])
         self.assertNotIn("performance", [item.key for item in queue])
+        self.assertNotIn("results", [item.key for item in queue])
+        self.assertNotIn("team_detail", [item.key for item in queue])
         self.assertTrue(all(item.next_step for item in queue))
 
     def test_feature_lookup(self):

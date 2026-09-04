@@ -91,7 +91,7 @@ def render_topbar(section="STUDIO"):
       <div class="studio-brand-sub">GAME INTELLIGENCE</div>
     </div>
   </div>
-  <nav class="studio-nav"><a href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">BET</a><a href="/収支マップ" target="_self">PERFORMANCE</a><a href="/AI詳細" target="_self">AI DETAIL</a></nav>
+  <nav class="studio-nav"><a href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">BET</a><a href="/収支マップ" target="_self">PERFORMANCE</a><a href="/球団別詳細" target="_self">TEAMS</a><a href="/AI詳細" target="_self">AI DETAIL</a></nav>
   <div class="studio-badge">{safe_section}</div>
 </div>
 ''',

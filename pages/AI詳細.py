@@ -21,12 +21,23 @@ render_hero(
 )
 render_nav_links()
 
-_live_handicap = fetch_hawks_handicap(_today_jst)
+@st.cache_data(ttl=600, max_entries=4, show_spinner=False)
+def load_live_handicap(date_value):
+    return fetch_hawks_handicap(date_value, timeout=4)
+
+
+_live_handicap = load_live_handicap(_today_jst)
 _live_handicap_score = (
     float(_live_handicap["handicap_score"])
     if _live_handicap.get("published") and _live_handicap.get("handicap_score") is not None
     else 0.0
 )
+if _live_handicap.get("published"):
+    st.caption(
+        f"公開ハンデ: {_live_handicap.get('favored_team')} {_live_handicap.get('token')}｜10分間キャッシュ"
+    )
+else:
+    st.info("本日の公開ハンデは未掲載または取得できません。ハンデ補正なしで詳細分析を表示します。")
 
 _app_path = Path(__file__).resolve().parents[1] / "app.py"
 _app_source = _app_path.read_text(encoding="utf-8")
@@ -45,7 +56,12 @@ _original_file = globals().get("__file__")
 st.set_page_config = lambda *args, **kwargs: None
 globals()["__file__"] = str(_app_path)
 try:
-    exec(compile(_app_source, str(_app_path), "exec"), globals(), globals())
+    try:
+        exec(compile(_app_source, str(_app_path), "exec"), globals(), globals())
+    except Exception as exc:
+        st.error("詳細分析の一部を読み込めませんでした。基本画面と他の機能は引き続き利用できます。")
+        with st.expander("エラー情報"):
+            st.code(f"{type(exc).__name__}: {exc}")
 finally:
     st.set_page_config = _original_set_page_config
     globals()["__file__"] = _original_file
