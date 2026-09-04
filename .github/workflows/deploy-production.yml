@@ -23,6 +23,10 @@ jobs:
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
+      AUTH0_CLIENT_ID: ${{ secrets.AUTH0_CLIENT_ID }}
+      AUTH0_CLIENT_SECRET: ${{ secrets.AUTH0_CLIENT_SECRET }}
+      AUTH0_COOKIE_SECRET: ${{ secrets.AUTH0_COOKIE_SECRET }}
     steps:
       - name: Validate deploy secrets
         shell: bash
@@ -95,6 +99,81 @@ jobs:
           ssh-keygen -y -f "$HOME/.ssh/deploy_key" > "$HOME/.ssh/deploy_key.pub"
           echo "Deployment public key fingerprint:"
           ssh-keygen -lf "$HOME/.ssh/deploy_key.pub" -E sha256
+
+      - name: Provision Auth0 configuration when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          configured=0
+          missing=0
+          for name in AUTH0_DOMAIN AUTH0_CLIENT_ID AUTH0_CLIENT_SECRET AUTH0_COOKIE_SECRET; do
+            if [ -n "${!name:-}" ]; then
+              configured=$((configured + 1))
+            else
+              missing=$((missing + 1))
+            fi
+          done
+
+          if [ "$configured" -eq 0 ]; then
+            echo "Auth0 secrets are not configured; retaining legacy single-user mode"
+            exit 0
+          fi
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Auth0 configuration is partial. Configure all four AUTH0_* repository secrets."
+            exit 1
+          fi
+
+          AUTH_FILE="$RUNNER_TEMP/auth0-secrets.toml"
+          export AUTH_FILE
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          domain = os.environ["AUTH0_DOMAIN"].strip()
+          domain = domain.removeprefix("https://").removeprefix("http://").rstrip("/")
+          if not domain or "/" in domain or any(ch.isspace() for ch in domain):
+              raise SystemExit("AUTH0_DOMAIN must be a hostname without a path")
+          cookie_secret = os.environ["AUTH0_COOKIE_SECRET"]
+          if len(cookie_secret) < 32:
+              raise SystemExit("AUTH0_COOKIE_SECRET must contain at least 32 characters")
+
+          quote = json.dumps
+          content = "\n".join(
+              [
+                  "[auth]",
+                  f"redirect_uri = {quote('https://ai-baseball-studio.f-polaris.jp/oauth2callback')}",
+                  f"cookie_secret = {quote(cookie_secret)}",
+                  "",
+                  "[auth.auth0]",
+                  f"client_id = {quote(os.environ['AUTH0_CLIENT_ID'])}",
+                  f"client_secret = {quote(os.environ['AUTH0_CLIENT_SECRET'])}",
+                  f"server_metadata_url = {quote(f'https://{domain}/.well-known/openid-configuration')}",
+                  'client_kwargs = { "prompt" = "login" }',
+                  "",
+              ]
+          )
+          Path(os.environ["AUTH_FILE"]).write_text(content, encoding="utf-8")
+          PY
+          chmod 600 "$AUTH_FILE"
+
+          COMMON_SSH_OPTS=(
+            -i "$HOME/.ssh/deploy_key"
+            -o IdentitiesOnly=yes
+            -o BatchMode=yes
+            -o PreferredAuthentications=publickey
+            -o PasswordAuthentication=no
+            -o ConnectTimeout=15
+            -o StrictHostKeyChecking=no
+            -o UserKnownHostsFile=/dev/null
+          )
+          scp -P "$DEPLOY_PORT" "${COMMON_SSH_OPTS[@]}" \
+            "$AUTH_FILE" \
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/ai-baseball-auth0.toml"
+          ssh -p "$DEPLOY_PORT" "${COMMON_SSH_OPTS[@]}" \
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
+            'install -d -m 700 /opt/hawks-ai/auth0 && install -m 600 /tmp/ai-baseball-auth0.toml /opt/hawks-ai/auth0/secrets.toml && rm -f /tmp/ai-baseball-auth0.toml'
+          echo "Auth0 configuration installed on the production host"
 
       - name: Deploy to production server
         shell: bash
