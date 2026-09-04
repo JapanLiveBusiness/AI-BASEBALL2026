@@ -17,6 +17,64 @@ def hawks_probability(game: dict[str, Any] | None) -> float:
     return probability if game.get("pick") == "ソフトバンク" else 100 - probability
 
 
+def live_simulation_context(
+    game: dict[str, Any] | None,
+    team: str = "ソフトバンク",
+) -> dict[str, Any]:
+    """Convert an official game update into live simulator inputs."""
+    unavailable = {"available": False}
+    if not game:
+        return unavailable
+    status = str(game.get("status") or "").strip().lower()
+    if not any(token in status for token in ("live", "progress", "playing", "試合中")):
+        return unavailable
+    home, away = str(game.get("home") or ""), str(game.get("away") or "")
+    if team not in {home, away}:
+        return unavailable
+    try:
+        home_score = int(game.get("home_score"))
+        away_score = int(game.get("away_score"))
+    except (TypeError, ValueError):
+        return unavailable
+
+    try:
+        inning = max(1, min(9, int(game.get("inning"))))
+    except (TypeError, ValueError):
+        return unavailable
+    try:
+        outs = max(0, min(2, int(game.get("outs") or 0)))
+    except (TypeError, ValueError):
+        outs = 0
+
+    batting_team = str(game.get("batting_team") or "")
+    half = str(game.get("inning_half") or game.get("half") or "").lower()
+    if batting_team:
+        attack_side = "ホークス攻撃中" if team in batting_team else "相手攻撃中"
+    elif half in {"表", "top", "裏", "bottom"}:
+        home_batting = half in {"裏", "bottom"}
+        attack_side = "ホークス攻撃中" if (team == home) == home_batting else "相手攻撃中"
+    else:
+        return unavailable
+
+    raw_bases = game.get("bases") if isinstance(game.get("bases"), dict) else {}
+    runners = tuple(
+        bit
+        for base, bit in ((1, 1), (2, 2), (3, 4))
+        if raw_bases.get(base) or raw_bases.get(str(base))
+    )
+    return {
+        "available": True,
+        "mode": "live",
+        "hawks_score": home_score if home == team else away_score,
+        "opponent_score": away_score if home == team else home_score,
+        "inning": inning,
+        "attack_side": attack_side,
+        "outs": outs,
+        "runners": runners,
+        "status": status,
+    }
+
+
 def simulate_hawks_win_probability(
     base_probability: float,
     *,

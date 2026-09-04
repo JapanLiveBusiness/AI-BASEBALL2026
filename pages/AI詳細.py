@@ -12,9 +12,11 @@ from ai_detail_summary import (
     find_team_prediction,
     hawks_history_summary,
     hawks_probability,
+    live_simulation_context,
     simulate_hawks_win_probability,
 )
 from handicap_source import fetch_hawks_handicap
+from npb_live import fetch_npb_live_game
 from prediction_metrics import build_prediction_metrics
 from studio_theme import (
     apply_studio_theme,
@@ -63,6 +65,11 @@ def load_live_handicap(date_value):
     return fetch_hawks_handicap(date_value, timeout=4)
 
 
+@st.cache_data(ttl=15, max_entries=12, show_spinner=False)
+def load_official_live_game(date_value, home, away):
+    return fetch_npb_live_game(date_value, home, away)
+
+
 schedule = load_json(str(DATA_DIR / "npb_today.json"), {"games": []})
 predictions = load_json(
     str(DATA_DIR / "today_ai_predictions.json"), {"games": []}
@@ -76,6 +83,53 @@ shared_predictions = load_json(
 game = find_team_prediction(schedule, predictions)
 if game is None:
     game = find_team_prediction(shared_schedule, shared_predictions)
+
+# The daily file can lag behind during an upstream outage. Prefer today's game
+# from the same persisted calendar cache used by the games page.
+calendar_games = []
+for calendar_path in (
+    Path(__file__).resolve().parents[1] / "npb_schedule_fallback.json",
+    PROD_DATA_DIR / "npb_schedule_cache.json",
+):
+    calendar_payload = load_json(str(calendar_path), {"games": []})
+    calendar_games.extend(
+        row
+        for row in calendar_payload.get("games") or []
+        if str(row.get("date") or "") == TODAY_JST.isoformat()
+    )
+today_game = find_team_prediction({"games": calendar_games}, predictions)
+if today_game is not None:
+    game = today_game
+
+
+@st.fragment(run_every="30s")
+def sync_official_live_game(current_game):
+    if not current_game or str(current_game.get("date") or "") != TODAY_JST.isoformat():
+        return
+    home = str(current_game.get("home") or "")
+    away = str(current_game.get("away") or "")
+    if not home or not away:
+        return
+    lookup_key = f"{TODAY_JST.isoformat()}|{home}|{away}"
+    update = load_official_live_game(TODAY_JST, home, away)
+    if not update:
+        return
+    live_cache = st.session_state.setdefault("ai_detail_official_live", {})
+    previous = live_cache.get(lookup_key)
+    live_cache[lookup_key] = update
+    if previous is not None and previous != update:
+        st.rerun()
+
+
+sync_official_live_game(game)
+if game:
+    game_lookup_key = (
+        f"{game.get('date')}|{game.get('home')}|{game.get('away')}"
+    )
+    stored_live = st.session_state.get("ai_detail_official_live", {}).get(game_lookup_key, {})
+    if stored_live:
+        game.update(stored_live)
+        game["opponent"] = game.get("away") if game.get("home") == "ソフトバンク" else game.get("home")
 
 history = load_json(str(DATA_DIR / "game_history.json"), [])
 history_summary = hawks_history_summary(
@@ -229,62 +283,99 @@ if simulator_mode == "試合前":
     }
     simulator_inning = 1
 else:
-    score_left, score_right, inning_col = st.columns(3)
-    hawks_score = score_left.number_input(
-        "ホークス得点",
-        min_value=0,
-        max_value=30,
-        value=0,
-        step=1,
-        key="ai_detail_hawks_score",
+    official_context = live_simulation_context(game)
+    use_official_live = st.toggle(
+        "NPB公式速報を自動反映",
+        value=official_context["available"],
+        disabled=not official_context["available"],
+        key="ai_detail_use_official_live",
+        help="公式速報を30秒ごとに確認し、点差・イニング・アウト・走者を自動入力します。",
     )
-    opponent_score = score_right.number_input(
-        "相手得点",
-        min_value=0,
-        max_value=30,
-        value=0,
-        step=1,
-        key="ai_detail_opponent_score",
-    )
-    inning = inning_col.slider(
-        "現在のイニング",
-        min_value=1,
-        max_value=9,
-        value=1,
-        key="ai_detail_inning",
-    )
-    attack_side = st.segmented_control(
-        "現在の攻撃",
-        options=["ホークス攻撃中", "相手攻撃中"],
-        default="ホークス攻撃中",
-        key="ai_detail_attack_side",
-    )
-    outs = st.segmented_control(
-        "アウトカウント",
-        options=[0, 1, 2],
-        default=0,
-        key="ai_detail_outs",
-    )
-    selected_runners = st.pills(
-        "走者状況",
-        options=["1塁", "2塁", "3塁"],
-        selection_mode="multi",
-        key="ai_detail_runners",
-    )
-    runner_bits = tuple(
-        {"1塁": 1, "2塁": 2, "3塁": 4}[runner]
-        for runner in (selected_runners or [])
-    )
-    simulator_inning = inning
-    simulation_options = {
-        "mode": "live",
-        "hawks_score": hawks_score,
-        "opponent_score": opponent_score,
-        "inning": inning,
-        "attack_side": attack_side,
-        "outs": outs,
-        "runners": runner_bits,
-    }
+    if use_official_live and official_context["available"]:
+        runner_labels = [
+            label
+            for bit, label in ((1, "1塁"), (2, "2塁"), (4, "3塁"))
+            if bit in official_context["runners"]
+        ]
+        st.success(
+            "NPB公式速報を反映中｜"
+            f"{official_context['hawks_score']} - {official_context['opponent_score']}｜"
+            f"{official_context['inning']}回｜{official_context['attack_side']}｜"
+            f"{official_context['outs']}アウト｜"
+            f"走者 {'・'.join(runner_labels) if runner_labels else 'なし'}"
+        )
+        simulator_inning = official_context["inning"]
+        simulation_options = {
+            key: official_context[key]
+            for key in (
+                "mode",
+                "hawks_score",
+                "opponent_score",
+                "inning",
+                "attack_side",
+                "outs",
+                "runners",
+            )
+        }
+    else:
+        if not official_context["available"]:
+            st.caption("公式速報は試合開始後に利用できます。現在は手動入力モードです。")
+        score_left, score_right, inning_col = st.columns(3)
+        hawks_score = score_left.number_input(
+            "ホークス得点",
+            min_value=0,
+            max_value=30,
+            value=0,
+            step=1,
+            key="ai_detail_hawks_score",
+        )
+        opponent_score = score_right.number_input(
+            "相手得点",
+            min_value=0,
+            max_value=30,
+            value=0,
+            step=1,
+            key="ai_detail_opponent_score",
+        )
+        inning = inning_col.slider(
+            "現在のイニング",
+            min_value=1,
+            max_value=9,
+            value=1,
+            key="ai_detail_inning",
+        )
+        attack_side = st.segmented_control(
+            "現在の攻撃",
+            options=["ホークス攻撃中", "相手攻撃中"],
+            default="ホークス攻撃中",
+            key="ai_detail_attack_side",
+        )
+        outs = st.segmented_control(
+            "アウトカウント",
+            options=[0, 1, 2],
+            default=0,
+            key="ai_detail_outs",
+        )
+        selected_runners = st.pills(
+            "走者状況",
+            options=["1塁", "2塁", "3塁"],
+            selection_mode="multi",
+            key="ai_detail_runners",
+        )
+        runner_bits = tuple(
+            {"1塁": 1, "2塁": 2, "3塁": 4}[runner]
+            for runner in (selected_runners or [])
+        )
+        simulator_inning = inning
+        simulation_options = {
+            "mode": "live",
+            "hawks_score": hawks_score,
+            "opponent_score": opponent_score,
+            "inning": inning,
+            "attack_side": attack_side,
+            "outs": outs,
+            "runners": runner_bits,
+        }
 
 context = {"total": 0.0}
 use_context = st.toggle(

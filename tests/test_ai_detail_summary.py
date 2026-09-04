@@ -3,6 +3,7 @@ from ai_detail_summary import (
     find_team_prediction,
     hawks_history_summary,
     hawks_probability,
+    live_simulation_context,
     simulate_hawks_win_probability,
 )
 
@@ -110,6 +111,52 @@ def test_live_simulator_clamps_extreme_scores():
 
     assert result["score_adjustment"] == 55.0
     assert result["final_probability"] == 99.5
+
+
+def test_live_context_maps_home_hawks_official_state():
+    context = live_simulation_context({
+        "status": "live",
+        "home": "ソフトバンク",
+        "away": "西武",
+        "home_score": 4,
+        "away_score": 3,
+        "inning": 8,
+        "inning_half": "裏",
+        "outs": 1,
+        "bases": {1: True, 2: False, 3: True},
+    })
+
+    assert context["available"] is True
+    assert context["hawks_score"] == 4
+    assert context["opponent_score"] == 3
+    assert context["attack_side"] == "ホークス攻撃中"
+    assert context["runners"] == (1, 4)
+
+
+def test_live_context_maps_away_hawks_and_rejects_incomplete_data():
+    context = live_simulation_context({
+        "status": "試合中",
+        "home": "西武",
+        "away": "ソフトバンク",
+        "home_score": 5,
+        "away_score": 2,
+        "inning": 6,
+        "inning_half": "表",
+        "outs": 0,
+    })
+
+    assert context["available"] is True
+    assert context["hawks_score"] == 2
+    assert context["opponent_score"] == 5
+    assert context["attack_side"] == "ホークス攻撃中"
+    assert live_simulation_context({"status": "scheduled"}) == {"available": False}
+    assert live_simulation_context({
+        "status": "live",
+        "home": "ソフトバンク",
+        "away": "西武",
+        "home_score": 1,
+        "away_score": 0,
+    }) == {"available": False}
 
 
 def test_context_adjustments_match_v8_rules():
