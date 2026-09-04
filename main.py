@@ -35,6 +35,19 @@ def safe(value, fallback="--"):
     return html.escape(str(value))
 
 
+def format_data_timestamp(value):
+    """Render source timestamps consistently in local time without exposing raw ISO data."""
+    if value in (None, ""):
+        return "同期待ち"
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=JST)
+        return parsed.astimezone(JST).strftime("%Y/%m/%d %H:%M JST")
+    except (TypeError, ValueError):
+        return safe(value)
+
+
 predictions = load_json("today_ai_predictions.json", {"games": []})
 npb_today = load_json("npb_today.json", {"games": []})
 bet_summary = load_json("bet_summary.json", {})
@@ -59,9 +72,8 @@ best_prob_label = (
     if isinstance(best_prob, (int, float))
     else "--"
 )
-updated_at = safe(
-    predictions.get("updated_at") or npb_today.get("updated_at"),
-    "同期待ち",
+updated_at = format_data_timestamp(
+    predictions.get("updated_at") or npb_today.get("updated_at")
 )
 weekly_profit = bet_summary.get("weekly_unsettled_profit")
 profit_label = (
@@ -119,10 +131,10 @@ st.markdown(
   --dark:#121212;--soft:#f8f6f1;
 }
 [data-testid="stHeader"],[data-testid="stToolbar"],footer,[data-testid="stSidebar"]{display:none!important}
-[data-testid="stAppViewContainer"]{background:var(--bg)!important;color:var(--ink)!important}
-.block-container{max-width:1460px!important;padding:0 28px 42px!important}
+[data-testid="stAppViewContainer"]{background:var(--bg)!important;color:var(--ink)!important;overflow-x:hidden!important}
+.block-container{box-sizing:border-box;max-width:1460px!important;padding:0 28px 42px!important}
 
-.topbar{height:68px;margin:0 -28px;background:var(--dark);color:#fff;display:flex;align-items:center;padding:0 28px;border-bottom:2px solid rgba(243,196,0,.55);gap:24px}
+.topbar{box-sizing:border-box;min-height:68px;margin:0 -28px;background:var(--dark);color:#fff;display:flex;align-items:center;padding:0 28px;border-bottom:2px solid rgba(243,196,0,.55);gap:24px}
 .brand{display:flex;align-items:center;gap:12px;min-width:270px}.logo{width:40px;height:40px;border-radius:11px;background:var(--gold);color:#111;display:grid;place-items:center;font-size:20px;font-weight:1000;font-style:italic}.brand-title{font-size:14px;font-weight:950;letter-spacing:.13em}.brand-sub{font-size:7px;color:#9ca3af;letter-spacing:.36em;margin-top:4px}
 .nav{display:flex;justify-content:center;align-items:center;gap:26px;flex:1}.nav a{font-size:10px;color:#a7a7a7;white-space:nowrap;text-decoration:none}.nav a:hover{color:#fff}.nav .active{color:var(--gold);font-weight:950}.status{font-size:9px;border:1px solid #404040;border-radius:999px;padding:8px 11px;color:#e5e7eb}
 
@@ -145,8 +157,8 @@ st.markdown(
 
 div[data-testid="stPageLink"] a{background:var(--paper)!important;color:var(--ink)!important;border:1px solid var(--line)!important;border-radius:12px!important;font-weight:850!important;padding:11px 14px!important}div[data-testid="stPageLink"] a:hover{border-color:var(--gold)!important;box-shadow:0 4px 14px rgba(169,121,0,.10)!important}.links{margin-top:14px}
 
-@media(max-width:1100px){.nav{display:none}.brand{flex:1}.overview,.content-grid{grid-template-columns:1fr}.featured{min-height:200px}.teams{grid-template-columns:repeat(6,1fr)}}
-@media(max-width:700px){.block-container{padding:0 10px 30px!important}.topbar{margin:0 -10px;padding:0 12px;height:60px}.status{display:none}.dashboard{padding-top:10px}.hero{min-height:210px;padding:22px 18px}.hero h1{font-size:34px!important}.featured{min-height:180px;padding:20px}.featured-pick{font-size:26px}.kpi-row{grid-template-columns:1fr}.kpi{min-height:74px}.content-grid{gap:10px}.panel{padding:13px}.ranking-card{grid-template-columns:38px 1fr 72px;padding:11px}.ranking-score b{font-size:17px}.teams{grid-template-columns:repeat(4,1fr)}.system-row{grid-template-columns:1fr}.system{align-items:flex-start;gap:10px}.system p{max-width:220px}}
+@media(max-width:1100px){.topbar{flex-wrap:wrap;padding-top:10px;padding-bottom:9px;gap:8px 18px}.brand{flex:1}.nav{order:3;flex-basis:100%;justify-content:flex-start;gap:22px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}.overview,.content-grid{grid-template-columns:1fr}.featured{min-height:200px}.teams{grid-template-columns:repeat(6,1fr)}}
+@media(max-width:700px){.block-container{padding:0 10px 30px!important}.topbar{margin:0 -10px;padding:9px 12px 8px}.brand-title{font-size:12px}.status{display:none}.nav{gap:18px}.nav a{font-size:9px}.dashboard{padding-top:10px}.hero{min-height:210px;padding:22px 18px}.hero h1{font-size:clamp(28px,9vw,34px)!important}.featured{min-height:180px;padding:20px}.featured-pick{font-size:26px}.kpi-row{grid-template-columns:1fr}.kpi{min-height:74px}.content-grid{gap:10px}.panel{padding:13px}.panel-head{align-items:flex-start;gap:8px}.ranking-card{grid-template-columns:38px minmax(0,1fr) 72px;padding:11px}.ranking-score b{font-size:17px}.teams{grid-template-columns:repeat(4,1fr)}.system-row{grid-template-columns:1fr}.system{align-items:flex-start;gap:10px}.system p{max-width:220px}}
 </style>
 """,
     unsafe_allow_html=True,
