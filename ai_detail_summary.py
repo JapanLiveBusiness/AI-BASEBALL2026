@@ -28,6 +28,7 @@ def simulate_hawks_win_probability(
     attack_side: str = "ホークス攻撃中",
     outs: int = 0,
     runners: tuple[int, ...] = (),
+    context_adjustment: float = 0.0,
 ) -> dict[str, float]:
     """Calculate the migrated score and base-state adjustments from V8."""
     base = max(0.0, min(100.0, float(base_probability)))
@@ -66,13 +67,94 @@ def simulate_hawks_win_probability(
         if attack_side == "相手攻撃中":
             wpa_adjustment = -wpa_adjustment
 
-    final = max(0.5, min(99.5, base + score_adjustment + wpa_adjustment))
+    context_adjustment = max(-25.0, min(25.0, float(context_adjustment)))
+    final = max(
+        0.5,
+        min(
+            99.5,
+            base + score_adjustment + wpa_adjustment + context_adjustment,
+        ),
+    )
     return {
         "base_probability": round(base, 1),
         "score_adjustment": round(score_adjustment, 1),
         "wpa_adjustment": round(wpa_adjustment, 1),
+        "context_adjustment": round(context_adjustment, 1),
         "final_probability": round(final, 1),
     }
+
+
+def calculate_context_adjustments(
+    *,
+    inning: int = 1,
+    venue: str = "中立",
+    hawks_era: float = 3.5,
+    opponent_era: float = 3.5,
+    recent_wins: int = 3,
+    compatibility: str = "普通",
+    weather: str = "通常",
+    reliever_8th: bool = True,
+    reliever_9th: bool = True,
+    reliever_fatigue: bool = False,
+    keyman_available: bool = True,
+    bench_boost: bool = False,
+) -> dict[str, float]:
+    """Calculate the remaining V8 context modifiers independently."""
+    inning = max(1, min(9, int(inning)))
+    venue_adjustment = {
+        "ホーム": 3.0,
+        "ビジター": -3.0,
+        "中立": 0.0,
+    }.get(venue, 0.0)
+    pitcher_adjustment = max(
+        -7.0,
+        min(7.0, (float(opponent_era) - float(hawks_era)) * 2.0),
+    )
+    momentum_adjustment = {
+        5: 5.0,
+        4: 3.5,
+        3: 1.5,
+        2: -1.0,
+        1: -3.0,
+        0: -5.0,
+    }.get(max(0, min(5, int(recent_wins))), 0.0)
+    compatibility_adjustment = {
+        "非常に得意": 5.0,
+        "得意": 3.0,
+        "普通": 0.0,
+        "苦手": -3.0,
+        "天敵": -5.0,
+    }.get(compatibility, 0.0)
+    weather_adjustment = {
+        "追い風": 1.5,
+        "ルーフオープン": 1.0,
+        "通常": 0.0,
+        "向かい風": -1.0,
+    }.get(weather, 0.0)
+
+    late_factor = max(0.0, min(1.0, (inning - 4) / 5.0))
+    reliever_raw = (
+        (2.5 if reliever_8th else 0.0)
+        + (3.0 if reliever_9th else 0.0)
+        - (4.0 if reliever_fatigue else 0.0)
+    )
+    reliever_adjustment = reliever_raw * (0.35 + 0.65 * late_factor)
+    keyman_raw = (
+        (2.5 if keyman_available else 0.0)
+        + (1.5 if bench_boost else 0.0)
+    )
+    keyman_adjustment = keyman_raw * (0.60 + 0.40 * late_factor)
+    values = {
+        "venue": venue_adjustment,
+        "pitcher": pitcher_adjustment,
+        "momentum": momentum_adjustment,
+        "compatibility": compatibility_adjustment,
+        "weather": weather_adjustment,
+        "reliever": reliever_adjustment,
+        "keyman": keyman_adjustment,
+    }
+    values["total"] = sum(values.values())
+    return {key: round(value, 1) for key, value in values.items()}
 
 
 def find_team_prediction(

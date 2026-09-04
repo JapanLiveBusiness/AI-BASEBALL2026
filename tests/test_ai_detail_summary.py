@@ -1,4 +1,5 @@
 from ai_detail_summary import (
+    calculate_context_adjustments,
     find_team_prediction,
     hawks_history_summary,
     hawks_probability,
@@ -109,3 +110,41 @@ def test_live_simulator_clamps_extreme_scores():
 
     assert result["score_adjustment"] == 55.0
     assert result["final_probability"] == 99.5
+
+
+def test_context_adjustments_match_v8_rules():
+    context = calculate_context_adjustments(
+        inning=9,
+        venue="ホーム",
+        hawks_era=2.0,
+        opponent_era=4.0,
+        recent_wins=5,
+        compatibility="得意",
+        weather="追い風",
+        reliever_8th=True,
+        reliever_9th=True,
+        reliever_fatigue=False,
+        keyman_available=True,
+        bench_boost=True,
+    )
+
+    assert context == {
+        "venue": 3.0,
+        "pitcher": 4.0,
+        "momentum": 5.0,
+        "compatibility": 3.0,
+        "weather": 1.5,
+        "reliever": 5.5,
+        "keyman": 4.0,
+        "total": 26.0,
+    }
+
+
+def test_simulator_limits_context_adjustment():
+    result = simulate_hawks_win_probability(
+        50,
+        context_adjustment=40,
+    )
+
+    assert result["context_adjustment"] == 25.0
+    assert result["final_probability"] == 75.0

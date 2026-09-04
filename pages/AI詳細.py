@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from ai_detail_summary import (
+    calculate_context_adjustments,
     find_team_prediction,
     hawks_history_summary,
     hawks_probability,
@@ -222,11 +223,11 @@ if simulator_mode == "試合前":
         step=0.1,
         key="ai_detail_simulator_handicap",
     )
-    simulation = simulate_hawks_win_probability(
-        base_probability,
-        mode="pregame",
-        handicap_score=simulator_handicap,
-    )
+    simulation_options = {
+        "mode": "pregame",
+        "handicap_score": simulator_handicap,
+    }
+    simulator_inning = 1
 else:
     score_left, score_right, inning_col = st.columns(3)
     hawks_score = score_left.number_input(
@@ -274,18 +275,124 @@ else:
         {"1塁": 1, "2塁": 2, "3塁": 4}[runner]
         for runner in (selected_runners or [])
     )
-    simulation = simulate_hawks_win_probability(
-        base_probability,
-        mode="live",
-        hawks_score=hawks_score,
-        opponent_score=opponent_score,
-        inning=inning,
-        attack_side=attack_side,
-        outs=outs,
-        runners=runner_bits,
+    simulator_inning = inning
+    simulation_options = {
+        "mode": "live",
+        "hawks_score": hawks_score,
+        "opponent_score": opponent_score,
+        "inning": inning,
+        "attack_side": attack_side,
+        "outs": outs,
+        "runners": runner_bits,
+    }
+
+context = {"total": 0.0}
+use_context = st.toggle(
+    "詳細状況補正を使用",
+    value=False,
+    key="ai_detail_use_context",
+    help="球場・先発・勢い・相性・天候・終盤戦力を追加で評価します。",
+)
+if use_context:
+    venue_default = (
+        "ホーム" if game and game.get("home") == "ソフトバンク"
+        else "ビジター" if game
+        else "中立"
+    )
+    venue_setting = st.segmented_control(
+        "球場条件",
+        options=["ホーム", "ビジター", "中立"],
+        default=venue_default,
+        key="ai_detail_context_venue",
+    )
+    pitcher_left, pitcher_right, momentum_col = st.columns(3)
+    hawks_era = pitcher_left.number_input(
+        "ホークス先発 防御率",
+        min_value=0.0,
+        max_value=15.0,
+        value=3.50,
+        step=0.01,
+        key="ai_detail_context_hawks_era",
+    )
+    opponent_era = pitcher_right.number_input(
+        "相手先発 防御率",
+        min_value=0.0,
+        max_value=15.0,
+        value=3.50,
+        step=0.01,
+        key="ai_detail_context_opponent_era",
+    )
+    recent_wins_default = sum(
+        row.get("result") == "勝" for row in history_summary["recent"]
+    )
+    recent_wins = momentum_col.slider(
+        "直近5試合の勝利数",
+        min_value=0,
+        max_value=5,
+        value=recent_wins_default,
+        key="ai_detail_context_recent_wins",
+    )
+    context_left, context_right = st.columns(2)
+    compatibility = context_left.selectbox(
+        "相手投手との相性",
+        options=["非常に得意", "得意", "普通", "苦手", "天敵"],
+        index=2,
+        key="ai_detail_context_compatibility",
+    )
+    weather = context_right.selectbox(
+        "球場環境",
+        options=["通常", "追い風", "向かい風", "ルーフオープン"],
+        key="ai_detail_context_weather",
+    )
+    bullpen = st.container(horizontal=True)
+    reliever_8th = bullpen.checkbox(
+        "8回勝ちパターン利用可",
+        value=True,
+        key="ai_detail_context_reliever_8th",
+    )
+    reliever_9th = bullpen.checkbox(
+        "9回抑え利用可",
+        value=True,
+        key="ai_detail_context_reliever_9th",
+    )
+    reliever_fatigue = bullpen.checkbox(
+        "救援陣に疲労あり",
+        value=False,
+        key="ai_detail_context_reliever_fatigue",
+    )
+    personnel = st.container(horizontal=True)
+    keyman_available = personnel.checkbox(
+        "主力選手が出場",
+        value=True,
+        key="ai_detail_context_keyman",
+    )
+    bench_boost = personnel.checkbox(
+        "代打戦力が充実",
+        value=False,
+        key="ai_detail_context_bench",
+    )
+    context = calculate_context_adjustments(
+        inning=simulator_inning,
+        venue=venue_setting,
+        hawks_era=hawks_era,
+        opponent_era=opponent_era,
+        recent_wins=recent_wins,
+        compatibility=compatibility,
+        weather=weather,
+        reliever_8th=reliever_8th,
+        reliever_9th=reliever_9th,
+        reliever_fatigue=reliever_fatigue,
+        keyman_available=keyman_available,
+        bench_boost=bench_boost,
     )
 
-sim_result, sim_score, sim_wpa = st.columns(3)
+simulation = simulate_hawks_win_probability(
+    base_probability,
+    context_adjustment=context["total"],
+    **simulation_options,
+)
+
+sim_result, sim_score, sim_wpa, sim_context = st.columns(4)
 sim_result.metric(
     "ホークス勝利予測",
     f"{simulation['final_probability']:.1f}%",
@@ -299,7 +406,22 @@ sim_wpa.metric(
     "走者・アウト補正",
     f"{simulation['wpa_adjustment']:+.1f}%",
 )
+sim_context.metric(
+    "詳細状況補正",
+    f"{simulation['context_adjustment']:+.1f}%",
+)
 st.progress(simulation["final_probability"] / 100.0)
+if use_context:
+    st.caption(
+        "詳細内訳: "
+        f"球場 {context['venue']:+.1f}%｜"
+        f"先発 {context['pitcher']:+.1f}%｜"
+        f"勢い {context['momentum']:+.1f}%｜"
+        f"相性 {context['compatibility']:+.1f}%｜"
+        f"環境 {context['weather']:+.1f}%｜"
+        f"救援 {context['reliever']:+.1f}%｜"
+        f"主力 {context['keyman']:+.1f}%"
+    )
 
 render_section("LEGACY ANALYSIS", "従来版の高度分析")
 st.caption(
