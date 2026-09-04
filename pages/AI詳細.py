@@ -81,7 +81,14 @@ metrics = build_prediction_metrics(
 )
 handicap = load_live_handicap(TODAY_JST)
 
-render_section("TODAY / NEXT GAME", "ホークス試合分析")
+game_date = str(game.get("date") or "") if game else ""
+if game_date == TODAY_JST.isoformat():
+    game_section_title = "本日のホークス試合分析"
+elif game_date > TODAY_JST.isoformat():
+    game_section_title = "次戦のホークス試合分析"
+else:
+    game_section_title = "直近保存されたホークス試合分析"
+render_section("LATEST GAME DATA", game_section_title)
 if game:
     opponent = str(game.get("opponent") or "未定")
     matchup = f"ソフトバンク vs {opponent}"
