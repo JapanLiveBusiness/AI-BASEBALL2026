@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 from game_calendar import attach_handicaps, fetch_daily_handicaps, fetch_npb_schedule_day, merge_game_sources
+from gamecast import gamecast_snapshot, select_featured_game
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -175,6 +176,104 @@ def handicap_html(game: dict, show_handicap: bool) -> str:
     return f'<div class="handicap"><span>HANDICAP</span><strong>{value}</strong></div>'
 
 
+def _count_lights(label: str, active: int, total: int, css_class: str) -> str:
+    lights = "".join(
+        f'<i class="count-light {css_class} {"on" if index < active else ""}"></i>'
+        for index in range(total)
+    )
+    return f'<span class="count-row"><b>{label}</b>{lights}</span>'
+
+
+def render_gamecast(game: dict, prediction: dict, target_date: date) -> None:
+    snapshot = gamecast_snapshot(game)
+    away = html.escape(str(game.get("away") or "---"))
+    home = html.escape(str(game.get("home") or "---"))
+    away_score = score_text(game.get("away_score"))
+    home_score = score_text(game.get("home_score"))
+    venue = html.escape(clean_venue(game.get("venue")))
+    start_time = html.escape(str(game.get("time") or "--:--"))
+    game_date = html.escape(str(game.get("date") or target_date.isoformat()))
+    status_class = "live" if snapshot["live"] else "final" if snapshot["final"] else "pregame"
+    bases = snapshot["bases"]
+    lineup = snapshot["lineup"]
+    lineup_html = "".join(
+        f'<li><span>{index}</span><b>{html.escape(name)}</b></li>'
+        for index, name in enumerate(lineup, start=1)
+    ) or '<li class="lineup-empty">スタメン情報の取得待ち</li>'
+
+    pick = html.escape(str(prediction.get("pick") or "AI予測待ち"))
+    probability = prediction.get("win_probability")
+    probability_label = (
+        f"{float(probability):.1f}%"
+        if isinstance(probability, (int, float))
+        else "--"
+    )
+    counts = "".join(
+        (
+            _count_lights("B", snapshot["balls"], 3, "ball"),
+            _count_lights("S", snapshot["strikes"], 2, "strike"),
+            _count_lights("O", snapshot["outs"], 2, "out"),
+        )
+    )
+    live_note = (
+        "30秒ごとに試合情報を更新中"
+        if snapshot["live"]
+        else "確定結果を表示"
+        if snapshot["final"]
+        else "試合開始後にライブ情報へ切り替わります"
+    )
+
+    st.markdown(
+        f'''
+<section class="gamecast-shell">
+  <div class="gamecast-titlebar">
+    <div><span class="gamecast-dot"></span> LIVE GAMECAST</div>
+    <small>{game_date} · {start_time} · {venue}</small>
+  </div>
+  <div class="gamecast-scoreboard">
+    <span class="gamecast-state {status_class}">{html.escape(snapshot["status_label"])}</span>
+    <div class="score-team away"><b>{away}</b><strong>{away_score}</strong></div>
+    <div class="inning-state">{html.escape(snapshot["inning_label"])}</div>
+    <div class="score-team home"><strong>{home_score}</strong><b>{home}</b></div>
+  </div>
+  <div class="gamecast-content">
+    <div class="field-card">
+      <div class="field-ribbon">AI BASEBALL · DIAMOND LIVE CENTER</div>
+      <div class="ballpark">
+        <div class="outfield-stripe stripe-one"></div><div class="outfield-stripe stripe-two"></div>
+        <div class="infield"><div class="mound"></div></div>
+        <i class="base base-1 {"occupied" if 1 in bases else ""}"></i>
+        <i class="base base-2 {"occupied" if 2 in bases else ""}"></i>
+        <i class="base base-3 {"occupied" if 3 in bases else ""}"></i>
+        <div class="home-plate"></div>
+      </div>
+      <div class="field-footer">
+        <div><span>MATCHUP</span><b>{away} vs {home}</b><small>{venue}</small></div>
+        <div class="count-board"><span>ボールカウント</span>{counts}</div>
+      </div>
+    </div>
+    <aside class="gamecast-side">
+      <div class="player-panel">
+        <span>PITCHER</span><strong>{html.escape(snapshot["pitcher"])}</strong>
+        <small>現在の投手 / 予告先発</small>
+      </div>
+      <div class="player-panel batter-panel">
+        <span>AT BAT</span><strong>{html.escape(snapshot["batter"])}</strong>
+        <small>現在の打者</small>
+      </div>
+      <div class="lineup-panel"><span>LINEUP</span><ol>{lineup_html}</ol></div>
+    </aside>
+  </div>
+  <div class="gamecast-info">
+    <div><span>AI PICK</span><b>{pick}</b><strong>{probability_label}</strong></div>
+    <p>{live_note}</p>
+  </div>
+</section>
+''',
+        unsafe_allow_html=True,
+    )
+
+
 def set_selected_date(value: date) -> None:
     st.session_state.games_calendar_date = value
 
@@ -207,6 +306,9 @@ nav_right.button("翌日", icon=":material/chevron_right:", key="games_next_date
 st.markdown(
     """
 <style>
+.gamecast-shell{margin:16px 0 24px;background:#17181a;color:#fff;border:1px solid #2e3034;border-radius:16px;overflow:hidden;box-shadow:0 16px 36px rgba(20,18,13,.18)}
+.gamecast-titlebar{min-height:42px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #34363a;font-size:9px;letter-spacing:.18em;font-weight:950}.gamecast-titlebar small{color:#9c9fa5;font-size:9px;letter-spacing:0}.gamecast-dot{display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 0 4px rgba(255,59,59,.12)}
+.gamecast-scoreboard{position:relative;min-height:74px;display:grid;grid-template-columns:1fr 100px 1fr;align-items:center;padding:0 76px;border-bottom:1px solid #34363a;background:#121315}.gamecast-state{position:absolute;left:14px;top:25px;border-radius:999px;padding:6px 9px;background:#303238;color:#d6d8dc;font-size:8px;font-weight:950}.gamecast-state.live{background:#f1c40f;color:#101010}.gamecast-state.final{background:#dde3e9;color:#171717}.score-team{display:flex;align-items:center;justify-content:center;gap:24px}.score-team b{font-size:17px}.score-team strong{font-size:32px;color:#f1c40f}.inning-state{text-align:center;color:#aeb1b6;font-size:11px}.gamecast-content{display:grid;grid-template-columns:minmax(0,2.35fr) minmax(240px,.65fr);gap:12px;padding:14px}.field-card,.gamecast-side>div{border:1px solid #393b40;border-radius:12px;overflow:hidden}.field-card{background:#101113}.field-ribbon{height:32px;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#116850 0,#116850 22px,#0c5844 22px,#0c5844 44px);color:#d9fff2;font-size:8px;letter-spacing:.2em;font-weight:950}.ballpark{height:310px;position:relative;overflow:hidden;background:repeating-linear-gradient(90deg,#57ad41 0,#57ad41 42px,#61b84a 42px,#61b84a 84px);border-bottom:8px solid #0d586f}.ballpark:before{content:"";position:absolute;width:390px;height:390px;left:50%;top:52px;transform:translateX(-50%) rotate(45deg);background:#bd7a35;border:3px solid rgba(255,255,255,.75);border-radius:18px}.ballpark:after{content:"";position:absolute;width:270px;height:270px;left:50%;top:112px;transform:translateX(-50%) rotate(45deg);background:#64b94b;border:3px solid rgba(255,255,255,.7);border-radius:8px}.infield{position:absolute;z-index:2;width:74px;height:74px;left:50%;top:136px;transform:translateX(-50%);border-radius:50%;background:#bd7a35}.mound{position:absolute;width:18px;height:8px;left:28px;top:33px;border-radius:999px;background:#e7d7a8}.base{position:absolute;z-index:4;width:13px;height:13px;background:#fff;border:2px solid #eee;transform:rotate(45deg);box-shadow:0 2px 4px rgba(0,0,0,.2)}.base.occupied{background:#f1c40f;border-color:#ffe577;box-shadow:0 0 0 5px rgba(241,196,15,.18)}.base-1{left:calc(50% + 126px);top:200px}.base-2{left:calc(50% - 7px);top:78px}.base-3{left:calc(50% - 140px);top:200px}.home-plate{position:absolute;z-index:5;width:22px;height:16px;left:calc(50% - 11px);bottom:18px;background:#fff;clip-path:polygon(0 0,100% 0,82% 70%,50% 100%,18% 70%)}.field-footer{min-height:86px;padding:12px 15px;display:flex;align-items:center;justify-content:space-between;gap:16px}.field-footer>div:first-child{display:flex;flex-direction:column}.field-footer span,.player-panel span,.lineup-panel>span{font-size:7px;letter-spacing:.16em;color:#d0a917;font-weight:950}.field-footer b{font-size:14px;margin:4px 0}.field-footer small{color:#8f9298;font-size:8px}.count-board{text-align:right}.count-row{display:flex!important;align-items:center;justify-content:flex-end;gap:5px;margin-top:4px;color:#fff!important}.count-row b{width:12px;margin:0;color:#fff;font-size:9px}.count-light{display:block;width:10px;height:10px;border:1px solid #6a6d73;border-radius:50%}.count-light.on.ball{background:#e7bd1d;border-color:#e7bd1d}.count-light.on.strike{background:#d6d8dc;border-color:#d6d8dc}.count-light.on.out{background:#df4545;border-color:#df4545}.gamecast-side{display:flex;flex-direction:column;gap:10px}.player-panel{padding:15px;background:#202124;display:flex;flex-direction:column}.player-panel strong{margin-top:7px;font-size:14px}.player-panel small{margin-top:4px;color:#898c92;font-size:8px}.batter-panel{background:#1c1d20}.lineup-panel{padding:14px;background:#202124;flex:1}.lineup-panel ol{list-style:none;margin:9px 0 0;padding:0}.lineup-panel li{min-height:24px;display:flex;align-items:center;gap:8px;border-top:1px solid #34363a;font-size:9px}.lineup-panel li span{width:17px;height:17px;border-radius:50%;background:#111;display:grid;place-items:center;color:#ddd;font-size:7px}.lineup-panel .lineup-empty{color:#8f9298;justify-content:center;padding:20px 0}.gamecast-info{min-height:54px;padding:10px 15px;border-top:1px solid #34363a;display:flex;align-items:center;justify-content:space-between;gap:18px}.gamecast-info>div{display:flex;align-items:center;gap:10px}.gamecast-info span{font-size:7px;color:#d0a917;font-weight:950;letter-spacing:.14em}.gamecast-info b{font-size:12px}.gamecast-info strong{font-size:15px;color:#f1c40f}.gamecast-info p{margin:0;color:#92959a;font-size:8px}
 .game-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 18px}
 .game-kpi{background:#fffdf8;border:1px solid #ddd5c8;border-radius:13px;padding:14px}
 .game-kpi span{display:block;font-size:8px;letter-spacing:.18em;color:#a77e11;font-weight:900}
@@ -232,9 +334,9 @@ st.markdown(
 .handicap span{font-size:8px;letter-spacing:.14em;color:#8b7018;font-weight:900}.handicap strong{font-size:12px}
 .empty-games{padding:28px;background:#fffdf8;border:1px dashed #d8d0c3;border-radius:14px;color:#746f66;text-align:center;font-size:12px}
 .sync-note{margin:10px 0 16px;padding:10px 12px;border-radius:10px;background:#fff7d4;border:1px solid #e6cd69;font-size:10px;color:#65551b}
-@media(max-width:850px){.game-summary{grid-template-columns:repeat(2,1fr)}.game-grid{grid-template-columns:1fr}}
+@media(max-width:850px){.gamecast-content{grid-template-columns:1fr}.gamecast-side{display:grid;grid-template-columns:1fr 1fr}.lineup-panel{grid-column:1/-1}.gamecast-scoreboard{padding:0 14px;grid-template-columns:1fr 68px 1fr}.gamecast-state{position:static;grid-column:1/-1;justify-self:center;margin-top:8px}.score-team{gap:10px}.score-team b{font-size:14px}.score-team strong{font-size:25px}.ballpark{height:270px}.game-summary{grid-template-columns:repeat(2,1fr)}.game-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.game-summary{grid-template-columns:1fr 1fr}.team-name{font-size:15px}.team-score{font-size:27px}}
-@media(max-width:520px){.matchup{grid-template-columns:1fr 42px 1fr}.game-meta{flex-direction:column;gap:4px}}
+@media(max-width:520px){.gamecast-titlebar small{display:none}.gamecast-scoreboard{grid-template-columns:1fr 52px 1fr}.score-team{gap:6px}.score-team b{font-size:11px}.score-team strong{font-size:21px}.inning-state{font-size:9px}.ballpark{height:230px}.ballpark:before{width:300px;height:300px}.ballpark:after{width:205px;height:205px}.base-1{left:calc(50% + 94px);top:166px}.base-2{top:65px}.base-3{left:calc(50% - 108px);top:166px}.field-footer,.gamecast-info{align-items:flex-start;flex-direction:column}.count-board{text-align:left}.count-row{justify-content:flex-start}.gamecast-side{grid-template-columns:1fr}.lineup-panel{grid-column:auto}.matchup{grid-template-columns:1fr 42px 1fr}.game-meta{flex-direction:column;gap:4px}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -266,6 +368,19 @@ def render_match_center(target_date: date) -> None:
     )
     if live_games:
         st.markdown('<div class="sync-note">● 試合中のため、この試合一覧を30秒ごとに自動更新します。</div>', unsafe_allow_html=True)
+
+    featured_game = select_featured_game(games)
+    if featured_game:
+        featured_key = (
+            str(featured_game.get("home") or ""),
+            str(featured_game.get("away") or ""),
+        )
+        render_section("LIVE CENTER", "ダイヤモンド試合速報")
+        render_gamecast(
+            featured_game,
+            pred_by_game.get(featured_key, {}),
+            target_date,
+        )
 
     render_section("MATCH CENTER", f"{target_date.strftime('%Y年%m月%d日')}の試合")
     if not games:
