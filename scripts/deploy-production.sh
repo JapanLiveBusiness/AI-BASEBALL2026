@@ -8,6 +8,7 @@ CONTAINER_NAME="${CONTAINER_NAME:-hawks-app}"
 IMAGE_NAME="${IMAGE_NAME:-hawks-app}"
 PORT="${PORT:-8501}"
 DEPLOY_SHA="${DEPLOY_SHA:-}"
+SKIP_GIT_FETCH="${SKIP_GIT_FETCH:-0}"
 TRAEFIK_NETWORK="${TRAEFIK_NETWORK:-miki-stack_miki-net}"
 TRAEFIK_HOST="${TRAEFIK_HOST:-ai-baseball-studio.f-polaris.jp}"
 TRAEFIK_LEGACY_HOST="${TRAEFIK_LEGACY_HOST:-ai-baseball.f-polaris.jp}"
@@ -15,8 +16,12 @@ TRAEFIK_CONTAINER="${TRAEFIK_CONTAINER:-miki-traefik}"
 
 cd "$APP_DIR"
 
-echo "[deploy] fetching $BRANCH"
-git fetch origin "$BRANCH"
+if [ "$SKIP_GIT_FETCH" = "1" ]; then
+  echo "[deploy] using preloaded $BRANCH revision"
+else
+  echo "[deploy] fetching $BRANCH"
+  git fetch origin "$BRANCH"
+fi
 git checkout "$BRANCH"
 git reset --hard "origin/$BRANCH"
 

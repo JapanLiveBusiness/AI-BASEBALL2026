@@ -99,6 +99,22 @@ jobs:
         env:
           DEPLOY_SHA: ${{ github.sha }}
         run: |
+          set -euo pipefail
+          BUNDLE_PATH="$RUNNER_TEMP/ai-baseball-deploy.bundle"
+          git bundle create "$BUNDLE_PATH" "refs/heads/$GITHUB_REF_NAME"
+          scp \
+            -P "$DEPLOY_PORT" \
+            -i "$HOME/.ssh/deploy_key" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o PreferredAuthentications=publickey \
+            -o PasswordAuthentication=no \
+            -o ConnectTimeout=15 \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            "$BUNDLE_PATH" \
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/ai-baseball-deploy.bundle"
+
           ssh \
             -i "$HOME/.ssh/deploy_key" \
             -o IdentitiesOnly=yes \
@@ -109,7 +125,7 @@ jobs:
             -o StrictHostKeyChecking=no \
             -o UserKnownHostsFile=/dev/null \
             "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
-            "DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'REMOTE'
+            "DEPLOY_SHA='$DEPLOY_SHA' SKIP_GIT_FETCH=1 bash -s" <<'REMOTE'
           set -euo pipefail
           export APP_DIR="/home/user/apps/AI-BASEBALL2026"
           export DATA_DIR="/opt/hawks-ai/data"
@@ -127,8 +143,9 @@ jobs:
               echo "[deploy] refusing to replace non-git directory: $APP_DIR"
               exit 1
             fi
-            rm -rf "$APP_DIR"
-            git clone --branch "$BRANCH" --single-branch "$REPO_URL" "$APP_DIR"
+            mkdir -p "$APP_DIR"
+            git init "$APP_DIR"
+            git -C "$APP_DIR" remote add origin "$REPO_URL"
           else
             current_origin="$(git -C "$APP_DIR" remote get-url origin)"
             if [ "$current_origin" != "$REPO_URL" ] && [ "$current_origin" != "${REPO_URL%.git}" ]; then
@@ -138,7 +155,13 @@ jobs:
           fi
 
           cd "$APP_DIR"
-          git fetch origin "$BRANCH"
+          if [ ! -f /tmp/ai-baseball-deploy.bundle ]; then
+            echo "[deploy] uploaded source bundle is missing"
+            exit 1
+          fi
+          git fetch /tmp/ai-baseball-deploy.bundle "refs/heads/$BRANCH"
+          git update-ref "refs/remotes/origin/$BRANCH" FETCH_HEAD
+          rm -f /tmp/ai-baseball-deploy.bundle
           git show "origin/$BRANCH:scripts/deploy-production.sh" > /tmp/ai-baseball-deploy.sh
           chmod +x /tmp/ai-baseball-deploy.sh
           /tmp/ai-baseball-deploy.sh
