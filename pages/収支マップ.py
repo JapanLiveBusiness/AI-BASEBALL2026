@@ -110,7 +110,7 @@ with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
         opponent_score = c10.number_input("対戦相手得点", min_value=0, step=1, value=0)
         memo = st.text_area("メモ / その他情報", placeholder="オッズ、BET理由、ブックメーカー、補足など")
 
-        submitted = st.form_submit_button("このBET・収支を保存", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("このBET・収支を保存", type="primary", width="stretch")
 
     if submitted:
         if not team.strip() or not opponent.strip():
@@ -207,7 +207,7 @@ if settled:
     fig.update_layout(xaxis_title="BETした試合", yaxis_title="累積収支（円）", hovermode="closest", height=500,
                       margin=dict(l=20, r=20, t=30, b=30), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     fig.update_yaxes(tickformat=",")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     render_section("HISTORY", "BETした試合の詳細")
     for bet in sorted_settled:

@@ -41,8 +41,11 @@ _app_source = _app_source.replace(
 )
 
 _original_set_page_config = st.set_page_config
+_original_file = globals().get("__file__")
 st.set_page_config = lambda *args, **kwargs: None
+globals()["__file__"] = str(_app_path)
 try:
     exec(compile(_app_source, str(_app_path), "exec"), globals(), globals())
 finally:
     st.set_page_config = _original_set_page_config
+    globals()["__file__"] = _original_file

@@ -6,6 +6,8 @@ import json
 
 import streamlit as st
 
+from feature_readiness import STATUS_LABELS, feature
+
 JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parent / "data"
 DATA_DIRS = [Path("/app/data"), REPO_DATA_DIR]
@@ -107,7 +109,7 @@ for idx, game in enumerate(prediction_games[:3], start=1):
           </div>
           <div class="ranking-score"><b>{probability_label}</b><small>AI勝率</small></div>
         </article>
-        """
+        """.strip()
     )
 
 rank_html = "".join(rank_cards) or """
@@ -121,6 +123,15 @@ team_html = "".join(
     f'<div class="team"><b>{abbr}</b><span>{name}</span></div>'
     for abbr, name in teams
 )
+
+quick_features = {
+    key: feature(key) for key in ("predictions", "bet_entry", "performance", "ai_detail")
+}
+
+
+def readiness_badge(key):
+    item = quick_features[key]
+    return f'<span class="readiness {item.status}">{STATUS_LABELS[item.status]}</span>'
 
 st.markdown(
     r"""
@@ -149,7 +160,7 @@ st.markdown(
 .content-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);gap:14px;margin-top:14px}.panel{background:rgba(255,255,255,.64);border:1px solid var(--line);border-radius:18px;padding:18px}.panel-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:14px}.panel-head h2{font-size:21px!important;margin:0!important;color:var(--ink)!important}.panel-head span{font-size:8px;letter-spacing:.15em;color:var(--muted)}
 .ranking-list{display:grid;gap:8px}.ranking-card{display:grid;grid-template-columns:42px 1fr 90px;gap:12px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:13px 15px}.ranking-no{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#171717;color:var(--gold);font-weight:950}.ranking-copy{display:flex;flex-direction:column}.ranking-copy strong{font-size:16px}.ranking-copy span{font-size:10px;color:var(--muted);margin-top:3px}.ranking-score{text-align:right}.ranking-score b{display:block;font-size:20px}.ranking-score small{font-size:8px;color:var(--muted)}.empty-state{background:var(--paper);border:1px dashed #cfc6b7;border-radius:13px;padding:22px;display:flex;flex-direction:column;gap:5px}.empty-state b{font-size:14px}.empty-state span{font-size:10px;color:var(--muted)}
 
-.actions{display:grid;gap:8px}.action{text-decoration:none;color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:14px 15px;display:grid;grid-template-columns:35px 1fr 18px;align-items:center;gap:10px;min-height:69px}.action.primary{background:#171717;color:#fff;border-color:#282828}.action-icon{width:34px;height:34px;border-radius:9px;background:#f5ebbd;color:#8a6700;display:grid;place-items:center;font-weight:950}.action.primary .action-icon{background:var(--gold);color:#111}.action-copy b{display:block;font-size:14px}.action-copy span{display:block;font-size:9px;color:var(--muted);margin-top:3px}.action.primary .action-copy span{color:#aeb4bd}.action-arrow{color:#b08b00;font-weight:950}
+.actions{display:grid;gap:8px}.action{text-decoration:none;color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:14px 15px;display:grid;grid-template-columns:35px 1fr 18px;align-items:center;gap:10px;min-height:69px}.action.primary{background:#171717;color:#fff;border-color:#282828}.action-icon{width:34px;height:34px;border-radius:9px;background:#f5ebbd;color:#8a6700;display:grid;place-items:center;font-weight:950}.action.primary .action-icon{background:var(--gold);color:#111}.action-copy b{display:flex;align-items:center;gap:7px;font-size:14px}.action-copy>span{display:block;font-size:9px;color:var(--muted);margin-top:3px}.action.primary .action-copy>span{color:#aeb4bd}.action-arrow{color:#b08b00;font-weight:950}.readiness{display:inline-flex!important;margin:0!important;padding:2px 6px;border-radius:999px;font-size:7px!important;line-height:1.2;font-weight:900;background:#e8e3d8;color:#625d54!important}.readiness.live{background:#dff4e7;color:#176b3a!important}.readiness.beta{background:#fff0bd;color:#765800!important}.readiness.preview{background:#e9e2ff;color:#5b3ca5!important}
 
 .teams-panel{margin-top:14px}.teams{display:grid;grid-template-columns:repeat(12,1fr);gap:7px}.team{background:var(--paper);border:1px solid var(--line);border-radius:10px;min-height:68px;padding:8px 5px;text-align:center;display:flex;flex-direction:column;justify-content:center}.team b{width:30px;height:30px;border-radius:50%;background:#171717;color:var(--gold);display:grid;place-items:center;margin:0 auto 5px;font-size:9px}.team span{font-size:7px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -168,7 +179,7 @@ st.markdown(
     f"""
 <div class="topbar">
   <div class="brand"><div class="logo">M</div><div><div class="brand-title">AI BASEBALL STUDIO</div><div class="brand-sub">GAME INTELLIGENCE</div></div></div>
-  <nav class="nav"><a class="active" href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">BET</a><a href="/収支マップ" target="_self">PERFORMANCE</a></nav>
+  <nav class="nav"><a class="active" href="/" target="_self">HOME</a><a href="/試合" target="_self">GAMES</a><a href="/本日のAI予想" target="_self">AI PREDICTION</a><a href="/予想結果" target="_self">RESULTS</a><a href="/BET入力" target="_self">BET</a><a href="/収支マップ" target="_self">PERFORMANCE</a><a href="/AI詳細" target="_self">AI DETAIL</a></nav>
   <div class="status">JST {now.strftime('%H:%M')} · LIVE</div>
 </div>
 
@@ -200,16 +211,16 @@ st.markdown(
     <div class="panel">
       <div class="panel-head"><h2>クイック操作</h2><span>WORKSPACE</span></div>
       <div class="actions">
-        <a class="action primary" href="/本日のAI予想" target="_self"><div class="action-icon">AI</div><div class="action-copy"><b>AI予測を見る</b><span>勝率・予測スコア・信頼度</span></div><div class="action-arrow">›</div></a>
-        <a class="action" href="/BET入力" target="_self"><div class="action-icon">＋</div><div class="action-copy"><b>BETを入力</b><span>当日のBETとハンデを登録</span></div><div class="action-arrow">›</div></a>
-        <a class="action" href="/収支マップ" target="_self"><div class="action-icon">¥</div><div class="action-copy"><b>収支を確認</b><span>的中率・ROI・累積収支</span></div><div class="action-arrow">›</div></a>
-        <a class="action" href="/AI詳細" target="_self"><div class="action-icon">◎</div><div class="action-copy"><b>AI詳細を開く</b><span>試合データと根拠を確認</span></div><div class="action-arrow">›</div></a>
+        <a class="action primary" href="/本日のAI予想" target="_self"><div class="action-icon">AI</div><div class="action-copy"><b>AI予測を見る {readiness_badge('predictions')}</b><span>勝率・予測スコア・信頼度</span></div><div class="action-arrow">›</div></a>
+        <a class="action" href="/BET入力" target="_self"><div class="action-icon">＋</div><div class="action-copy"><b>BETを入力 {readiness_badge('bet_entry')}</b><span>新規登録に対応。編集・精算は実装準備中</span></div><div class="action-arrow">›</div></a>
+        <a class="action" href="/収支マップ" target="_self"><div class="action-icon">¥</div><div class="action-copy"><b>収支を確認 {readiness_badge('performance')}</b><span>的中率・ROI・累積収支</span></div><div class="action-arrow">›</div></a>
+        <a class="action" href="/AI詳細" target="_self"><div class="action-icon">◎</div><div class="action-copy"><b>AI詳細を開く {readiness_badge('ai_detail')}</b><span>旧分析画面を試験表示。読み込み改善予定</span></div><div class="action-arrow">›</div></a>
       </div>
     </div>
   </section>
 
   <section class="panel teams-panel">
-    <div class="panel-head"><h2>12球団クイックビュー</h2><span>NPB TEAMS</span></div>
+    <div class="panel-head"><h2>12球団一覧</h2><span>球団別詳細は実装予定</span></div>
     <div class="teams">{team_html}</div>
   </section>
 

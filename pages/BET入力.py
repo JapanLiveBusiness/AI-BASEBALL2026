@@ -120,7 +120,7 @@ with st.form("manual_bet_form"):
     team_score = c9.number_input("BET先チーム得点", min_value=0, value=0, step=1)
     opponent_score = c10.number_input("対戦相手得点", min_value=0, value=0, step=1)
     memo = st.text_area("その他情報", placeholder="オッズ、BET理由、ブックメーカー、補足など")
-    submitted = st.form_submit_button("BET・収支を保存", type="primary", use_container_width=True)
+    submitted = st.form_submit_button("BET・収支を保存", type="primary", width="stretch")
 
 if submitted:
     if not str(bet_team).strip() or not str(opponent).strip():
