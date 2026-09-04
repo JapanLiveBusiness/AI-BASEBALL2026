@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
+from auth_session import user_bets_path
 from bet_analytics import (
     SORT_OPTIONS,
     calculate_hit_rate,
@@ -14,12 +15,13 @@ from bet_analytics import (
     sort_bets,
     weekly_bet_summary,
 )
-from bet_store import BetStoreError, append_bet, delete_bet, load_bets, update_bet
+from bet_store import BetStoreError, append_bet, delete_bet, import_bets, load_bets, update_bet
+from bet_transfer import BetSpreadsheetError, bets_to_xlsx, read_bet_spreadsheet
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links, render_section
 
 st.set_page_config(page_title="収支マップ | MY AI BASEBALL", page_icon="💰", layout="wide")
 apply_studio_theme()
-render_topbar("PROFIT MAP")
+auth_user = render_topbar("PROFIT MAP")
 render_hero(
     "収支マップ",
     "BET履歴・的中率・ROI・累積収支をまとめて可視化。登録済みのBET機能は維持したままStudioデザインへ統合しています。",
@@ -31,7 +33,7 @@ render_nav_links()
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 PROD_DATA_DIR = Path("/app/data")
 DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
-BETS_FILE = DATA_DIR / "bet_records.json"
+BETS_FILE = user_bets_path(DATA_DIR, auth_user)
 NPB_API = "https://npb.jp/bis/eng/2026/games/"
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -241,6 +243,78 @@ try:
 except BetStoreError as exc:
     st.error(str(exc))
     st.stop()
+
+render_section("SPREADSHEET", "BET履歴のエクスポート・インポート")
+with st.container(border=True):
+    st.caption(
+        "現在ログイン中の利用者の履歴だけをExcelへ出力します。"
+        "取込時は日付・金額・スコアを検証し、損益を再計算します。"
+    )
+    if bets:
+        st.download_button(
+            "Excelでエクスポート",
+            data=bets_to_xlsx(bets),
+            file_name=f"bet_history_{datetime.now(JST).strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            icon=":material/download:",
+            width="stretch",
+        )
+    else:
+        st.caption("エクスポートできるBET履歴はまだありません。")
+
+    uploaded_history = st.file_uploader(
+        "BET履歴ファイル",
+        type=["xlsx", "csv"],
+        key="bet_history_import",
+        help="この画面から出力したExcel、または同じ列構成のCSVを選択できます。",
+        max_upload_size=5,
+    )
+    if uploaded_history is not None:
+        try:
+            imported_records = read_bet_spreadsheet(
+                uploaded_history.getvalue(),
+                uploaded_history.name,
+            )
+        except BetSpreadsheetError as exc:
+            st.error(str(exc))
+        else:
+            st.success(f"{len(imported_records):,}件を検証しました。")
+            import_mode = st.segmented_control(
+                "取込方法",
+                ["重複を除いて追加", "現在の履歴を置換"],
+                default="重複を除いて追加",
+                key="bet_import_mode",
+                width="stretch",
+            )
+            replacing = import_mode == "現在の履歴を置換"
+            replacement_confirmed = True
+            if replacing:
+                replacement_confirmed = st.checkbox(
+                    "現在の履歴をすべて置き換えることを確認しました",
+                    key="bet_replace_confirm",
+                )
+                st.warning("置換すると、現在ログイン中の利用者の既存履歴が新しい内容に置き換わります。")
+            if st.button(
+                "検証済み履歴をインポート",
+                type="primary",
+                icon=":material/upload:",
+                disabled=not replacement_confirmed,
+                width="stretch",
+            ):
+                try:
+                    _, imported_count = import_bets(
+                        BETS_FILE,
+                        imported_records,
+                        replace=replacing,
+                    )
+                except BetStoreError as exc:
+                    st.error(str(exc))
+                else:
+                    action = "置換" if replacing else "追加"
+                    st.session_state["bet_notice"] = (
+                        f"BET履歴を{action}しました（反映 {imported_count:,}件）。"
+                    )
+                    st.rerun()
 if not bets:
     st.info("BET記録がまだありません。上のフォームから最初のBETを登録できます。")
     st.stop()

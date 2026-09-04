@@ -14,6 +14,7 @@ TRAEFIK_NETWORK="${TRAEFIK_NETWORK:-miki-stack_miki-net}"
 TRAEFIK_HOST="${TRAEFIK_HOST:-ai-baseball-studio.f-polaris.jp}"
 TRAEFIK_LEGACY_HOST="${TRAEFIK_LEGACY_HOST:-ai-baseball.f-polaris.jp}"
 TRAEFIK_CONTAINER="${TRAEFIK_CONTAINER:-miki-traefik}"
+AUTH_SECRETS_FILE="${AUTH_SECRETS_FILE:-/opt/hawks-ai/auth0/secrets.toml}"
 
 cd "$APP_DIR"
 
@@ -72,8 +73,17 @@ fi
 start_container() {
   local image="$1"
   local shared_mount=()
+  local auth_mount=()
+  local auth_env=()
   if [ -n "$SHARED_DATA_DIR" ] && [ -d "$SHARED_DATA_DIR" ]; then
     shared_mount=(-v "$SHARED_DATA_DIR:/app/shared-data:ro")
+  fi
+  if [ -f "$AUTH_SECRETS_FILE" ]; then
+    auth_mount=(-v "$AUTH_SECRETS_FILE:/app/.streamlit/secrets.toml:ro")
+    auth_env=(-e "AI_BASEBALL_AUTH_ENABLED=1")
+    echo "[deploy] Auth0 configuration mounted"
+  else
+    echo "[deploy] Auth0 configuration not found; retaining legacy single-user mode"
   fi
   docker run -d \
     --name "$CONTAINER_NAME" \
@@ -82,6 +92,8 @@ start_container() {
     -p "$PORT:8501" \
     -v "$DATA_DIR:/app/data" \
     "${shared_mount[@]}" \
+    "${auth_mount[@]}" \
+    "${auth_env[@]}" \
     --label "traefik.enable=true" \
     --label "traefik.docker.network=$TRAEFIK_NETWORK" \
     --label "traefik.http.routers.ai-baseball-production.rule=Host(\`$TRAEFIK_HOST\`) || Host(\`$TRAEFIK_LEGACY_HOST\`)" \

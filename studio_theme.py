@@ -1,6 +1,8 @@
 import html
 import streamlit as st
 
+from auth_session import render_account_controls, require_auth0
+
 
 STUDIO_CSS = r'''
 <style>
@@ -80,6 +82,7 @@ def apply_studio_theme():
 
 
 def render_topbar(section="STUDIO"):
+    user = require_auth0()
     safe_section = html.escape(str(section))
     st.markdown(
         f'''
@@ -97,6 +100,8 @@ def render_topbar(section="STUDIO"):
 ''',
         unsafe_allow_html=True,
     )
+    render_account_controls(user)
+    return user
 
 
 def render_hero(title, subtitle, kicker="AI BASEBALL STUDIO", accent=None):

@@ -7,7 +7,9 @@ from urllib.parse import quote
 
 import streamlit as st
 
+from auth_session import render_account_controls, require_auth0, user_bets_path
 from bet_analytics import weekly_bet_summary
+from bet_store import BetStoreError, load_bets
 from feature_readiness import STATUS_LABELS, feature
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -20,6 +22,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+auth_user = require_auth0()
+render_account_controls(auth_user)
 
 
 def load_json(name, fallback):
@@ -54,7 +58,11 @@ def format_data_timestamp(value):
 
 predictions = load_json("today_ai_predictions.json", {"games": []})
 npb_today = load_json("npb_today.json", {"games": []})
-bet_records = load_json("bet_records.json", [])
+write_data_dir = Path("/app/data") if Path("/app/data").exists() else REPO_DATA_DIR
+try:
+    bet_records = load_bets(user_bets_path(write_data_dir, auth_user))
+except BetStoreError:
+    bet_records = []
 
 prediction_games = sorted(
     predictions.get("games") or [],

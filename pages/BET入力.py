@@ -7,6 +7,7 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 
+from auth_session import user_bets_path
 from bet_analytics import profit_for_result, settle_bet
 from bet_store import BetStoreError, append_bet
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
@@ -15,7 +16,6 @@ JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 PROD_DATA_DIR = Path("/app/data")
 DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
-BETS_FILE = DATA_DIR / "bet_records.json"
 TEAM_NAMES = [
     "ソフトバンク", "日本ハム", "楽天", "西武", "ロッテ", "オリックス",
     "巨人", "阪神", "DeNA", "広島", "ヤクルト", "中日",
@@ -23,7 +23,8 @@ TEAM_NAMES = [
 
 st.set_page_config(page_title="BET入力 | MY AI BASEBALL", page_icon="✍️", layout="wide")
 apply_studio_theme()
-render_topbar("BET MANAGEMENT")
+auth_user = render_topbar("BET MANAGEMENT")
+BETS_FILE = user_bets_path(DATA_DIR, auth_user)
 render_hero(
     "BET・収支入力",
     "当日のNPBカードからBET先・ハンデ・金額・結果を登録し、収支マップへ即時反映します。",

@@ -99,6 +99,27 @@ def save_bets(path: Path, records: Iterable[dict[str, Any]]) -> list[dict[str, A
         return deepcopy(normalized)
 
 
+def import_bets(
+    path: Path,
+    imported: Iterable[dict[str, Any]],
+    *,
+    replace: bool = False,
+) -> tuple[list[dict[str, Any]], int]:
+    """Atomically import records, skipping IDs already present when appending."""
+    with _STORE_LOCK:
+        incoming = _with_record_ids(imported)
+        if replace:
+            _atomic_write(path, incoming)
+            return deepcopy(incoming), len(incoming)
+
+        current = load_bets(path)
+        seen = {record["id"] for record in current}
+        additions = [record for record in incoming if record["id"] not in seen]
+        merged = [*current, *additions]
+        _atomic_write(path, merged)
+        return deepcopy(merged), len(additions)
+
+
 def append_bet(path: Path, record: dict[str, Any]) -> dict[str, Any]:
     """Append one unique BET record without losing concurrent updates."""
     with _STORE_LOCK:

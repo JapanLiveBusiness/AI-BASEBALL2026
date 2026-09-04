@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from bet_store import DuplicateBetError, append_bet, delete_bet, load_bets, update_bet
+from bet_store import DuplicateBetError, append_bet, delete_bet, import_bets, load_bets, update_bet
 
 
 class BetStoreTest(unittest.TestCase):
@@ -52,6 +52,27 @@ class BetStoreTest(unittest.TestCase):
         json.loads(self.path.read_text(encoding="utf-8"))
         delete_bet(self.path, "bet-1")
         self.assertEqual(json.loads(self.path.read_text(encoding="utf-8")), [])
+
+    def test_import_appends_only_new_ids_or_replaces_atomically(self):
+        append_bet(self.path, {"id": "bet-1", "team": "阪神"})
+        merged, added = import_bets(
+            self.path,
+            [
+                {"id": "bet-1", "team": "上書きしない"},
+                {"id": "bet-2", "team": "巨人"},
+            ],
+        )
+        self.assertEqual(added, 1)
+        self.assertEqual([record["team"] for record in merged], ["阪神", "巨人"])
+
+        replaced, count = import_bets(
+            self.path,
+            [{"id": "bet-3", "team": "中日"}],
+            replace=True,
+        )
+        self.assertEqual(count, 1)
+        self.assertEqual(replaced, load_bets(self.path))
+        self.assertEqual(replaced[0]["id"], "bet-3")
 
 
 if __name__ == "__main__":

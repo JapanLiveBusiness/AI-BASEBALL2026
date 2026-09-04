@@ -17,8 +17,8 @@ FEATURES = (
     Feature("games", "本日の試合", "/試合", "live", "対戦カードとAI予測を表示"),
     Feature("predictions", "AI予測", "/本日のAI予想", "live", "当日の予測と信頼度を表示"),
     Feature("results", "予想結果", "/予想結果", "live", "全NPBの固定予測を終了スコアと自動照合"),
-    Feature("bet_entry", "BET入力", "/BET入力", "live", "BETの登録・編集・削除・精算に対応"),
-    Feature("performance", "収支マップ", "/収支マップ", "live", "収支・的中率・ROIと未確定BETを一元管理"),
+    Feature("bet_entry", "BET入力", "/BET入力", "live", "BETの登録・編集・削除・精算と利用者別保存に対応"),
+    Feature("performance", "収支マップ", "/収支マップ", "live", "収支・ROI・Excel入出力を一元管理"),
     Feature("ai_detail", "AI詳細", "/AI詳細", "beta", "軽量サマリーと状況・戦力補正対応の勝率シミュレーターを表示", "公式速報の自動入力を軽量版へ接続"),
     Feature("team_detail", "球団別詳細", "/球団別詳細", "live", "12球団の戦績・次戦・AI予測・直近成績を表示"),
 )

@@ -8042,8 +8042,22 @@ def _bet_data_dir():
     return BetPath("/opt/hawks-ai/data")
 
 
+def _bet_data_file(filename):
+    from auth_session import require_auth0, user_storage_key
+
+    user = require_auth0()
+    if user.authenticated:
+        return (
+            _bet_data_dir()
+            / "users"
+            / user_storage_key(user.subject)
+            / filename
+        )
+    return _bet_data_dir() / filename
+
+
 def _load_bet_json(filename, default):
-    p = _bet_data_dir() / filename
+    p = _bet_data_file(filename)
     try:
         if p.exists():
             return bet_json.loads(p.read_text(encoding="utf-8"))
@@ -8053,7 +8067,8 @@ def _load_bet_json(filename, default):
 
 
 def _save_bet_json(filename, data):
-    p = _bet_data_dir() / filename
+    p = _bet_data_file(filename)
+    p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(
         bet_json.dumps(data, ensure_ascii=False, indent=2),
         encoding="utf-8"
