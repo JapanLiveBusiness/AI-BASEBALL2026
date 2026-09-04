@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 import streamlit as st
 
+from bet_analytics import weekly_bet_summary
 from feature_readiness import STATUS_LABELS, feature
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -53,7 +54,7 @@ def format_data_timestamp(value):
 
 predictions = load_json("today_ai_predictions.json", {"games": []})
 npb_today = load_json("npb_today.json", {"games": []})
-bet_summary = load_json("bet_summary.json", {})
+bet_records = load_json("bet_records.json", [])
 
 prediction_games = sorted(
     predictions.get("games") or [],
@@ -78,11 +79,16 @@ best_prob_label = (
 updated_at = format_data_timestamp(
     predictions.get("updated_at") or npb_today.get("updated_at")
 )
-weekly_profit = bet_summary.get("weekly_unsettled_profit")
+weekly = weekly_bet_summary(bet_records, now.date())
+weekly_profit = weekly["profit"]
 profit_label = (
-    f"¥{int(weekly_profit):,}"
-    if isinstance(weekly_profit, (int, float))
-    else "--"
+    f"+¥{weekly_profit:,}" if weekly_profit > 0
+    else f"-¥{abs(weekly_profit):,}" if weekly_profit < 0
+    else "¥0"
+)
+week_label = (
+    f"{weekly['week_start'].strftime('%m/%d')}〜"
+    f"{weekly['week_end'].strftime('%m/%d')}"
 )
 
 teams = [
@@ -201,7 +207,7 @@ st.markdown(
   <section class="kpi-row">
     <div class="kpi"><div class="kpi-copy"><span>TODAY GAMES</span><b>{len(today_games)}</b></div><small>NPB<br>対象試合</small></div>
     <div class="kpi"><div class="kpi-copy"><span>AI PREDICTIONS</span><b>{len(prediction_games)}</b></div><small>取得済み<br>予測カード</small></div>
-    <div class="kpi"><div class="kpi-copy"><span>WEEKLY P/L</span><b>{profit_label}</b></div><small>BET<br>未精算集計</small></div>
+    <div class="kpi"><div class="kpi-copy"><span>WEEKLY P/L</span><b>{profit_label}</b></div><small>{week_label}<br>確定BET {weekly['final_count']}件</small></div>
   </section>
 
   <section class="content-grid">

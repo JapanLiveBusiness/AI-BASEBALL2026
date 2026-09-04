@@ -1,5 +1,7 @@
 """Pure helpers for BET summary metrics and history ordering."""
 
+from datetime import date, datetime, timedelta
+
 
 SORT_OPTIONS = (
     "新しい日付順",
@@ -62,6 +64,46 @@ def calculate_hit_rate(records):
     decided = len(results)
     rate = (wins / decided * 100.0) if decided else None
     return wins, decided, rate
+
+
+def weekly_bet_summary(records, reference_date=None):
+    """Calculate the current Monday-Sunday BET summary from live records."""
+    if reference_date is None:
+        reference_date = date.today()
+    elif isinstance(reference_date, datetime):
+        reference_date = reference_date.date()
+
+    week_start = reference_date - timedelta(days=reference_date.weekday())
+    week_end = week_start + timedelta(days=6)
+    weekly = []
+    for record in records:
+        try:
+            record_date = date.fromisoformat(str(record.get("date") or ""))
+        except ValueError:
+            continue
+        if week_start <= record_date <= week_end:
+            weekly.append(record)
+
+    final = [record for record in weekly if record.get("status") == "final"]
+    pending = [record for record in weekly if record.get("status") != "final"]
+    wins, decided, hit_rate = calculate_hit_rate(final)
+    total_profit = sum(int(_number(record.get("profit"))) for record in final)
+    total_stake = sum(bet_amount(record) for record in final)
+
+    return {
+        "week_start": week_start,
+        "week_end": week_end,
+        "profit": total_profit,
+        "final_count": len(final),
+        "wins": wins,
+        "losses": sum(record.get("result") == "loss" for record in final),
+        "pushes": sum(record.get("result") == "push" for record in final),
+        "hit_rate": hit_rate,
+        "roi": (total_profit / total_stake * 100.0) if total_stake else None,
+        "pending_count": len(pending),
+        "pending_amount": int(sum(bet_amount(record) for record in pending)),
+        "decided_count": decided,
+    }
 
 
 def sort_bets(records, option):

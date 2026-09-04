@@ -1,11 +1,19 @@
 from pathlib import Path
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 import plotly.graph_objects as go
 import requests
 import streamlit as st
 
-from bet_analytics import SORT_OPTIONS, calculate_hit_rate, profit_for_result, settle_bet, sort_bets
+from bet_analytics import (
+    SORT_OPTIONS,
+    calculate_hit_rate,
+    profit_for_result,
+    settle_bet,
+    sort_bets,
+    weekly_bet_summary,
+)
 from bet_store import BetStoreError, append_bet, delete_bet, load_bets, update_bet
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links, render_section
 
@@ -25,6 +33,7 @@ PROD_DATA_DIR = Path("/app/data")
 DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
 BETS_FILE = DATA_DIR / "bet_records.json"
 NPB_API = "https://npb.jp/bis/eng/2026/games/"
+JST = ZoneInfo("Asia/Tokyo")
 
 
 def yen(value):
@@ -239,6 +248,31 @@ if not bets:
 bets = sort_bets(bets, "古い日付順")
 settled = [b for b in bets if b.get("status") == "final"]
 pending = [b for b in bets if b.get("status") != "final"]
+
+weekly = weekly_bet_summary(bets, datetime.now(JST).date())
+render_section("WEEKLY P/L", "今週の収支")
+st.caption(
+    f"対象期間: {weekly['week_start'].strftime('%Y/%m/%d')}〜"
+    f"{weekly['week_end'].strftime('%Y/%m/%d')}（日本時間・月曜始まり）"
+)
+w1, w2, w3, w4, w5 = st.columns(5)
+w1.metric("週次確定損益", yen(weekly["profit"]))
+w2.metric("確定BET", f"{weekly['final_count']}試合")
+w3.metric(
+    "勝敗",
+    f"{weekly['wins']}勝 {weekly['losses']}敗"
+    + (f" {weekly['pushes']}分" if weekly["pushes"] else ""),
+)
+w4.metric(
+    "週次ROI",
+    f"{weekly['roi']:+.1f}%" if weekly["roi"] is not None else "-",
+)
+w5.metric(
+    "未確定BET",
+    yen(weekly["pending_amount"]),
+    f"{weekly['pending_count']}試合",
+    delta_color="off",
+)
 
 sort_option = st.selectbox("履歴の並び順", SORT_OPTIONS, key="profit_map_sort")
 sorted_settled = sort_bets(settled, sort_option)

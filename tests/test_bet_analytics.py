@@ -1,4 +1,5 @@
 import unittest
+from datetime import date
 
 from bet_analytics import (
     bet_amount,
@@ -6,6 +7,7 @@ from bet_analytics import (
     profit_for_result,
     settle_bet,
     sort_bets,
+    weekly_bet_summary,
 )
 
 
@@ -52,6 +54,27 @@ class BetAnalyticsTest(unittest.TestCase):
         self.assertEqual(profit_for_result("win", 10000), 10000)
         self.assertEqual(profit_for_result("loss", 10000), -10000)
         self.assertEqual(profit_for_result("push", 10000), 0)
+
+    def test_weekly_summary_uses_monday_to_sunday(self):
+        summary = weekly_bet_summary(self.records, date(2026, 8, 30))
+
+        self.assertEqual(summary["week_start"], date(2026, 8, 24))
+        self.assertEqual(summary["week_end"], date(2026, 8, 30))
+        self.assertEqual(summary["profit"], 170000)
+        self.assertEqual(summary["final_count"], 3)
+        self.assertEqual((summary["wins"], summary["losses"]), (1, 1))
+        self.assertEqual(summary["pushes"], 1)
+        self.assertEqual(summary["hit_rate"], 50.0)
+        self.assertAlmostEqual(summary["roi"], 170000 / 600000 * 100)
+
+    def test_weekly_summary_separates_pending_exposure(self):
+        summary = weekly_bet_summary(self.records, date(2026, 8, 31))
+
+        self.assertEqual(summary["profit"], 0)
+        self.assertEqual(summary["final_count"], 0)
+        self.assertIsNone(summary["roi"])
+        self.assertEqual(summary["pending_count"], 1)
+        self.assertEqual(summary["pending_amount"], 500000)
 
 
 if __name__ == "__main__":
