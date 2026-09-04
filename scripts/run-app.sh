@@ -18,6 +18,7 @@ refresh_prediction_results() {
 refresh_schedule() {
   while true; do
     python /app/scripts/refresh_npb_schedule_cache.py || true
+    python /app/scripts/refresh_npb_results_cache.py || true
     sleep "${NPB_SCHEDULE_INTERVAL:-21600}"
   done
 }

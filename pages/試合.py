@@ -36,12 +36,31 @@ def load_json(name: str, fallback):
 def load_schedule_cache() -> dict:
     runtime_cache = PROD_DATA_DIR / "npb_schedule_cache.json"
     bundled_fallback = REPO_DATA_DIR.parent / "npb_schedule_fallback.json"
-    for path in (runtime_cache, bundled_fallback):
+    merged = {}
+    for path in (bundled_fallback, runtime_cache):
         try:
-            return json.loads(path.read_text(encoding="utf-8"))
+            payload = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             continue
-    return {"games": []}
+        for game in payload.get("games") or []:
+            key = (str(game.get("date") or ""), str(game.get("home") or ""), str(game.get("away") or ""))
+            merged[key] = game
+    return {"games": list(merged.values())}
+
+
+def load_results_cache() -> dict:
+    runtime_cache = PROD_DATA_DIR / "npb_results_cache.json"
+    bundled_fallback = REPO_DATA_DIR.parent / "npb_results_fallback.json"
+    merged = {}
+    for path in (bundled_fallback, runtime_cache):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for game in payload.get("games") or []:
+            key = (str(game.get("date") or ""), str(game.get("home") or ""), str(game.get("away") or ""))
+            merged[key] = game
+    return {"games": list(merged.values())}
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -114,7 +133,12 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
         history_games.append(game)
 
     is_past = selected_date < datetime.now(JST).date()
-    daily_results = cached_handicaps(selected_iso) if is_past else []
+    stored_results = [
+        game for game in load_results_cache().get("games") or []
+        if str(game.get("date") or "") == selected_iso
+    ] if is_past else []
+    live_results = cached_handicaps(selected_iso) if is_past else []
+    daily_results = merge_game_sources(stored_results, live_results)
     official_games = [] if daily_results else cached_official_games(selected_iso)
     if not official_games:
         schedule_cache = load_schedule_cache()
