@@ -33,6 +33,17 @@ def load_json(name: str, fallback):
         return fallback
 
 
+def load_schedule_cache() -> dict:
+    runtime_cache = PROD_DATA_DIR / "npb_schedule_cache.json"
+    bundled_fallback = REPO_DATA_DIR.parent / "npb_schedule_fallback.json"
+    for path in (runtime_cache, bundled_fallback):
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+    return {"games": []}
+
+
 @st.cache_data(ttl=600, show_spinner=False)
 def cached_official_games(date_iso: str) -> list[dict]:
     return fetch_npb_schedule_day(date.fromisoformat(date_iso))
@@ -105,6 +116,12 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
     is_past = selected_date < datetime.now(JST).date()
     daily_results = cached_handicaps(selected_iso) if is_past else []
     official_games = [] if daily_results else cached_official_games(selected_iso)
+    if not official_games:
+        schedule_cache = load_schedule_cache()
+        official_games = [
+            game for game in schedule_cache.get("games") or []
+            if str(game.get("date") or "") == selected_iso
+        ]
     games = merge_game_sources(official_games, history_games, local_games, daily_results)
     if selected_date < datetime.now(JST).date():
         games = attach_handicaps(games, daily_results)
