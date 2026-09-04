@@ -10,7 +10,12 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from game_calendar import fetch_daily_handicaps  # noqa: E402
+from game_calendar import (  # noqa: E402
+    attach_handicaps,
+    fetch_daily_handicaps,
+    fetch_npb_schedule_day,
+    merge_game_sources,
+)
 
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -39,7 +44,12 @@ def main() -> None:
 
     for offset in range(1, max(args.days, 1) + 1):
         target_date = today - timedelta(days=offset)
-        fetched = fetch_daily_handicaps(target_date, timeout=args.timeout)
+        official = fetch_npb_schedule_day(target_date, timeout=args.timeout)
+        handicaps = fetch_daily_handicaps(target_date, timeout=args.timeout)
+        fetched = attach_handicaps(
+            merge_game_sources(official, handicaps),
+            handicaps,
+        )
         if not fetched:
             continue
         target_iso = target_date.isoformat()

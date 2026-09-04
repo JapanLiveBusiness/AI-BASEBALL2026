@@ -62,3 +62,29 @@ def test_merge_sources_enriches_history_without_losing_official_time():
         "away_score": 5,
         "status": "final",
     }]
+
+
+def test_merge_sources_does_not_downgrade_official_final_result():
+    official = [{
+        "home": "ヤクルト",
+        "away": "中日",
+        "home_score": 4,
+        "away_score": 2,
+        "status": "final",
+        "result_source": "NPB公式",
+    }]
+    handicap_source = [{
+        "home": "ヤクルト",
+        "away": "中日",
+        "status": "result_pending",
+        "result_source": "ハンデの森",
+        "away_handicap": "0.6",
+    }]
+
+    result = merge_game_sources(official, handicap_source)
+
+    assert result[0]["status"] == "final"
+    assert result[0]["home_score"] == 4
+    assert result[0]["away_score"] == 2
+    assert result[0]["result_source"] == "NPB公式"
+    assert result[0]["away_handicap"] == "0.6"

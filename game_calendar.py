@@ -181,7 +181,7 @@ def same_match(left: dict, right: dict) -> bool:
 
 
 def merge_game_sources(*sources: list[dict]) -> list[dict]:
-    """Merge schedule/result sources in priority order, later sources winning."""
+    """Merge schedule/result sources without downgrading confirmed results."""
     merged = []
     for source in sources:
         for incoming in source or []:
@@ -189,8 +189,18 @@ def merge_game_sources(*sources: list[dict]) -> list[dict]:
             if existing is None:
                 merged.append(dict(incoming))
                 continue
+            existing_final = str(existing.get("status") or "").lower() in {
+                "final", "finished", "completed", "終了", "試合終了",
+            }
+            incoming_final = str(incoming.get("status") or "").lower() in {
+                "final", "finished", "completed", "終了", "試合終了",
+            }
             for key, value in incoming.items():
                 if value not in (None, "", "--:--", "会場未定"):
+                    if existing_final and not incoming_final and key in {
+                        "status", "home_score", "away_score", "result_source",
+                    }:
+                        continue
                     existing[key] = value
     return merged
 

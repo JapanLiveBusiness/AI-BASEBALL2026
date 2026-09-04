@@ -139,7 +139,8 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
     ] if is_past else []
     live_results = cached_handicaps(selected_iso) if is_past else []
     daily_results = merge_game_sources(stored_results, live_results)
-    official_games = [] if daily_results else cached_official_games(selected_iso)
+    # ハンデ掲載元の結果が未更新でも、NPB公式の確定スコアを併用する。
+    official_games = cached_official_games(selected_iso)
     if not official_games:
         schedule_cache = load_schedule_cache()
         official_games = [
