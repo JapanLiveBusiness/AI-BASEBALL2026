@@ -114,6 +114,15 @@ def gamecast_snapshot(game: dict[str, Any]) -> dict[str, Any]:
     else:
         inning_label = "試合前"
 
+    half_token = half.lower()
+    inferred_pitcher = (
+        game.get("home_starter")
+        if half_token in {"表", "top"}
+        else game.get("away_starter")
+        if half_token in {"裏", "bottom"}
+        else game.get("home_starter") or game.get("away_starter")
+    )
+
     return {
         "live": live,
         "final": final,
@@ -126,8 +135,7 @@ def gamecast_snapshot(game: dict[str, Any]) -> dict[str, Any]:
         "pitcher": str(
             game.get("current_pitcher")
             or game.get("pitcher")
-            or game.get("home_starter")
-            or game.get("away_starter")
+            or inferred_pitcher
             or "投手情報待ち"
         ),
         "batter": str(game.get("current_batter") or game.get("batter") or "打者情報待ち"),

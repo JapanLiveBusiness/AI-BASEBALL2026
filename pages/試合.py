@@ -11,6 +11,7 @@ import streamlit as st
 
 from game_calendar import attach_handicaps, fetch_daily_handicaps, fetch_npb_schedule_day, merge_game_sources
 from gamecast import gamecast_snapshot, select_featured_game
+from npb_live import fetch_npb_live_game
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -72,6 +73,11 @@ def cached_official_games(date_iso: str) -> list[dict]:
 @st.cache_data(ttl=3600, show_spinner=False)
 def cached_handicaps(date_iso: str) -> list[dict]:
     return fetch_daily_handicaps(date.fromisoformat(date_iso))
+
+
+@st.cache_data(ttl=15, max_entries=12, show_spinner=False)
+def cached_live_game(date_iso: str, home: str, away: str) -> dict:
+    return fetch_npb_live_game(date.fromisoformat(date_iso), home, away)
 
 
 def status_key(game: dict) -> str:
@@ -149,6 +155,24 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
             if str(game.get("date") or "") == selected_iso
         ]
     games = merge_game_sources(official_games, history_games, local_games, daily_results)
+    if selected_date == datetime.now(JST).date():
+        hawks_index = next(
+            (
+                index
+                for index, game in enumerate(games)
+                if "ソフトバンク" in {str(game.get("home") or ""), str(game.get("away") or "")}
+            ),
+            None,
+        )
+        if hawks_index is not None:
+            game = games[hawks_index]
+            live_update = cached_live_game(
+                selected_iso,
+                str(game.get("home") or ""),
+                str(game.get("away") or ""),
+            )
+            if live_update:
+                games[hawks_index] = merge_game_sources([game], [live_update])[0]
     if selected_date < datetime.now(JST).date():
         games = attach_handicaps(games, daily_results)
 
@@ -216,11 +240,11 @@ def render_gamecast(game: dict, prediction: dict, target_date: date) -> None:
         )
     )
     live_note = (
-        "30秒ごとに試合情報を更新中"
+        "NPB公式速報を15秒キャッシュで更新中"
         if snapshot["live"]
         else "確定結果を表示"
         if snapshot["final"]
-        else "試合開始後にライブ情報へ切り替わります"
+        else "試合開始後にNPB公式速報へ切り替わります"
     )
 
     st.markdown(
