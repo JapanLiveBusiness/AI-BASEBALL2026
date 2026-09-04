@@ -212,7 +212,7 @@ st.markdown(
       <div class="panel-head"><h2>クイック操作</h2><span>WORKSPACE</span></div>
       <div class="actions">
         <a class="action primary" href="/本日のAI予想" target="_self"><div class="action-icon">AI</div><div class="action-copy"><b>AI予測を見る {readiness_badge('predictions')}</b><span>勝率・予測スコア・信頼度</span></div><div class="action-arrow">›</div></a>
-        <a class="action" href="/BET入力" target="_self"><div class="action-icon">＋</div><div class="action-copy"><b>BETを入力 {readiness_badge('bet_entry')}</b><span>新規登録に対応。編集・精算は実装準備中</span></div><div class="action-arrow">›</div></a>
+        <a class="action" href="/BET入力" target="_self"><div class="action-icon">＋</div><div class="action-copy"><b>BETを入力 {readiness_badge('bet_entry')}</b><span>登録・編集・削除・未確定BETの精算</span></div><div class="action-arrow">›</div></a>
         <a class="action" href="/収支マップ" target="_self"><div class="action-icon">¥</div><div class="action-copy"><b>収支を確認 {readiness_badge('performance')}</b><span>的中率・ROI・累積収支</span></div><div class="action-arrow">›</div></a>
         <a class="action" href="/AI詳細" target="_self"><div class="action-icon">◎</div><div class="action-copy"><b>AI詳細を開く {readiness_badge('ai_detail')}</b><span>旧分析画面を試験表示。読み込み改善予定</span></div><div class="action-arrow">›</div></a>
       </div>

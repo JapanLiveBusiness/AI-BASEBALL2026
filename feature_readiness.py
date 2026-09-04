@@ -17,8 +17,8 @@ FEATURES = (
     Feature("games", "本日の試合", "/試合", "live", "対戦カードとAI予測を表示"),
     Feature("predictions", "AI予測", "/本日のAI予想", "live", "当日の予測と信頼度を表示"),
     Feature("results", "予想結果", "/予想結果", "beta", "固定予測と確定済み結果を検証", "全NPB予測の試合結果取り込みを安定化"),
-    Feature("bet_entry", "BET入力", "/BET入力", "beta", "BETの新規登録に対応", "登録済みBETの編集・削除・未確定から確定への更新"),
-    Feature("performance", "収支マップ", "/収支マップ", "beta", "確定BETの収支・的中率・ROIを表示", "重複するBET入力処理の共通化と未確定BETの精算導線"),
+    Feature("bet_entry", "BET入力", "/BET入力", "live", "BETの登録・編集・削除・精算に対応"),
+    Feature("performance", "収支マップ", "/収支マップ", "live", "収支・的中率・ROIと未確定BETを一元管理"),
     Feature("ai_detail", "AI詳細", "/AI詳細", "preview", "旧分析画面をStudio内で試験表示", "旧app.py依存を分割し、読み込み時間と外部取得失敗を改善"),
     Feature("team_detail", "球団別詳細", None, "planned", "12球団一覧のみ表示", "球団選択、戦績、先発、直近成績の詳細画面を実装"),
 )

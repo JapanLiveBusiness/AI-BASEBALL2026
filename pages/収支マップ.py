@@ -1,12 +1,12 @@
 from pathlib import Path
 from datetime import date, datetime
-import json
 
 import plotly.graph_objects as go
 import requests
 import streamlit as st
 
 from bet_analytics import SORT_OPTIONS, calculate_hit_rate, profit_for_result, settle_bet, sort_bets
+from bet_store import BetStoreError, append_bet, delete_bet, load_bets, update_bet
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links, render_section
 
 st.set_page_config(page_title="収支マップ | MY AI BASEBALL", page_icon="💰", layout="wide")
@@ -27,19 +27,6 @@ BETS_FILE = DATA_DIR / "bet_records.json"
 NPB_API = "https://npb.jp/bis/eng/2026/games/"
 
 
-def load_bets():
-    try:
-        data = json.loads(BETS_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
-    except Exception:
-        return []
-
-
-def save_bets(bets):
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    BETS_FILE.write_text(json.dumps(bets, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
 def yen(value):
     try:
         return f"¥{int(value):,}"
@@ -49,6 +36,89 @@ def yen(value):
 
 def result_label(value):
     return {"win": "WIN", "loss": "LOSE", "push": "PUSH"}.get(value, "未確定")
+
+
+def _record_date(value):
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%d").date()
+    except ValueError:
+        return date.today()
+
+
+def _record_time(value):
+    try:
+        return datetime.strptime(str(value), "%H:%M").time()
+    except ValueError:
+        return datetime.strptime("18:00", "%H:%M").time()
+
+
+@st.dialog("BETを編集", width="large")
+def edit_bet_dialog(bet):
+    record_id = bet["id"]
+    with st.form(f"edit_bet_{record_id}"):
+        c1, c2 = st.columns(2)
+        selected_date = c1.date_input("試合日", value=_record_date(bet.get("date")))
+        game_time = c2.time_input("開始時刻", value=_record_time(bet.get("time")))
+        c3, c4 = st.columns(2)
+        team = c3.text_input("BET先", value=str(bet.get("team", "")))
+        opponent = c4.text_input("対戦相手", value=str(bet.get("opponent", "")))
+        c5, c6 = st.columns(2)
+        amount = c5.number_input("BET金額（円）", min_value=0, step=1000, value=int(abs(float(bet.get("bet_amount", 0) or float(bet.get("bet_units", 0) or 0) * 10000))))
+        handicap = c6.number_input("ハンディ", step=0.1, value=float(bet.get("handicap", 0) or 0))
+        status_label = st.selectbox("状態", ["未確定", "確定"], index=1 if bet.get("status") == "final" else 0)
+        c7, c8 = st.columns(2)
+        team_score = c7.number_input("BET先チーム得点", min_value=0, step=1, value=int(bet.get("team_score") or 0))
+        opponent_score = c8.number_input("対戦相手得点", min_value=0, step=1, value=int(bet.get("opponent_score") or 0))
+        memo = st.text_area("メモ / その他情報", value=str(bet.get("memo", "")))
+        submitted = st.form_submit_button("変更を保存", type="primary", width="stretch")
+
+    if not submitted:
+        return
+    if not team.strip() or not opponent.strip():
+        st.error("BET先と対戦相手を入力してください。")
+        return
+
+    is_final = status_label == "確定"
+    adjusted_score, result = settle_bet(team_score, opponent_score, handicap) if is_final else (None, None)
+    changes = {
+        "date": selected_date.isoformat(),
+        "time": game_time.strftime("%H:%M"),
+        "team": team.strip(),
+        "opponent": opponent.strip(),
+        "handicap": float(handicap),
+        "bet_units": float(amount) / 10000.0,
+        "bet_amount": int(amount),
+        "status": "final" if is_final else "pending",
+        "settled": is_final,
+        "result": result,
+        "profit": profit_for_result(result, amount) if is_final else 0,
+        "team_score": int(team_score) if is_final else None,
+        "opponent_score": int(opponent_score) if is_final else None,
+        "adjusted_score": adjusted_score,
+        "memo": memo.strip(),
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    try:
+        update_bet(BETS_FILE, record_id, changes)
+    except BetStoreError as exc:
+        st.error(str(exc))
+    else:
+        st.session_state["bet_notice"] = "BETを更新しました。"
+        st.rerun()
+
+
+@st.dialog("BETを削除")
+def delete_bet_dialog(bet):
+    st.warning("この操作は元に戻せません。")
+    st.write(f"{bet.get('date', '-')} {bet.get('time', '-')} ｜ {bet.get('team', '-')} vs {bet.get('opponent', '-')}")
+    if st.button("このBETを削除", type="primary", width="stretch", key=f"confirm_delete_{bet['id']}"):
+        try:
+            delete_bet(BETS_FILE, bet["id"])
+        except BetStoreError as exc:
+            st.error(str(exc))
+        else:
+            st.session_state["bet_notice"] = "BETを削除しました。"
+            st.rerun()
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -133,6 +203,7 @@ with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
                 "bet_units": float(bet_amount) / 10000.0,
                 "bet_amount": int(bet_amount),
                 "status": "final" if is_final else "pending",
+                "settled": is_final,
                 "result": result,
                 "profit": calculated_profit,
                 "team_score": int(team_score) if is_final else None,
@@ -142,16 +213,25 @@ with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
                 "source": "manual",
                 "created_at": datetime.now().isoformat(timespec="seconds"),
             }
-            current = load_bets()
-            current.append(record)
-            save_bets(current)
-            if is_final:
-                st.success(f"ハンデ込みで {result.upper()}、損益 {calculated_profit:+,}円として保存しました。")
+            try:
+                append_bet(BETS_FILE, record)
+            except BetStoreError as exc:
+                st.error(str(exc))
             else:
-                st.success(f"{selected_date.isoformat()} {team} vs {opponent} の未確定BETを保存しました。")
-            st.rerun()
+                if is_final:
+                    st.session_state["bet_notice"] = f"ハンデ込みで {result.upper()}、損益 {calculated_profit:+,}円として保存しました。"
+                else:
+                    st.session_state["bet_notice"] = f"{selected_date.isoformat()} {team} vs {opponent} の未確定BETを保存しました。"
+                st.rerun()
 
-bets = load_bets()
+if notice := st.session_state.pop("bet_notice", None):
+    st.success(notice)
+
+try:
+    bets = load_bets(BETS_FILE)
+except BetStoreError as exc:
+    st.error(str(exc))
+    st.stop()
 if not bets:
     st.info("BET記録がまだありません。上のフォームから最初のBETを登録できます。")
     st.stop()
@@ -227,6 +307,11 @@ if settled:
             st.write(f"**試合スコア:** {score}　｜　**結果:** {result_label(bet.get('result'))}")
             if bet.get("memo"):
                 st.write(f"**メモ:** {bet['memo']}")
+            actions = st.container(horizontal=True)
+            if actions.button("編集", key=f"edit_final_{bet['id']}"):
+                edit_bet_dialog(bet)
+            if actions.button("削除", key=f"delete_final_{bet['id']}"):
+                delete_bet_dialog(bet)
 else:
     st.info("確定済みBETはまだありません。未確定BETは下に表示されます。")
 
@@ -234,4 +319,37 @@ if pending:
     render_section("PENDING", "未確定BET")
     for bet in sorted_pending:
         amount = float(bet.get("bet_amount", abs(float(bet.get("bet_units", 0) or 0)) * 10000) or 0)
-        st.write(f"⏳ {bet.get('date', '-')} {bet.get('time', '-')} ｜ {bet.get('team', '-')} vs {bet.get('opponent', '-')} ｜ BET {yen(amount)} ｜ ハンディ {bet.get('handicap', 0)}")
+        title = f"⏳ {bet.get('date', '-')} {bet.get('time', '-')} ｜ {bet.get('team', '-')} vs {bet.get('opponent', '-')} ｜ {yen(amount)}"
+        with st.expander(title):
+            st.write(f"**BET先:** {bet.get('team', '-')}　｜　**ハンディ:** {bet.get('handicap', 0)}")
+            if bet.get("memo"):
+                st.write(f"**メモ:** {bet['memo']}")
+            with st.form(f"settle_bet_{bet['id']}"):
+                c1, c2 = st.columns(2)
+                team_score = c1.number_input("BET先チーム得点", min_value=0, step=1, value=0, key=f"settle_team_{bet['id']}")
+                opponent_score = c2.number_input("対戦相手得点", min_value=0, step=1, value=0, key=f"settle_opponent_{bet['id']}")
+                settle_submitted = st.form_submit_button("スコアを確定して精算", type="primary", width="stretch")
+            if settle_submitted:
+                adjusted_score, result = settle_bet(team_score, opponent_score, bet.get("handicap", 0))
+                changes = {
+                    "status": "final",
+                    "result": result,
+                    "profit": profit_for_result(result, amount),
+                    "team_score": int(team_score),
+                    "opponent_score": int(opponent_score),
+                    "adjusted_score": adjusted_score,
+                    "settled": True,
+                    "updated_at": datetime.now().isoformat(timespec="seconds"),
+                }
+                try:
+                    update_bet(BETS_FILE, bet["id"], changes)
+                except BetStoreError as exc:
+                    st.error(str(exc))
+                else:
+                    st.session_state["bet_notice"] = f"{result_label(result)}として精算しました。損益は {yen(changes['profit'])} です。"
+                    st.rerun()
+            actions = st.container(horizontal=True)
+            if actions.button("編集", key=f"edit_pending_{bet['id']}"):
+                edit_bet_dialog(bet)
+            if actions.button("削除", key=f"delete_pending_{bet['id']}"):
+                delete_bet_dialog(bet)

@@ -29,7 +29,7 @@ jobs:
           python -m pip install flake8
       - name: Check Python syntax and undefined names
         run: |
-          python -m py_compile app.py main.py bet_analytics.py pages/収支マップ.py
-          flake8 app.py main.py bet_analytics.py pages/収支マップ.py --count --select=E9,F63,F7,F82 --show-source --statistics
+          python -m py_compile app.py main.py bet_analytics.py bet_store.py pages/BET入力.py pages/収支マップ.py
+          flake8 app.py main.py bet_analytics.py bet_store.py pages/BET入力.py pages/収支マップ.py --count --select=E9,F63,F7,F82 --show-source --statistics
       - name: Run BET analytics tests
         run: python -m unittest tests.test_bet_analytics

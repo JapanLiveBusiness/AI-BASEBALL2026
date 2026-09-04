@@ -1,0 +1,138 @@
+"""Thread-safe, atomic persistence for BET records."""
+
+from __future__ import annotations
+
+from copy import deepcopy
+from hashlib import sha256
+import json
+import os
+from pathlib import Path
+import tempfile
+from threading import RLock
+from typing import Any, Iterable
+
+
+class BetStoreError(RuntimeError):
+    """Base error for BET persistence failures."""
+
+
+class BetNotFoundError(BetStoreError):
+    """Raised when a requested BET record does not exist."""
+
+
+class DuplicateBetError(BetStoreError):
+    """Raised when a BET record ID is already in use."""
+
+
+_STORE_LOCK = RLock()
+
+
+def _legacy_id(record: dict[str, Any], index: int) -> str:
+    payload = json.dumps(record, ensure_ascii=False, sort_keys=True, default=str)
+    digest = sha256(f"{index}:{payload}".encode("utf-8")).hexdigest()[:16]
+    return f"legacy-{digest}"
+
+
+def _with_record_ids(records: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for index, source in enumerate(records):
+        if not isinstance(source, dict):
+            continue
+        record = deepcopy(source)
+        record_id = str(record.get("id") or _legacy_id(record, index))
+        if record_id in seen:
+            record_id = f"{record_id}-{index}"
+        record["id"] = record_id
+        seen.add(record_id)
+        normalized.append(record)
+    return normalized
+
+
+def load_bets(path: Path) -> list[dict[str, Any]]:
+    """Load BET records and provide stable IDs for legacy entries."""
+    with _STORE_LOCK:
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return []
+        except (OSError, json.JSONDecodeError) as exc:
+            raise BetStoreError(f"BETデータを読み込めません: {exc}") from exc
+        if not isinstance(raw, list):
+            raise BetStoreError("BETデータの形式が不正です。配列形式が必要です。")
+        return _with_record_ids(raw)
+
+
+def _atomic_write(path: Path, records: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_name: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temp_file:
+            json.dump(records, temp_file, ensure_ascii=False, indent=2)
+            temp_file.write("\n")
+            temp_file.flush()
+            os.fsync(temp_file.fileno())
+            temp_name = temp_file.name
+        os.replace(temp_name, path)
+    except OSError as exc:
+        if temp_name:
+            try:
+                Path(temp_name).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise BetStoreError(f"BETデータを保存できません: {exc}") from exc
+
+
+def save_bets(path: Path, records: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Atomically replace all BET records."""
+    with _STORE_LOCK:
+        normalized = _with_record_ids(records)
+        _atomic_write(path, normalized)
+        return deepcopy(normalized)
+
+
+def append_bet(path: Path, record: dict[str, Any]) -> dict[str, Any]:
+    """Append one unique BET record without losing concurrent updates."""
+    with _STORE_LOCK:
+        records = load_bets(path)
+        normalized = _with_record_ids([record])[0]
+        if any(item["id"] == normalized["id"] for item in records):
+            raise DuplicateBetError(f"BET ID {normalized['id']} は既に存在します。")
+        records.append(normalized)
+        _atomic_write(path, records)
+        return deepcopy(normalized)
+
+
+def update_bet(path: Path, record_id: str, changes: dict[str, Any]) -> dict[str, Any]:
+    """Update one BET record by ID and persist the complete collection."""
+    with _STORE_LOCK:
+        records = load_bets(path)
+        for index, record in enumerate(records):
+            if record["id"] != record_id:
+                continue
+            updated = {**record, **deepcopy(changes), "id": record_id}
+            records[index] = updated
+            _atomic_write(path, records)
+            return deepcopy(updated)
+    raise BetNotFoundError(f"BET ID {record_id} が見つかりません。")
+
+
+def delete_bet(path: Path, record_id: str) -> dict[str, Any]:
+    """Delete one BET record by ID."""
+    with _STORE_LOCK:
+        records = load_bets(path)
+        for index, record in enumerate(records):
+            if record["id"] != record_id:
+                continue
+            deleted = records.pop(index)
+            _atomic_write(path, records)
+            return deepcopy(deleted)
+    raise BetNotFoundError(f"BET ID {record_id} が見つかりません。")

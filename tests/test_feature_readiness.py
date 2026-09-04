@@ -13,9 +13,11 @@ class FeatureReadinessTests(unittest.TestCase):
     def test_every_status_has_a_label(self):
         self.assertTrue(all(item.status in STATUS_LABELS for item in FEATURES))
 
-    def test_bet_work_is_first_in_implementation_queue(self):
+    def test_completed_bet_work_is_removed_from_implementation_queue(self):
         queue = implementation_queue()
-        self.assertEqual(queue[0].key, "bet_entry")
+        self.assertEqual(queue[0].key, "results")
+        self.assertNotIn("bet_entry", [item.key for item in queue])
+        self.assertNotIn("performance", [item.key for item in queue])
         self.assertTrue(all(item.next_step for item in queue))
 
     def test_feature_lookup(self):

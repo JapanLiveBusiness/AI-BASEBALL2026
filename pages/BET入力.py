@@ -1,7 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-import json
 import re
 
 import requests
@@ -9,6 +8,7 @@ import streamlit as st
 from bs4 import BeautifulSoup
 
 from bet_analytics import profit_for_result, settle_bet
+from bet_store import BetStoreError, append_bet
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -31,19 +31,6 @@ render_hero(
     accent="BET",
 )
 render_nav_links()
-
-
-def load_bets():
-    try:
-        value = json.loads(BETS_FILE.read_text(encoding="utf-8"))
-        return value if isinstance(value, list) else []
-    except Exception:
-        return []
-
-
-def save_bets(records):
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    BETS_FILE.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -133,9 +120,8 @@ if submitted:
             else (None, None)
         )
         calculated_profit = profit_for_result(result, bet_amount) if is_final else 0
-        records = load_bets()
         created_at = datetime.now(JST)
-        records.append({
+        record = {
             "id": f"manual-{created_at.strftime('%Y%m%d%H%M%S%f')}",
             "date": selected_date.isoformat(),
             "time": game_time.strftime("%H:%M"),
@@ -145,6 +131,7 @@ if submitted:
             "bet_units": float(bet_amount) / 10000.0,
             "bet_amount": int(bet_amount),
             "status": "final" if is_final else "pending",
+            "settled": is_final,
             "result": result,
             "profit": calculated_profit,
             "team_score": int(team_score) if is_final else None,
@@ -153,9 +140,13 @@ if submitted:
             "memo": memo.strip(),
             "source": "manual-page",
             "created_at": created_at.isoformat(timespec="seconds"),
-        })
-        save_bets(records)
-        if is_final:
-            st.success(f"ハンデ込みで {result.upper()}、損益 {calculated_profit:+,}円として保存しました。")
+        }
+        try:
+            append_bet(BETS_FILE, record)
+        except BetStoreError as exc:
+            st.error(str(exc))
         else:
-            st.success("未確定BETを保存しました。収支マップにも反映されます。")
+            if is_final:
+                st.success(f"ハンデ込みで {result.upper()}、損益 {calculated_profit:+,}円として保存しました。")
+            else:
+                st.success("未確定BETを保存しました。収支マップにも反映されます。")
