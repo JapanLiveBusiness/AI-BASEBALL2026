@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import streamlit as st
 
 from prediction_metrics import build_prediction_metrics
-from prediction_results import archive_predictions, build_performance, settle_predictions
+from prediction_results import archive_predictions, build_performance, merge_prediction_archives, settle_predictions
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
 
 PROD_DATA_DIR = Path("/app/data")
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+SHARED_DATA_DIR = Path(os.getenv("AI_BASEBALL_SHARED_DATA_DIR", "/app/shared-data"))
 
 st.set_page_config(
     page_title="予想結果 | AI BASEBALL STUDIO",
@@ -42,7 +44,8 @@ render_hero(
 )
 render_nav_links()
 
-metrics = build_prediction_metrics(active_data_dir())
+shared_available = SHARED_DATA_DIR.exists()
+metrics = build_prediction_metrics(active_data_dir(), SHARED_DATA_DIR if shared_available else None)
 games = metrics.get("games") or []
 verified_count = int(metrics.get("verified_count") or 0)
 hits = int(metrics.get("hits") or 0)
@@ -57,8 +60,27 @@ high_rate = (high_hits / len(high_conf) * 100.0) if high_conf else None
 st.markdown(
     """
 <style>
-.result-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0 20px}.result-kpi{background:#fffdf8;border:1px solid #ddd5c8;border-radius:13px;padding:15px}.result-kpi span{display:block;font-size:8px;letter-spacing:.16em;color:#a77e11;font-weight:900}.result-kpi strong{display:block;font-size:24px;margin-top:7px}.result-table{display:flex;flex-direction:column;gap:8px}.result-row{display:grid;grid-template-columns:120px 1fr 110px 90px 90px;align-items:center;gap:10px;background:#fffdf8;border:1px solid #ddd5c8;border-radius:12px;padding:12px 14px}.result-row.hit{border-left:4px solid #2f8f57}.result-row.miss{border-left:4px solid #b64848}.result-date{font-size:10px;color:#746f66}.result-match strong{font-size:14px}.result-match span{display:block;font-size:9px;color:#746f66;margin-top:3px}.result-prob{font-weight:900;text-align:right}.result-actual{text-align:center;font-weight:900}.result-badge{justify-self:end;border-radius:999px;padding:5px 9px;font-size:9px;font-weight:950}.result-badge.hit{background:#e8f6ee;color:#217043}.result-badge.miss{background:#fdecec;color:#9d3636}.empty-results{padding:28px;background:#fffdf8;border:1px dashed #d8d0c3;border-radius:14px;color:#746f66;text-align:center;font-size:12px}.verify-note{padding:11px 13px;border-radius:10px;background:#191919;color:#fff;font-size:10px;line-height:1.6;margin-bottom:16px}.verify-note b{color:#f1c40f}
-@media(max-width:980px){.result-kpis{grid-template-columns:repeat(3,1fr)}.result-row{grid-template-columns:100px 1fr 90px 72px}.result-badge{display:none}}@media(max-width:650px){.result-kpis{grid-template-columns:1fr 1fr}.result-row{grid-template-columns:1fr 78px}.result-date{grid-column:1/-1}.result-match{grid-column:1}.result-prob{grid-column:2}.result-actual{grid-column:1/-1;text-align:left}.result-badge{display:none}}
+.result-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0 20px}
+.result-kpi{background:#fffdf8;border:1px solid #ddd5c8;border-radius:13px;padding:15px}
+.result-kpi span{display:block;font-size:8px;letter-spacing:.16em;color:#a77e11;font-weight:900}
+.result-kpi strong{display:block;font-size:24px;margin-top:7px}
+.result-table{display:flex;flex-direction:column;gap:8px}
+.result-row{display:grid;grid-template-columns:120px 1fr 110px 90px 90px;align-items:center;gap:10px}
+.result-row{background:#fffdf8;border:1px solid #ddd5c8;border-radius:12px;padding:12px 14px}
+.result-row.hit{border-left:4px solid #2f8f57}.result-row.miss{border-left:4px solid #b64848}
+.result-date{font-size:10px;color:#746f66}.result-match strong{font-size:14px}
+.result-match span{display:block;font-size:9px;color:#746f66;margin-top:3px}
+.result-prob{font-weight:900;text-align:right}.result-actual{text-align:center;font-weight:900}
+.result-badge{justify-self:end;border-radius:999px;padding:5px 9px;font-size:9px;font-weight:950}
+.result-badge.hit{background:#e8f6ee;color:#217043}.result-badge.miss{background:#fdecec;color:#9d3636}
+.empty-results{padding:28px;background:#fffdf8;border:1px dashed #d8d0c3;border-radius:14px;color:#746f66;text-align:center;font-size:12px}
+.verify-note{padding:11px 13px;border-radius:10px;background:#191919;color:#fff;font-size:10px;line-height:1.6;margin-bottom:16px}
+.verify-note b{color:#f1c40f}
+@media(max-width:980px){.result-kpis{grid-template-columns:repeat(3,1fr)}.result-row{grid-template-columns:100px 1fr 90px 72px}}
+@media(max-width:980px){.result-badge{display:none}}
+@media(max-width:650px){.result-kpis{grid-template-columns:1fr 1fr}.result-row{grid-template-columns:1fr 78px}}
+@media(max-width:650px){.result-date{grid-column:1/-1}.result-match{grid-column:1}.result-prob{grid-column:2}}
+@media(max-width:650px){.result-actual{grid-column:1/-1;text-align:left}.result-badge{display:none}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -79,6 +101,16 @@ st.markdown(
 )
 
 render_section("VERIFIED RESULTS", "試合別の予想結果")
+
+if shared_available:
+    shared_games = int(metrics.get("shared_count") or 0)
+    st.success(
+        f"研究環境（8502）の共有データを参照中です。共有履歴 {shared_games}件を本番データと統合しています。",
+        icon=":material/sync:",
+    )
+    st.caption("参照元: http://100.124.205.15:8502/ ／ 読み取り専用で接続")
+else:
+    st.caption("研究環境（8502）の共有データが未接続のため、本番保存データを表示しています。")
 
 if not games:
     st.markdown(
@@ -228,8 +260,18 @@ ai_history = _load_optional_json(
 if not isinstance(ai_history, list):
     ai_history = []
 
+shared_history = _load_optional_json(SHARED_DATA_DIR / "ai_prediction_history.json", []) if shared_available else []
+if not isinstance(shared_history, list):
+    shared_history = []
+ai_history = merge_prediction_archives(ai_history, shared_history)
+
 current_predictions = _load_optional_json(active_data_dir() / "today_ai_predictions.json", {})
 current_schedule = _load_optional_json(active_data_dir() / "npb_today.json", {})
+if shared_available:
+    shared_predictions = _load_optional_json(SHARED_DATA_DIR / "today_ai_predictions.json", {})
+    shared_schedule = _load_optional_json(SHARED_DATA_DIR / "npb_today.json", {})
+    ai_history, _ = archive_predictions(ai_history, shared_predictions, shared_schedule)
+    ai_history, _ = settle_predictions(ai_history, shared_schedule)
 ai_history, _ = archive_predictions(ai_history, current_predictions, current_schedule)
 ai_history, _ = settle_predictions(ai_history, current_schedule)
 ai_perf = build_performance(ai_history)
@@ -248,6 +290,7 @@ score_mae = ai_perf.get("score_mae")
 
 with st.container(horizontal=True):
     st.metric("固定予測", f"{len(ai_history)}試合", border=True)
+    st.metric("8502共有", f"{len(shared_history)}試合", border=True)
     st.metric("確定試合", f"{settled_games}試合", border=True)
     st.metric("的中", f"{hits}試合", border=True)
     st.metric("的中率", f"{hit_rate:.1f}%" if hit_rate is not None else "-", border=True)

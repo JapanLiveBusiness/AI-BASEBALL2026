@@ -3,6 +3,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/ai-baseball2026}"
 DATA_DIR="${DATA_DIR:-/opt/hawks-ai/data}"
+SHARED_DATA_DIR="${SHARED_DATA_DIR:-}"
 BRANCH="${BRANCH:-main-AI-BASEBALL}"
 CONTAINER_NAME="${CONTAINER_NAME:-hawks-app}"
 IMAGE_NAME="${IMAGE_NAME:-hawks-app}"
@@ -70,12 +71,17 @@ fi
 
 start_container() {
   local image="$1"
+  local shared_mount=()
+  if [ -n "$SHARED_DATA_DIR" ] && [ -d "$SHARED_DATA_DIR" ]; then
+    shared_mount=(-v "$SHARED_DATA_DIR:/app/shared-data:ro")
+  fi
   docker run -d \
     --name "$CONTAINER_NAME" \
     --restart unless-stopped \
     --network "$TRAEFIK_NETWORK" \
     -p "$PORT:8501" \
     -v "$DATA_DIR:/app/data" \
+    "${shared_mount[@]}" \
     --label "traefik.enable=true" \
     --label "traefik.docker.network=$TRAEFIK_NETWORK" \
     --label "traefik.http.routers.ai-baseball-production.rule=Host(\`$TRAEFIK_HOST\`) || Host(\`$TRAEFIK_LEGACY_HOST\`)" \

@@ -171,18 +171,74 @@ def build_performance(archive: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def sync_prediction_results(data_dir: Path) -> dict[str, int]:
+def merge_prediction_archives(*archives: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge local and shared locked predictions without losing final results."""
+    merged: dict[str, dict[str, Any]] = {}
+    status_rank = {"pending": 0, "draw": 1, "final": 2}
+    for archive in archives:
+        for row in archive or []:
+            if not isinstance(row, dict):
+                continue
+            key = str(row.get("game_id") or "")
+            if not key:
+                key = "|".join(
+                    str(row.get(field) or "")
+                    for field in ("date", "home", "away")
+                )
+            if not key.strip("|"):
+                continue
+            current = merged.get(key)
+            if current is None:
+                merged[key] = deepcopy(row)
+                continue
+            current_rank = status_rank.get(str(current.get("status") or "pending"), 0)
+            incoming_rank = status_rank.get(str(row.get("status") or "pending"), 0)
+            if incoming_rank >= current_rank:
+                combined = deepcopy(current)
+                combined.update({field: value for field, value in row.items() if value is not None})
+                merged[key] = combined
+    return sorted(
+        merged.values(),
+        key=lambda row: (
+            str(row.get("date") or ""),
+            str(row.get("time") or ""),
+            str(row.get("home") or ""),
+        ),
+    )
+
+
+def sync_prediction_results(
+    data_dir: Path,
+    shared_data_dir: Path | None = Path("/app/shared-data"),
+) -> dict[str, int]:
     predictions = load_json(data_dir / "today_ai_predictions.json", {})
     schedule = load_json(data_dir / "npb_today.json", {})
     archive_path = data_dir / "ai_prediction_history.json"
     archive = load_json(archive_path, [])
     if not isinstance(archive, list):
         archive = []
+    shared_count = 0
+    shared_added = 0
+    shared_settled = 0
+    if shared_data_dir is not None and shared_data_dir.exists():
+        shared_archive = load_json(shared_data_dir / "ai_prediction_history.json", [])
+        if isinstance(shared_archive, list):
+            shared_count = len(shared_archive)
+            archive = merge_prediction_archives(archive, shared_archive)
+        shared_predictions = load_json(shared_data_dir / "today_ai_predictions.json", {})
+        shared_schedule = load_json(shared_data_dir / "npb_today.json", {})
+        archive, shared_added = archive_predictions(archive, shared_predictions, shared_schedule)
+        archive, shared_settled = settle_predictions(archive, shared_schedule)
     archive, added = archive_predictions(archive, predictions, schedule)
     archive, settled = settle_predictions(archive, schedule)
     save_json_atomic(archive_path, archive)
     save_json_atomic(data_dir / "ai_prediction_performance.json", build_performance(archive))
-    return {"added": added, "settled": settled, "total": len(archive)}
+    return {
+        "added": added + shared_added,
+        "settled": settled + shared_settled,
+        "shared": shared_count + shared_added,
+        "total": len(archive),
+    }
 
 
 if __name__ == "__main__":

@@ -16,7 +16,24 @@ def _load_json(path: Path) -> Any:
         return []
 
 
-def build_prediction_metrics(data_dir: Path) -> dict[str, Any]:
+def _merge_rows(*sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged = {}
+    for source in sources:
+        for row in source or []:
+            if not isinstance(row, dict):
+                continue
+            key = str(row.get("game_id") or "")
+            if not key:
+                key = "|".join(str(row.get(field) or "") for field in ("date", "opponent"))
+            if key.strip("|"):
+                merged[key] = row
+    return list(merged.values())
+
+
+def build_prediction_metrics(
+    data_dir: Path,
+    shared_data_dir: Path | None = None,
+) -> dict[str, Any]:
     """Build verification metrics from the locally mounted production data.
 
     game_history is authoritative for completed games. Pregame probability is
@@ -30,6 +47,16 @@ def build_prediction_metrics(data_dir: Path) -> dict[str, Any]:
         history = []
     if not isinstance(predictions, list):
         predictions = []
+
+    shared_count = 0
+    if shared_data_dir is not None and shared_data_dir.exists():
+        shared_history = _load_json(shared_data_dir / "game_history.json")
+        shared_predictions = _load_json(shared_data_dir / "pregame_predictions.json")
+        if isinstance(shared_history, list):
+            shared_count = len(shared_history)
+            history = _merge_rows(history, shared_history)
+        if isinstance(shared_predictions, list):
+            predictions = _merge_rows(predictions, shared_predictions)
 
     prediction_index: dict[tuple[str, str], float] = {}
     for row in predictions:
@@ -90,7 +117,8 @@ def build_prediction_metrics(data_dir: Path) -> dict[str, Any]:
 
     return {
         "status": "ready" if count else "waiting",
-        "source": "local-production-data",
+        "source": "research-shared-data" if shared_count else "local-production-data",
+        "shared_count": shared_count,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "verified_count": count,
         "hits": hits,

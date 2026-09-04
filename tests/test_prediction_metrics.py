@@ -49,3 +49,23 @@ def test_build_prediction_metrics_uses_history_and_prediction_fallback(tmp_path)
     assert metrics["hits"] == 1
     assert metrics["hit_rate"] == 50.0
     assert metrics["brier_score"] == 0.267956
+
+
+def test_build_prediction_metrics_merges_research_data(tmp_path):
+    production = tmp_path / "production"
+    research = tmp_path / "research"
+    production.mkdir()
+    research.mkdir()
+    _write(production / "game_history.json", [])
+    _write(production / "pregame_predictions.json", [])
+    _write(
+        research / "game_history.json",
+        [{"game_id": "shared-win", "date": "2026-09-01", "opponent": "西武", "result": "勝", "pregame_probability": 60}],
+    )
+    _write(research / "pregame_predictions.json", [])
+
+    metrics = build_prediction_metrics(production, research)
+
+    assert metrics["source"] == "research-shared-data"
+    assert metrics["shared_count"] == 1
+    assert metrics["verified_count"] == 1

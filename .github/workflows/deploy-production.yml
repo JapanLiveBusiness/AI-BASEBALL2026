@@ -131,6 +131,7 @@ jobs:
           set -euo pipefail
           export APP_DIR="/home/user/apps/AI-BASEBALL2026"
           export DATA_DIR="/opt/hawks-ai/data"
+          export SHARED_DATA_DIR="/opt/hawks-ai/research-data"
           export BRANCH="main-AI-BASEBALL"
           export CONTAINER_NAME="hawks-app"
           export IMAGE_NAME="hawks-app"
