@@ -1,6 +1,6 @@
 {
   "date": "2026-09-04",
-  "updated_at": "2026-09-04T07:58:42+09:00",
+  "updated_at": "2026-09-04T19:47:30+09:00",
   "model": "NPB Official Standings Baseline v1",
   "model_type": "transparent standings baseline",
   "method": "70% overall win rate + 30% home/road split, Log5 matchup, 28-72% clamp",
