@@ -267,6 +267,7 @@ ai_history = merge_prediction_archives(ai_history, shared_history)
 
 current_predictions = _load_optional_json(active_data_dir() / "today_ai_predictions.json", {})
 current_schedule = _load_optional_json(active_data_dir() / "npb_today.json", {})
+shared_predictions = {}
 if shared_available:
     shared_predictions = _load_optional_json(SHARED_DATA_DIR / "today_ai_predictions.json", {})
     shared_schedule = _load_optional_json(SHARED_DATA_DIR / "npb_today.json", {})
@@ -275,6 +276,7 @@ if shared_available:
 ai_history, _ = archive_predictions(ai_history, current_predictions, current_schedule)
 ai_history, _ = settle_predictions(ai_history, current_schedule)
 ai_perf = build_performance(ai_history)
+shared_prediction_count = len(shared_history) + len(shared_predictions.get("games") or [])
 
 settled_games = int(
     ai_perf.get("settled_games") or 0
@@ -290,7 +292,7 @@ score_mae = ai_perf.get("score_mae")
 
 with st.container(horizontal=True):
     st.metric("固定予測", f"{len(ai_history)}試合", border=True)
-    st.metric("8502共有", f"{len(shared_history)}試合", border=True)
+    st.metric("8502共有", f"{shared_prediction_count}試合", border=True)
     st.metric("確定試合", f"{settled_games}試合", border=True)
     st.metric("的中", f"{hits}試合", border=True)
     st.metric("的中率", f"{hit_rate:.1f}%" if hit_rate is not None else "-", border=True)
