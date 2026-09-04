@@ -38,6 +38,8 @@ jobs:
 
       - name: Check out deployment scripts
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Connect to Tailscale with OAuth
         uses: tailscale/github-action@v4
@@ -174,3 +176,4 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: bash scripts/verify-protected-site.sh
+
