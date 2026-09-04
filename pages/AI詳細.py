@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 import json
 import os
 from pathlib import Path
@@ -7,7 +7,12 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
 
-from ai_detail_summary import find_team_prediction, hawks_history_summary
+from ai_detail_summary import (
+    find_team_prediction,
+    hawks_history_summary,
+    hawks_probability,
+    simulate_hawks_win_probability,
+)
 from handicap_source import fetch_hawks_handicap
 from prediction_metrics import build_prediction_metrics
 from studio_theme import (
@@ -79,7 +84,19 @@ metrics = build_prediction_metrics(
     DATA_DIR,
     SHARED_DATA_DIR if SHARED_DATA_DIR.exists() else None,
 )
-handicap = load_live_handicap(TODAY_JST)
+try:
+    handicap_date = date.fromisoformat(str(game.get("date") or ""))
+except (AttributeError, ValueError):
+    handicap_date = TODAY_JST
+handicap = load_live_handicap(handicap_date)
+game_opponent = str(game.get("opponent") or "") if game else ""
+handicap_matches_game = bool(
+    handicap.get("published")
+    and (
+        not game_opponent
+        or str(handicap.get("opponent") or "") == game_opponent
+    )
+)
 
 game_date = str(game.get("date") or "") if game else ""
 if game_date == TODAY_JST.isoformat():
@@ -120,8 +137,8 @@ cards.metric(
     str(game.get("confidence") or "--") if game else "--",
     border=True,
 )
-handicap_label = "未掲載"
-if handicap.get("published"):
+handicap_label = "対象カードなし" if handicap.get("published") else "未掲載"
+if handicap_matches_game:
     handicap_label = (
         f"{handicap.get('favored_team') or ''} {handicap.get('token') or ''}"
     ).strip()
@@ -179,13 +196,118 @@ if recent_rows:
 else:
     st.info("試合履歴を同期中です。")
 
-render_section("ADVANCED SIMULATOR", "旧リアルタイム分析")
+render_section("LIVE SIMULATOR", "リアルタイム勝率シミュレーター")
 st.caption(
-    "イニング・点差・走者状況を手動入力する従来の高度分析です。"
-    "必要な場合だけ開くことで通常表示を高速化しています。"
+    "V8の点差・イニング・アウト・走者補正を独立化した軽量版です。"
+    "入力内容は保存されず、BET結果にも影響しません。"
+)
+simulator_mode = st.segmented_control(
+    "分析モード",
+    options=["試合前", "試合中"],
+    default="試合中",
+    key="ai_detail_simulator_mode",
+)
+base_probability = hawks_probability(game)
+if simulator_mode == "試合前":
+    published_handicap = (
+        float(handicap.get("handicap_score") or 0.0)
+        if handicap_matches_game
+        else 0.0
+    )
+    simulator_handicap = st.number_input(
+        "開始ハンデ（＋はホークス優位、－は相手優位）",
+        min_value=-5.0,
+        max_value=5.0,
+        value=published_handicap,
+        step=0.1,
+        key="ai_detail_simulator_handicap",
+    )
+    simulation = simulate_hawks_win_probability(
+        base_probability,
+        mode="pregame",
+        handicap_score=simulator_handicap,
+    )
+else:
+    score_left, score_right, inning_col = st.columns(3)
+    hawks_score = score_left.number_input(
+        "ホークス得点",
+        min_value=0,
+        max_value=30,
+        value=0,
+        step=1,
+        key="ai_detail_hawks_score",
+    )
+    opponent_score = score_right.number_input(
+        "相手得点",
+        min_value=0,
+        max_value=30,
+        value=0,
+        step=1,
+        key="ai_detail_opponent_score",
+    )
+    inning = inning_col.slider(
+        "現在のイニング",
+        min_value=1,
+        max_value=9,
+        value=1,
+        key="ai_detail_inning",
+    )
+    attack_side = st.segmented_control(
+        "現在の攻撃",
+        options=["ホークス攻撃中", "相手攻撃中"],
+        default="ホークス攻撃中",
+        key="ai_detail_attack_side",
+    )
+    outs = st.segmented_control(
+        "アウトカウント",
+        options=[0, 1, 2],
+        default=0,
+        key="ai_detail_outs",
+    )
+    selected_runners = st.pills(
+        "走者状況",
+        options=["1塁", "2塁", "3塁"],
+        selection_mode="multi",
+        key="ai_detail_runners",
+    )
+    runner_bits = tuple(
+        {"1塁": 1, "2塁": 2, "3塁": 4}[runner]
+        for runner in (selected_runners or [])
+    )
+    simulation = simulate_hawks_win_probability(
+        base_probability,
+        mode="live",
+        hawks_score=hawks_score,
+        opponent_score=opponent_score,
+        inning=inning,
+        attack_side=attack_side,
+        outs=outs,
+        runners=runner_bits,
+    )
+
+sim_result, sim_score, sim_wpa = st.columns(3)
+sim_result.metric(
+    "ホークス勝利予測",
+    f"{simulation['final_probability']:.1f}%",
+    f"基礎勝率 {simulation['base_probability']:.1f}%",
+)
+sim_score.metric(
+    "点差・ハンデ補正",
+    f"{simulation['score_adjustment']:+.1f}%",
+)
+sim_wpa.metric(
+    "走者・アウト補正",
+    f"{simulation['wpa_adjustment']:+.1f}%",
+)
+st.progress(simulation["final_probability"] / 100.0)
+
+render_section("LEGACY ANALYSIS", "従来版の高度分析")
+st.caption(
+    "移行確認用として従来の全機能も残しています。"
+    "通常は上の軽量シミュレーターをご利用ください。"
 )
 show_legacy = st.toggle(
-    "旧リアルタイム分析を開く",
+    "従来版の高度分析を開く",
     value=False,
     key="show_legacy_ai_detail",
 )
@@ -202,7 +324,7 @@ if show_legacy:
         st.stop()
     live_handicap_score = (
         float(handicap["handicap_score"])
-        if handicap.get("published")
+        if handicap_matches_game
         and handicap.get("handicap_score") is not None
         else 0.0
     )

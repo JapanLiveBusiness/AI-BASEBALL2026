@@ -19,7 +19,7 @@ FEATURES = (
     Feature("results", "予想結果", "/予想結果", "live", "全NPBの固定予測を終了スコアと自動照合"),
     Feature("bet_entry", "BET入力", "/BET入力", "live", "BETの登録・編集・削除・精算に対応"),
     Feature("performance", "収支マップ", "/収支マップ", "live", "収支・的中率・ROIと未確定BETを一元管理"),
-    Feature("ai_detail", "AI詳細", "/AI詳細", "beta", "軽量サマリーを標準表示し、旧リアルタイム分析は必要時のみ起動", "旧app.pyのリアルタイムシミュレーターを独立モジュール化"),
+    Feature("ai_detail", "AI詳細", "/AI詳細", "beta", "軽量サマリーと独立したリアルタイム勝率シミュレーターを表示", "従来版の追加補正設定を段階移行"),
     Feature("team_detail", "球団別詳細", "/球団別詳細", "live", "12球団の戦績・次戦・AI予測・直近成績を表示"),
 )
 
