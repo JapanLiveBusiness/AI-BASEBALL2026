@@ -17,7 +17,7 @@ from bet_analytics import (
 )
 from bet_store import BetStoreError, append_bet, delete_bet, import_bets, load_bets, update_bet
 from bet_transfer import BetSpreadsheetError, bets_to_xlsx, read_bet_spreadsheet
-from game_calendar import load_npb_schedule_day
+from manual_bet_form import render_manual_bet_form
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links, render_section
 
 st.set_page_config(page_title="収支マップ | MY AI BASEBALL", page_icon="💰", layout="wide")
@@ -139,107 +139,9 @@ def delete_bet_dialog(bet):
             st.rerun()
 
 
-@st.cache_data(ttl=1800, show_spinner=False)
-def fetch_games(selected_date):
-    return load_npb_schedule_day(
-        selected_date,
-        SCHEDULE_CACHE_PATHS,
-        timeout=6,
-    )
-
-
 render_section("ENTRY", "当日のBET・収支を入力")
 with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
-    selected_date = st.date_input(
-        "試合日",
-        value=datetime.now(JST).date(),
-        key="manual_bet_date",
-    )
-    games = fetch_games(selected_date)
-
-    if games:
-        game_labels = [f"{g['home']} vs {g['away']}" + (f" ({g['time']})" if g.get('time') else "") for g in games]
-        game_choice = st.selectbox("開催試合", game_labels)
-        selected_game = games[game_labels.index(game_choice)]
-        default_team = selected_game["home"]
-        default_opponent = selected_game["away"]
-        default_time = selected_game.get("time") or "18:00"
-        st.caption("選択した日付のNPB開催試合から選択できます。")
-    else:
-        st.info("この日付の開催試合を自動取得できませんでした。対戦カードを手動入力できます。")
-        default_team = ""
-        default_opponent = ""
-        default_time = "18:00"
-
-    try:
-        default_game_time = datetime.strptime(default_time, "%H:%M").time()
-    except ValueError:
-        default_game_time = datetime.strptime("18:00", "%H:%M").time()
-
-    with st.form("manual_bet_form", clear_on_submit=False):
-        c1, c2 = st.columns(2)
-        team = c1.text_input("BET先 / チーム", value=default_team)
-        opponent = c2.text_input("対戦相手", value=default_opponent)
-
-        c3, c4, c5 = st.columns(3)
-        game_time = c3.time_input("試合開始時刻", value=default_game_time)
-        bet_amount = c4.number_input("BET金額（円）", min_value=0, step=1000, value=10000)
-        handicap = c5.number_input("ハンディ", step=0.1, value=0.0)
-
-        status_label = st.selectbox("状態", ["未確定", "確定"])
-        st.caption(
-            "確定時は、BET先得点からハンディを差し引いて結果を判定します。"
-            "損益は的中 +BET額の90%、外れ -BET額の100%、PUSH 0円です。"
-        )
-
-        c9, c10 = st.columns(2)
-        team_score = c9.number_input("BET先チーム得点", min_value=0, step=1, value=0)
-        opponent_score = c10.number_input("対戦相手得点", min_value=0, step=1, value=0)
-        memo = st.text_area("メモ / その他情報", placeholder="オッズ、BET理由、ブックメーカー、補足など")
-
-        submitted = st.form_submit_button("このBET・収支を保存", type="primary", width="stretch")
-
-    if submitted:
-        if not team.strip() or not opponent.strip():
-            st.error("BET先と対戦相手を入力してください。")
-        else:
-            is_final = status_label == "確定"
-            adjusted_score, result = (
-                settle_bet(team_score, opponent_score, handicap)
-                if is_final
-                else (None, None)
-            )
-            calculated_profit = profit_for_result(result, bet_amount) if is_final else 0
-            record = {
-                "id": f"manual-{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
-                "date": selected_date.isoformat(),
-                "time": game_time.strftime("%H:%M"),
-                "team": team.strip(),
-                "opponent": opponent.strip(),
-                "handicap": handicap,
-                "bet_units": float(bet_amount) / 10000.0,
-                "bet_amount": int(bet_amount),
-                "status": "final" if is_final else "pending",
-                "settled": is_final,
-                "result": result,
-                "profit": calculated_profit,
-                "team_score": int(team_score) if is_final else None,
-                "opponent_score": int(opponent_score) if is_final else None,
-                "adjusted_score": adjusted_score,
-                "memo": memo.strip(),
-                "source": "manual",
-                "created_at": datetime.now().isoformat(timespec="seconds"),
-            }
-            try:
-                append_bet(BETS_FILE, record)
-            except BetStoreError as exc:
-                st.error(str(exc))
-            else:
-                if is_final:
-                    st.session_state["bet_notice"] = f"ハンデ込みで {result.upper()}、損益 {calculated_profit:+,}円として保存しました。"
-                else:
-                    st.session_state["bet_notice"] = f"{selected_date.isoformat()} {team} vs {opponent} の未確定BETを保存しました。"
-                st.rerun()
+    render_manual_bet_form(BETS_FILE, SCHEDULE_CACHE_PATHS, prefix="profit_manual")
 
 if notice := st.session_state.pop("bet_notice", None):
     st.success(notice)
@@ -467,3 +369,4 @@ if pending:
                 edit_bet_dialog(bet)
             if actions.button("削除", key=f"delete_pending_{bet['id']}"):
                 delete_bet_dialog(bet)
+
