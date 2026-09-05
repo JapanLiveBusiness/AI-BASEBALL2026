@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 import re
 from datetime import date
+from pathlib import Path
+from typing import Iterable
 
 import requests
 from bs4 import BeautifulSoup
@@ -169,6 +172,31 @@ def fetch_npb_schedule_day(target_date: date, timeout: int = 12) -> list[dict]:
     except Exception:
         return []
     return [game for game in games if game.get("date") == target_date.isoformat()]
+
+
+def load_npb_schedule_day(
+    target_date: date,
+    cache_paths: Iterable[Path],
+    *,
+    timeout: int = 6,
+) -> list[dict]:
+    """Load a day from persisted schedules, falling back to the official site."""
+    target_iso = target_date.isoformat()
+    for path in cache_paths:
+        try:
+            payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        games = [
+            dict(game)
+            for game in payload.get("games") or []
+            if isinstance(game, dict) and str(game.get("date") or "") == target_iso
+        ]
+        if games:
+            return games
+    return fetch_npb_schedule_day(target_date, timeout=timeout)
 
 
 def parse_handicap_html(content, target_date: date) -> list[dict]:

@@ -16,7 +16,7 @@ from bet_analytics import (
 )
 from bet_store import BetStoreError, append_bet, delete_bet, import_bets, load_bets, update_bet
 from bet_transfer import BetSpreadsheetError, bets_to_xlsx, read_bet_spreadsheet
-from game_calendar import fetch_npb_schedule_day
+from game_calendar import load_npb_schedule_day
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links, render_section
 
 st.set_page_config(page_title="収支マップ | MY AI BASEBALL", page_icon="💰", layout="wide")
@@ -36,6 +36,12 @@ DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
 BETS_FILE = user_bets_path(DATA_DIR, auth_user)
 NPB_API = "https://npb.jp/bis/eng/2026/games/"
 JST = ZoneInfo("Asia/Tokyo")
+SCHEDULE_CACHE_PATHS = (
+    Path("/app/shared-data/npb_today.json"),
+    DATA_DIR / "npb_today.json",
+    DATA_DIR / "npb_schedule_cache.json",
+    REPO_DATA_DIR.parent / "npb_schedule_fallback.json",
+)
 
 
 def yen(value):
@@ -134,7 +140,11 @@ def delete_bet_dialog(bet):
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def fetch_games(selected_date):
-    return fetch_npb_schedule_day(selected_date, timeout=10)
+    return load_npb_schedule_day(
+        selected_date,
+        SCHEDULE_CACHE_PATHS,
+        timeout=6,
+    )
 
 
 render_section("ENTRY", "当日のBET・収支を入力")

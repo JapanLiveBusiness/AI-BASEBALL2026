@@ -2,10 +2,54 @@ from datetime import date
 
 from game_calendar import (
     attach_handicaps,
+    load_npb_schedule_day,
     merge_game_sources,
     parse_handicap_html,
     parse_npb_schedule_html,
 )
+
+
+def test_load_schedule_day_prefers_persisted_current_data(tmp_path, monkeypatch):
+    cache_path = tmp_path / "npb_today.json"
+    cache_path.write_text(
+        """
+        {
+          "date": "2026-09-05",
+          "games": [
+            {"date": "2026-09-04", "home": "広島", "away": "巨人"},
+            {"date": "2026-09-05", "home": "ソフトバンク", "away": "西武", "time": "14:00"}
+          ]
+        }
+        """,
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "game_calendar.fetch_npb_schedule_day",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("network should not be used")),
+    )
+
+    games = load_npb_schedule_day(date(2026, 9, 5), (cache_path,))
+
+    assert games == [{
+        "date": "2026-09-05",
+        "home": "ソフトバンク",
+        "away": "西武",
+        "time": "14:00",
+    }]
+
+
+def test_load_schedule_day_uses_official_fetch_when_cache_has_no_target(tmp_path, monkeypatch):
+    cache_path = tmp_path / "npb_today.json"
+    cache_path.write_text('{"games": []}', encoding="utf-8")
+    expected = [{"date": "2026-09-06", "home": "楽天", "away": "日本ハム"}]
+    monkeypatch.setattr(
+        "game_calendar.fetch_npb_schedule_day",
+        lambda target_date, timeout: expected if target_date == date(2026, 9, 6) and timeout == 4 else [],
+    )
+
+    games = load_npb_schedule_day(date(2026, 9, 6), (cache_path,), timeout=4)
+
+    assert games == expected
 
 
 def test_parse_official_schedule_keeps_rowspan_date_and_schedule_details():

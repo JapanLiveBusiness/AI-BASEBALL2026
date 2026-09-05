@@ -6,13 +6,19 @@ import streamlit as st
 from auth_session import user_bets_path
 from bet_analytics import profit_for_result, settle_bet
 from bet_store import BetStoreError, append_bet
-from game_calendar import fetch_npb_schedule_day
+from game_calendar import load_npb_schedule_day
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
 
 JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 PROD_DATA_DIR = Path("/app/data")
 DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
+SCHEDULE_CACHE_PATHS = (
+    Path("/app/shared-data/npb_today.json"),
+    DATA_DIR / "npb_today.json",
+    DATA_DIR / "npb_schedule_cache.json",
+    REPO_DATA_DIR.parent / "npb_schedule_fallback.json",
+)
 st.set_page_config(page_title="BET入力 | MY AI BASEBALL", page_icon="✍️", layout="wide")
 apply_studio_theme()
 auth_user = render_topbar("BET MANAGEMENT")
@@ -28,7 +34,11 @@ render_nav_links()
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def fetch_npb_games(selected_date):
-    return fetch_npb_schedule_day(selected_date, timeout=10)
+    return load_npb_schedule_day(
+        selected_date,
+        SCHEDULE_CACHE_PATHS,
+        timeout=6,
+    )
 
 
 selected_date = st.date_input("試合日", value=datetime.now(JST).date())
