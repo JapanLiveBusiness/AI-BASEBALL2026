@@ -72,6 +72,8 @@ if [ ! -f "$AUTH_SECRETS_FILE" ]; then
   exit 1
 fi
 docker run --rm --network none \
+  --security-opt no-new-privileges:true \
+  --cap-drop ALL --cap-add DAC_OVERRIDE \
   -v "$AUTH_SECRETS_FILE:/run/auth0-secrets.toml:ro" \
   "$NEW_IMAGE" python scripts/validate_auth_config.py /run/auth0-secrets.toml
 
@@ -104,6 +106,7 @@ start_container() {
     -p "127.0.0.1:$PORT:8501" \
     --security-opt no-new-privileges:true \
     --cap-drop ALL \
+    --cap-add DAC_OVERRIDE \
     -v "$DATA_DIR:/app/data" \
     "${shared_mount[@]}" \
     "${auth_mount[@]}" \
@@ -164,3 +167,4 @@ for attempt in $(seq 1 30); do
 done
 
 rollback
+
