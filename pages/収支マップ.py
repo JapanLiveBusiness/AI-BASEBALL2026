@@ -240,10 +240,6 @@ with st.container(border=True):
                         f"BET履歴を{action}しました（反映 {imported_count:,}件）。"
                     )
                     st.rerun()
-if not bets:
-    st.info("BET記録がまだありません。上のフォームから最初のBETを登録できます。")
-    st.stop()
-
 bets = sort_bets(bets, "古い日付順")
 settled = [b for b in bets if b.get("status") == "final"]
 pending = [b for b in bets if b.get("status") != "final"]
@@ -274,28 +270,32 @@ with st.container(key="weekly-profit-metrics"):
         delta_color="off",
     )
 
+wins = sum(1 for b in settled if b.get("result") == "win")
+losses = sum(1 for b in settled if b.get("result") == "loss")
+pushes = sum(1 for b in settled if b.get("result") == "push")
+total_profit = sum(profit_for_record(b) for b in settled)
+total_bet = sum(float(b.get("bet_amount", abs(float(b.get("bet_units", 0) or 0)) * 10000) or 0) for b in settled)
+_, decided, hit_rate = calculate_hit_rate(settled)
+roi = (total_profit / total_bet * 100.0) if total_bet else 0.0
+
+render_section("PERFORMANCE", "収支サマリー")
+with st.container(key="total-profit-metrics"):
+    st.metric("総収支", yen(total_profit))
+    s2, s3, s4, s5 = st.columns(4)
+    s2.metric("確定BET", f"{len(settled)}試合")
+    s3.metric("勝敗", f"{wins}勝 {losses}敗" + (f" {pushes}分" if pushes else ""))
+    s4.metric("的中率", f"{hit_rate:.1f}%" if hit_rate is not None else "-")
+    s5.metric("ROI", f"{roi:+.1f}%" if total_bet else "-")
+
+if not bets:
+    st.info("BET記録がまだありません。上のフォームから最初のBETを登録できます。")
+    st.stop()
+
 sort_option = st.selectbox("履歴の並び順", SORT_OPTIONS, key="profit_map_sort")
 sorted_settled = sort_bets(settled, sort_option)
 sorted_pending = sort_bets(pending, sort_option)
 
 if settled:
-    wins = sum(1 for b in settled if b.get("result") == "win")
-    losses = sum(1 for b in settled if b.get("result") == "loss")
-    pushes = sum(1 for b in settled if b.get("result") == "push")
-    total_profit = sum(profit_for_record(b) for b in settled)
-    total_bet = sum(float(b.get("bet_amount", abs(float(b.get("bet_units", 0) or 0)) * 10000) or 0) for b in settled)
-    _, decided, hit_rate = calculate_hit_rate(settled)
-    roi = (total_profit / total_bet * 100.0) if total_bet else 0.0
-
-    render_section("PERFORMANCE", "収支サマリー")
-    with st.container(key="total-profit-metrics"):
-        st.metric("総収支", yen(total_profit))
-        s2, s3, s4, s5 = st.columns(4)
-        s2.metric("確定BET", f"{len(settled)}試合")
-        s3.metric("勝敗", f"{wins}勝 {losses}敗" + (f" {pushes}分" if pushes else ""))
-        s4.metric("的中率", f"{hit_rate:.1f}%" if hit_rate is not None else "-")
-        s5.metric("ROI", f"{roi:+.1f}%" if total_bet else "-")
-
     running = 0
     x_values, y_values, hover_values = [], [], []
     for bet in settled:
