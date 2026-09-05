@@ -13,6 +13,8 @@ import tempfile
 from threading import RLock
 from typing import Any, Iterable
 from filelock import FileLock
+from handicap_rules import normalize_handicap, fractional_settlement, RULE
+from uuid import uuid4
 
 
 class BetStoreError(RuntimeError):
@@ -54,11 +56,18 @@ def _manual_identity(record):
         amount = abs(float(record.get("bet_units") or 0)) * 10000
     return (
         *(str(record.get(key) or "").strip() for key in ("date", "time", "team", "opponent")),
-        float(amount), float(record.get("handicap") or 0),
+        float(amount), _handicap_identity(record.get("handicap")),
         str(record.get("status") or "pending"),
         record.get("team_score"), record.get("opponent_score"),
         str(record.get("memo") or "").strip(),
     )
+
+
+def _handicap_identity(value):
+    try:
+        return normalize_handicap(value)
+    except ValueError:
+        return str(value).strip()
 
 
 def _legacy_id(record: dict[str, Any], index: int) -> str:
@@ -195,3 +204,33 @@ def delete_bet(path: Path, record_id: str) -> dict[str, Any]:
             _atomic_write(path, records)
             return deepcopy(deleted)
     raise BetNotFoundError(f"BET ID {record_id} が見つかりません。")
+
+
+def recalculate_handicap_history(path: Path) -> dict[str, Any]:
+    """Explicit user action: back up and recalculate this user's file atomically."""
+    from bet_analytics import profit_for_record
+    with _locked(path):
+        records = load_bets(path)
+        revised = deepcopy(records)
+        before = sum(profit_for_record(r) for r in records if r.get("status") == "final")
+        changed = 0
+        for record in revised:
+            try:
+                record["handicap"] = normalize_handicap(record.get("handicap", 0))
+                if record.get("status") == "final":
+                    amount = record.get("bet_amount")
+                    if amount is None:
+                        amount = abs(float(record.get("bet_units") or 0)) * 10000
+                    record.update(fractional_settlement(record.get("team_score"), record.get("opponent_score"), record["handicap"], amount))
+                else:
+                    record["settlement_rule"] = RULE
+            except (ValueError, ArithmeticError, TypeError) as exc:
+                raise BetStoreError(f"{record.get('date', '')} {record.get('team', '')} vs {record.get('opponent', '')}: 得点・ハンデを確認してください。履歴は変更していません。") from exc
+        changed = sum(a != b for a, b in zip(records, revised))
+        backup = None
+        if changed:
+            backup = path.with_name(f"{path.stem}.before-{RULE}-{uuid4().hex}.json")
+            _atomic_write(backup, records)
+            _atomic_write(path, revised)
+        after = sum(profit_for_record(r) for r in revised if r.get("status") == "final")
+        return {"count": len(records), "changed": changed, "before": before, "after": after, "backup": str(backup) if backup else None}
