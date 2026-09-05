@@ -36,6 +36,7 @@ class AuthGateTest(unittest.TestCase):
                               iat=1000, exp=40000)
         self.patchers = [patch.object(auth_session, "st", self.ui),
                          patch.object(auth_session, "_session_guard"),
+                         patch.object(auth_session, "render_login_screen"),
                          patch.dict(os.environ, {"AI_BASEBALL_AUTH_ENABLED": "1"}),
                          patch("auth_policy.time.time", return_value=2000)]
         for patcher in self.patchers:
@@ -53,7 +54,7 @@ class AuthGateTest(unittest.TestCase):
         self.ui.user.is_logged_in = False
         with self.assertRaises(StopPage):
             require_auth0()
-        self.ui.button.assert_called_with("Auth0でログイン", type="primary", width="stretch")
+        auth_session.render_login_screen.assert_called_once_with()
 
     def test_invalid_identity_and_unverified_email_stop_page(self):
         for changes in ({"sub": ""}, {"email_verified": False}, {"exp": 1}):

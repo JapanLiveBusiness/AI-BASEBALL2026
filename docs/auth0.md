@@ -18,13 +18,21 @@ throttling can delay the periodic check; every full page rerun checks again.
 Logout clears app state and the Streamlit identity cookie; it does not terminate
 the separate Auth0 dashboard/SSO session. prompt=login requires fresh login.
 
-## Create and configure Auth0
+## Reuse the existing Auth0 application
 
-Create a **Regular Web Application** named **AI BASEBALL STUDIO**.
+Reuse the tenant and social connections already used by the existing
+MY AI BASEBALL login at the canonical URL. Do not create a new tenant or
+replace the current provider before inspecting its configuration. The new
+Streamlit integration requires a **Regular Web Application** client. If the
+existing client has a different application type, use a separate Regular Web
+Application client within that same tenant and retain its social connections.
+The entry screen follows the supplied black/lime MY AI BASEBALL design.
 
 - Allowed Callback URLs: `https://ai-baseball.f-polaris.jp/oauth2callback`
 - Allowed Logout URLs: `https://ai-baseball.f-polaris.jp/`
 - Allowed Web Origins: `https://ai-baseball.f-polaris.jp`
+- Preserve existing callback/logout entries still required by the older app;
+  append the Streamlit callback rather than replacing an unknown integration.
 - Enable the intended database/social connection and email verification delivery.
 - Enable Auth0 brute-force protection and suspicious-IP throttling.
 - Configure MFA according to the tenant's available plan; prefer requiring it.

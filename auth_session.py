@@ -11,6 +11,7 @@ from typing import Any, Mapping
 import streamlit as st
 
 from auth_policy import authorize_claims, validate_auth_config
+from auth_login_ui import render_login_screen
 
 
 AUTH_PROVIDER = "auth0"
@@ -98,10 +99,7 @@ def require_auth0() -> AuthUser:
         st.stop()
 
     if not bool(getattr(st.user, "is_logged_in", False)):
-        st.title("AI BASEBALL STUDIO")
-        st.write("ログインして続けてください。")
-        if st.button("Auth0でログイン", type="primary", width="stretch"):
-            st.login(AUTH_PROVIDER)
+        render_login_screen()
         st.stop()
 
     try:
