@@ -28,7 +28,7 @@ class BetTransferTest(unittest.TestCase):
         payload = bets_to_xlsx(original)
         imported = read_bet_spreadsheet(payload, "history.xlsx")
         self.assertEqual(imported[0]["result"], "win")
-        self.assertEqual(imported[0]["profit"], 10000)
+        self.assertEqual(imported[0]["profit"], 9000)
         self.assertEqual(imported[0]["adjusted_score"], 3.5)
 
     def test_formula_like_text_is_exported_as_text_and_restored(self):

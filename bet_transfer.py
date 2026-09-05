@@ -12,7 +12,7 @@ from uuid import uuid4
 import pandas as pd
 
 from bet_analytics import bet_amount as record_bet_amount
-from bet_analytics import profit_for_result, settle_bet
+from bet_analytics import profit_for_record, profit_for_result, settle_bet
 
 
 FORMAT_VERSION = 1
@@ -64,7 +64,11 @@ def bets_to_xlsx(records: Iterable[dict[str, Any]]) -> bytes:
     for source in records:
         row = {
             label: _spreadsheet_safe(
-                record_bet_amount(source) if key == "bet_amount" else source.get(key)
+                record_bet_amount(source)
+                if key == "bet_amount"
+                else profit_for_record(source)
+                if key == "profit"
+                else source.get(key)
             )
             for key, label in EXPORT_COLUMNS.items()
         }

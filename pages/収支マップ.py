@@ -9,6 +9,7 @@ from auth_session import user_bets_path
 from bet_analytics import (
     SORT_OPTIONS,
     calculate_hit_rate,
+    profit_for_record,
     profit_for_result,
     settle_bet,
     sort_bets,
@@ -186,7 +187,10 @@ with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
         handicap = c5.number_input("ハンディ", step=0.1, value=0.0)
 
         status_label = st.selectbox("状態", ["未確定", "確定"])
-        st.caption("確定時は、BET先得点からハンディを差し引いて結果と損益を自動計算します。")
+        st.caption(
+            "確定時は、BET先得点からハンディを差し引いて結果を判定します。"
+            "損益は的中 +BET額の90%、外れ -BET額の100%、PUSH 0円です。"
+        )
 
         c9, c10 = st.columns(2)
         team_score = c9.number_input("BET先チーム得点", min_value=0, step=1, value=0)
@@ -250,7 +254,7 @@ render_section("SPREADSHEET", "BET履歴のエクスポート・インポート"
 with st.container(border=True):
     st.caption(
         "現在ログイン中の利用者の履歴だけをExcelへ出力します。"
-        "取込時は日付・金額・スコアを検証し、損益を再計算します。"
+        "取込時は日付・金額・スコアを検証し、損益を90%ルールで再計算します。"
     )
     if bets:
         st.download_button(
@@ -358,7 +362,7 @@ if settled:
     wins = sum(1 for b in settled if b.get("result") == "win")
     losses = sum(1 for b in settled if b.get("result") == "loss")
     pushes = sum(1 for b in settled if b.get("result") == "push")
-    total_profit = sum(int(b.get("profit", 0) or 0) for b in settled)
+    total_profit = sum(profit_for_record(b) for b in settled)
     total_bet = sum(float(b.get("bet_amount", abs(float(b.get("bet_units", 0) or 0)) * 10000) or 0) for b in settled)
     _, decided, hit_rate = calculate_hit_rate(settled)
     roi = (total_profit / total_bet * 100.0) if total_bet else 0.0
@@ -374,7 +378,7 @@ if settled:
     running = 0
     x_values, y_values, hover_values = [], [], []
     for bet in settled:
-        profit_value = int(bet.get("profit", 0) or 0)
+        profit_value = profit_for_record(bet)
         running += profit_value
         bet_date, bet_time = str(bet.get("date", "-")), str(bet.get("time", "-"))
         team_name, opponent_name = str(bet.get("team", "-")), str(bet.get("opponent", "-"))
@@ -401,7 +405,7 @@ if settled:
 
     render_section("HISTORY", "BETした試合の詳細")
     for bet in sorted_settled:
-        profit_value = int(bet.get("profit", 0) or 0)
+        profit_value = profit_for_record(bet)
         amount = float(bet.get("bet_amount", abs(float(bet.get("bet_units", 0) or 0)) * 10000) or 0)
         team_name, opponent_name = str(bet.get("team", "-")), str(bet.get("opponent", "-"))
         team_score_value, opponent_score_value = bet.get("team_score"), bet.get("opponent_score")

@@ -76,7 +76,10 @@ with st.form("manual_bet_form"):
     handicap = c5.number_input("ハンディ", value=0.0, step=0.1)
 
     status_label = st.selectbox("状態", ["未確定", "確定"])
-    st.caption("確定時は、BET先得点からハンディを差し引いて結果と損益を自動計算します。")
+    st.caption(
+        "確定時は、BET先得点からハンディを差し引いて結果を判定します。"
+        "損益は的中 +BET額の90%、外れ -BET額の100%、PUSH 0円です。"
+    )
 
     c9, c10 = st.columns(2)
     team_score = c9.number_input("BET先チーム得点", min_value=0, value=0, step=1)

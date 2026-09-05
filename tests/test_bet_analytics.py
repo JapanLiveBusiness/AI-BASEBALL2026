@@ -4,6 +4,7 @@ from datetime import date
 from bet_analytics import (
     bet_amount,
     calculate_hit_rate,
+    profit_for_record,
     profit_for_result,
     settle_bet,
     sort_bets,
@@ -50,10 +51,20 @@ class BetAnalyticsTest(unittest.TestCase):
     def test_negative_handicap_adds_to_selected_team(self):
         self.assertEqual(settle_bet(2, 3, -1.5), (3.5, "win"))
 
-    def test_profit_uses_existing_even_money_rule(self):
-        self.assertEqual(profit_for_result("win", 10000), 10000)
+    def test_profit_uses_ninety_percent_win_rule(self):
+        self.assertEqual(profit_for_result("win", 10000), 9000)
         self.assertEqual(profit_for_result("loss", 10000), -10000)
         self.assertEqual(profit_for_result("push", 10000), 0)
+
+    def test_record_profit_recalculates_legacy_settled_value(self):
+        record = {
+            "status": "final",
+            "result": "win",
+            "bet_amount": 10000,
+            "profit": 10000,
+        }
+
+        self.assertEqual(profit_for_record(record), 9000)
 
     def test_weekly_summary_uses_monday_to_sunday(self):
         summary = weekly_bet_summary(self.records, date(2026, 8, 30))

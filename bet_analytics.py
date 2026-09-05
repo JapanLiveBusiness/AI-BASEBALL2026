@@ -10,6 +10,7 @@ SORT_OPTIONS = (
     "収支が低い順",
     "BET額が高い順",
 )
+WIN_PROFIT_RATE = 0.90
 
 
 def _number(value):
@@ -43,13 +44,22 @@ def settle_bet(team_score, opponent_score, handicap=0):
 
 
 def profit_for_result(result, amount):
-    """Return even-money profit used by the existing BET records."""
+    """Return profit using the configured 90% win settlement rule."""
     stake = abs(_number(amount))
     if result == "win":
-        return int(round(stake))
+        return int(round(stake * WIN_PROFIT_RATE))
     if result == "loss":
         return -int(round(stake))
     return 0
+
+
+def profit_for_record(record):
+    """Return canonical profit, recalculating settled legacy records."""
+    if record.get("status") == "final" and record.get("result") in {
+        "win", "loss", "push",
+    }:
+        return profit_for_result(record.get("result"), bet_amount(record))
+    return int(round(_number(record.get("profit"))))
 
 
 def calculate_hit_rate(records):
@@ -87,7 +97,7 @@ def weekly_bet_summary(records, reference_date=None):
     final = [record for record in weekly if record.get("status") == "final"]
     pending = [record for record in weekly if record.get("status") != "final"]
     wins, decided, hit_rate = calculate_hit_rate(final)
-    total_profit = sum(int(_number(record.get("profit"))) for record in final)
+    total_profit = sum(profit_for_record(record) for record in final)
     total_stake = sum(bet_amount(record) for record in final)
 
     return {
@@ -118,9 +128,9 @@ def sort_bets(records, option):
     if option == "古い日付順":
         return sorted(bets, key=date_key)
     if option == "収支が高い順":
-        return sorted(bets, key=lambda bet: _number(bet.get("profit")), reverse=True)
+        return sorted(bets, key=profit_for_record, reverse=True)
     if option == "収支が低い順":
-        return sorted(bets, key=lambda bet: _number(bet.get("profit")))
+        return sorted(bets, key=profit_for_record)
     if option == "BET額が高い順":
         return sorted(bets, key=bet_amount, reverse=True)
     return sorted(bets, key=date_key, reverse=True)
