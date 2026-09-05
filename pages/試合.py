@@ -211,6 +211,16 @@ def _count_lights(label: str, active: int, total: int, css_class: str) -> str:
     return f'<span class="count-row"><b>{label}</b>{lights}</span>'
 
 
+def _base_indicator(base: int, occupied_bases: set[int]) -> str:
+    occupied = base in occupied_bases
+    state_class = " occupied" if occupied else ""
+    state_label = "走者あり" if occupied else "走者なし"
+    return (
+        f'<i class="base base-{base}{state_class}" role="img" '
+        f'aria-label="{base}塁 {state_label}" title="{base}塁 {state_label}"></i>'
+    )
+
+
 def render_gamecast(game: dict, prediction: dict, target_date: date) -> None:
     snapshot = gamecast_snapshot(game)
     away = html.escape(str(game.get("away") or "---"))
@@ -222,6 +232,9 @@ def render_gamecast(game: dict, prediction: dict, target_date: date) -> None:
     game_date = html.escape(str(game.get("date") or target_date.isoformat()))
     status_class = "live" if snapshot["live"] else "final" if snapshot["final"] else "pregame"
     bases = snapshot["bases"]
+    base_indicators = "".join(
+        _base_indicator(base, bases) for base in (1, 2, 3)
+    )
     lineup = snapshot["lineup"]
     lineup_html = "".join(
         f'<li><span>{index}</span><b>{html.escape(name)}</b></li>'
@@ -269,9 +282,7 @@ def render_gamecast(game: dict, prediction: dict, target_date: date) -> None:
       <div class="ballpark">
         <div class="outfield-stripe stripe-one"></div><div class="outfield-stripe stripe-two"></div>
         <div class="infield"><div class="mound"></div></div>
-        <i class="base base-1 {"occupied" if 1 in bases else ""}"></i>
-        <i class="base base-2 {"occupied" if 2 in bases else ""}"></i>
-        <i class="base base-3 {"occupied" if 3 in bases else ""}"></i>
+        {base_indicators}
         <div class="home-plate"></div>
       </div>
       <div class="field-footer">
@@ -336,6 +347,8 @@ st.markdown(
 .gamecast-shell{margin:16px 0 24px;background:#17181a;color:#fff;border:1px solid #2e3034;border-radius:16px;overflow:hidden;box-shadow:0 16px 36px rgba(20,18,13,.18)}
 .gamecast-titlebar{min-height:42px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #34363a;font-size:9px;letter-spacing:.18em;font-weight:950}.gamecast-titlebar small{color:#9c9fa5;font-size:9px;letter-spacing:0}.gamecast-dot{display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 0 4px rgba(255,59,59,.12)}
 .gamecast-scoreboard{position:relative;min-height:74px;display:grid;grid-template-columns:1fr 100px 1fr;align-items:center;padding:0 76px;border-bottom:1px solid #34363a;background:#121315}.gamecast-state{position:absolute;left:14px;top:25px;border-radius:999px;padding:6px 9px;background:#303238;color:#d6d8dc;font-size:8px;font-weight:950}.gamecast-state.live{background:#f1c40f;color:#101010}.gamecast-state.final{background:#dde3e9;color:#171717}.score-team{display:flex;align-items:center;justify-content:center;gap:24px}.score-team b{font-size:17px}.score-team strong{font-size:32px;color:#f1c40f}.inning-state{text-align:center;color:#aeb1b6;font-size:11px}.gamecast-content{display:grid;grid-template-columns:minmax(0,2.35fr) minmax(240px,.65fr);gap:12px;padding:14px}.field-card,.gamecast-side>div{border:1px solid #393b40;border-radius:12px;overflow:hidden}.field-card{background:#101113}.field-ribbon{height:32px;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#116850 0,#116850 22px,#0c5844 22px,#0c5844 44px);color:#d9fff2;font-size:8px;letter-spacing:.2em;font-weight:950}.ballpark{height:310px;position:relative;overflow:hidden;background:repeating-linear-gradient(90deg,#57ad41 0,#57ad41 42px,#61b84a 42px,#61b84a 84px);border-bottom:8px solid #0d586f}.ballpark:before{content:"";position:absolute;width:390px;height:390px;left:50%;top:52px;transform:translateX(-50%) rotate(45deg);background:#bd7a35;border:3px solid rgba(255,255,255,.75);border-radius:18px}.ballpark:after{content:"";position:absolute;width:270px;height:270px;left:50%;top:112px;transform:translateX(-50%) rotate(45deg);background:#64b94b;border:3px solid rgba(255,255,255,.7);border-radius:8px}.infield{position:absolute;z-index:2;width:74px;height:74px;left:50%;top:136px;transform:translateX(-50%);border-radius:50%;background:#bd7a35}.mound{position:absolute;width:18px;height:8px;left:28px;top:33px;border-radius:999px;background:#e7d7a8}.base{position:absolute;z-index:4;width:13px;height:13px;background:#fff;border:2px solid #eee;transform:rotate(45deg);box-shadow:0 2px 4px rgba(0,0,0,.2)}.base.occupied{background:#f1c40f;border-color:#ffe577;box-shadow:0 0 0 5px rgba(241,196,15,.18)}.base-1{left:calc(50% + 126px);top:200px}.base-2{left:calc(50% - 7px);top:78px}.base-3{left:calc(50% - 140px);top:200px}.home-plate{position:absolute;z-index:5;width:22px;height:16px;left:calc(50% - 11px);bottom:18px;background:#fff;clip-path:polygon(0 0,100% 0,82% 70%,50% 100%,18% 70%)}.field-footer{min-height:86px;padding:12px 15px;display:flex;align-items:center;justify-content:space-between;gap:16px}.field-footer>div:first-child{display:flex;flex-direction:column}.field-footer span,.player-panel span,.lineup-panel>span{font-size:7px;letter-spacing:.16em;color:#d0a917;font-weight:950}.field-footer b{font-size:14px;margin:4px 0}.field-footer small{color:#8f9298;font-size:8px}.count-board{text-align:right}.count-row{display:flex!important;align-items:center;justify-content:flex-end;gap:5px;margin-top:4px;color:#fff!important}.count-row b{width:12px;margin:0;color:#fff;font-size:9px}.count-light{display:block;width:10px;height:10px;border:1px solid #6a6d73;border-radius:50%}.count-light.on.ball{background:#e7bd1d;border-color:#e7bd1d}.count-light.on.strike{background:#d6d8dc;border-color:#d6d8dc}.count-light.on.out{background:#df4545;border-color:#df4545}.gamecast-side{display:flex;flex-direction:column;gap:10px}.player-panel{padding:15px;background:#202124;display:flex;flex-direction:column}.player-panel strong{margin-top:7px;font-size:14px}.player-panel small{margin-top:4px;color:#898c92;font-size:8px}.batter-panel{background:#1c1d20}.lineup-panel{padding:14px;background:#202124;flex:1}.lineup-panel ol{list-style:none;margin:9px 0 0;padding:0}.lineup-panel li{min-height:24px;display:flex;align-items:center;gap:8px;border-top:1px solid #34363a;font-size:9px}.lineup-panel li span{width:17px;height:17px;border-radius:50%;background:#111;display:grid;place-items:center;color:#ddd;font-size:7px}.lineup-panel .lineup-empty{color:#8f9298;justify-content:center;padding:20px 0}.gamecast-info{min-height:54px;padding:10px 15px;border-top:1px solid #34363a;display:flex;align-items:center;justify-content:space-between;gap:18px}.gamecast-info>div{display:flex;align-items:center;gap:10px}.gamecast-info span{font-size:7px;color:#d0a917;font-weight:950;letter-spacing:.14em}.gamecast-info b{font-size:12px}.gamecast-info strong{font-size:15px;color:#f1c40f}.gamecast-info p{margin:0;color:#92959a;font-size:8px}
+.base.occupied{width:16px;height:16px;background:#ef2b2d;border:2px solid #fff;border-radius:50%;transform:none;box-shadow:0 0 0 6px rgba(239,43,45,.25),0 0 16px rgba(239,43,45,.9)}
+.base.occupied:after{content:"";position:absolute;width:6px;height:6px;left:3px;top:3px;border-radius:50%;background:#fff}
 .game-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 18px}
 .game-kpi{background:#fffdf8;border:1px solid #ddd5c8;border-radius:13px;padding:14px}
 .game-kpi span{display:block;font-size:8px;letter-spacing:.18em;color:#a77e11;font-weight:900}
