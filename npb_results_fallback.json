@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-05T00:20:00+09:00",
+  "updated_at": "2026-09-05T20:25:00+09:00",
   "games": [
     {
       "date": "2026-09-01",
@@ -252,6 +252,21 @@
       "venue": "PayPayドーム",
       "handicap_source_url": "https://handenomori.com/jpb/20260904/",
       "result_source": "ハンデの森"
+    },
+    {
+      "date": "2026-09-05",
+      "home": "オリックス",
+      "away": "ロッテ",
+      "home_score": 7,
+      "away_score": 6,
+      "status": "final",
+      "home_handicap": null,
+      "away_handicap": null,
+      "time": "14:00",
+      "venue": "京セラD大阪",
+      "source_url": "https://npb.jp/scores/2026/0905/b-m-22/box.html",
+      "official_url": "https://npb.jp/scores/2026/0905/b-m-22/box.html",
+      "result_source": "NPB公式速報"
     }
   ]
 }
