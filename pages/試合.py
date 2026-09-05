@@ -11,6 +11,7 @@ import streamlit as st
 
 from game_calendar import attach_handicaps, fetch_daily_handicaps, fetch_npb_schedule_day, merge_game_sources
 from gamecast import gamecast_snapshot, select_featured_game
+from daily_data import load_current_daily_json
 from npb_live import fetch_npb_live_game
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
 
@@ -123,8 +124,8 @@ def prediction_index(payload: dict) -> dict[tuple[str, str], dict]:
 
 def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
     selected_iso = selected_date.isoformat()
-    today_payload = load_json("npb_today.json", {"games": []})
-    predictions = load_json("today_ai_predictions.json", {"games": []})
+    today_payload = load_current_daily_json("npb_today.json", {"games": []})
+    predictions = load_current_daily_json("today_ai_predictions.json", {"games": []})
     history = load_json("historical_games_2017_2026.json", [])
     local_games = [
         game for game in today_payload.get("games") or []

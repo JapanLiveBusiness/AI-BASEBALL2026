@@ -1,7 +1,6 @@
-from pathlib import Path
-import json
 import streamlit as st
 
+from daily_data import load_current_daily_json
 from daily_board import coverage, merge_daily_board
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_section, render_nav_links
 
@@ -16,18 +15,9 @@ render_hero(
 )
 render_nav_links()
 
-REPO_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-PROD_DATA_DIR = Path("/app/data")
-
-
 @st.cache_data(ttl="1m", max_entries=4)
 def load_json(name, fallback):
-    production = PROD_DATA_DIR / name
-    path = production if production.exists() else REPO_DATA_DIR / name
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return fallback
+    return load_current_daily_json(name, fallback)
 
 
 payload = load_json("today_ai_predictions.json", {"games": []})

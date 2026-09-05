@@ -2,7 +2,6 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 import html
-import json
 from urllib.parse import quote
 
 import streamlit as st
@@ -10,11 +9,11 @@ import streamlit as st
 from auth_session import render_account_controls, require_auth0, user_bets_path
 from bet_analytics import weekly_bet_summary
 from bet_store import BetStoreError, load_bets
+from daily_data import load_current_daily_json
 from feature_readiness import STATUS_LABELS, feature
 
 JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parent / "data"
-DATA_DIRS = [Path("/app/data"), REPO_DATA_DIR]
 
 st.set_page_config(
     page_title="AI BASEBALL STUDIO | GAME INTELLIGENCE",
@@ -24,17 +23,6 @@ st.set_page_config(
 )
 auth_user = require_auth0()
 render_account_controls(auth_user)
-
-
-def load_json(name, fallback):
-    for directory in DATA_DIRS:
-        try:
-            path = directory / name
-            if path.exists():
-                return json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-    return fallback
 
 
 def safe(value, fallback="--"):
@@ -56,8 +44,8 @@ def format_data_timestamp(value):
         return safe(value)
 
 
-predictions = load_json("today_ai_predictions.json", {"games": []})
-npb_today = load_json("npb_today.json", {"games": []})
+predictions = load_current_daily_json("today_ai_predictions.json", {"games": []})
+npb_today = load_current_daily_json("npb_today.json", {"games": []})
 write_data_dir = Path("/app/data") if Path("/app/data").exists() else REPO_DATA_DIR
 try:
     bet_records = load_bets(user_bets_path(write_data_dir, auth_user))

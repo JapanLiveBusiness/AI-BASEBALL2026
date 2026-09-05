@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from daily_data import load_current_daily_json
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
 from team_insights import TEAM_META, TEAMS, league_standings, team_summary, upcoming_team_game
 
@@ -43,8 +44,8 @@ if requested_team != team:
     st.query_params["team"] = team
 
 history = load_json("historical_games_2017_2026.json", [])
-schedule = load_json("npb_today.json", {})
-predictions = load_json("today_ai_predictions.json", {})
+schedule = load_current_daily_json("npb_today.json", {})
+predictions = load_current_daily_json("today_ai_predictions.json", {})
 available_seasons = sorted({int(row.get("season") or 0) for row in history if isinstance(row, dict) and row.get("season")}, reverse=True)
 season = st.selectbox("シーズン", available_seasons or [2026], key="team_detail_season")
 summary = team_summary(history, team, season)
