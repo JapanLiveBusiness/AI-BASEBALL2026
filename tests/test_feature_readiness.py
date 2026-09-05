@@ -13,17 +13,13 @@ class FeatureReadinessTests(unittest.TestCase):
     def test_every_status_has_a_label(self):
         self.assertTrue(all(item.status in STATUS_LABELS for item in FEATURES))
 
-    def test_completed_bet_work_is_removed_from_implementation_queue(self):
+    def test_completed_features_are_removed_from_implementation_queue(self):
         queue = implementation_queue()
-        self.assertEqual(queue[0].key, "ai_detail")
-        self.assertNotIn("bet_entry", [item.key for item in queue])
-        self.assertNotIn("performance", [item.key for item in queue])
-        self.assertNotIn("results", [item.key for item in queue])
-        self.assertNotIn("team_detail", [item.key for item in queue])
-        self.assertTrue(all(item.next_step for item in queue))
+        self.assertEqual(queue, ())
 
     def test_feature_lookup(self):
         self.assertEqual(feature("ai_detail").route, "/AI詳細")
+        self.assertEqual(feature("ai_detail").status, "live")
 
 
 if __name__ == "__main__":

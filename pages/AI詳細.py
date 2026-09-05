@@ -15,6 +15,7 @@ from ai_detail_summary import (
     live_simulation_context,
     simulate_hawks_win_probability,
 )
+from daily_data import load_current_daily_json
 from handicap_source import fetch_hawks_handicap
 from npb_live import fetch_npb_live_game
 from prediction_metrics import build_prediction_metrics
@@ -70,19 +71,11 @@ def load_official_live_game(date_value, home, away):
     return fetch_npb_live_game(date_value, home, away)
 
 
-schedule = load_json(str(DATA_DIR / "npb_today.json"), {"games": []})
-predictions = load_json(
-    str(DATA_DIR / "today_ai_predictions.json"), {"games": []}
-)
-shared_schedule = load_json(
-    str(SHARED_DATA_DIR / "npb_today.json"), {"games": []}
-)
-shared_predictions = load_json(
-    str(SHARED_DATA_DIR / "today_ai_predictions.json"), {"games": []}
+schedule = load_current_daily_json("npb_today.json", {"games": []})
+predictions = load_current_daily_json(
+    "today_ai_predictions.json", {"games": []}
 )
 game = find_team_prediction(schedule, predictions)
-if game is None:
-    game = find_team_prediction(shared_schedule, shared_predictions)
 
 # The daily file can lag behind during an upstream outage. Prefer today's game
 # from the same persisted calendar cache used by the games page.
