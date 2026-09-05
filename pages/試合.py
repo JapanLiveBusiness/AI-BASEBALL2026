@@ -409,7 +409,10 @@ def render_match_center(target_date: date) -> None:
     if live_games:
         st.markdown('<div class="sync-note">● 試合中のため、この試合一覧を30秒ごとに自動更新します。</div>', unsafe_allow_html=True)
 
-    featured_game = select_featured_game(games)
+    featured_game = select_featured_game(
+        games,
+        retain_final_hour=14 if target_date == datetime.now(JST).date() else None,
+    )
     if featured_game:
         featured_key = (
             str(featured_game.get("home") or ""),

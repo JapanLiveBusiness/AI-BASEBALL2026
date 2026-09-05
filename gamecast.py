@@ -27,11 +27,39 @@ def _is_final(game: dict[str, Any]) -> bool:
     )
 
 
-def select_featured_game(games: Iterable[dict[str, Any]]) -> dict[str, Any] | None:
-    """Prefer a live game, then a Hawks game, then the first scheduled game."""
+def _starts_in_hour(game: dict[str, Any], hour: int) -> bool:
+    try:
+        return int(str(game.get("time") or "").split(":", 1)[0]) == hour
+    except (TypeError, ValueError):
+        return False
+
+
+def select_featured_game(
+    games: Iterable[dict[str, Any]],
+    *,
+    retain_final_hour: int | None = None,
+) -> dict[str, Any] | None:
+    """Select the gamecast card, optionally retaining finals from one hour."""
     rows = list(games)
     if not rows:
         return None
+    if retain_final_hour is not None:
+        retained = [
+            game
+            for game in rows
+            if _is_final(game) and _starts_in_hour(game, retain_final_hour)
+        ]
+        if retained:
+            return next(
+                (
+                    game
+                    for game in retained
+                    if "ソフトバンク" in {
+                        str(game.get("home")), str(game.get("away"))
+                    }
+                ),
+                retained[0],
+            )
     return next((game for game in rows if _is_live(game)), None) or next(
         (
             game

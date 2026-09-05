@@ -13,6 +13,42 @@ class GamecastTest(unittest.TestCase):
         self.assertEqual(select_featured_game(games)["home"], "楽天")
         self.assertEqual(select_featured_game(games[:2])["home"], "ソフトバンク")
 
+    def test_featured_game_retains_two_pm_final_until_day_end(self):
+        games = [
+            {
+                "home": "オリックス", "away": "ロッテ", "time": "14:00",
+                "status": "final",
+            },
+            {
+                "home": "ソフトバンク", "away": "西武", "time": "14:30",
+                "status": "final",
+            },
+            {
+                "home": "阪神", "away": "DeNA", "time": "18:00",
+                "status": "live",
+            },
+        ]
+
+        featured = select_featured_game(games, retain_final_hour=14)
+
+        self.assertEqual(featured["home"], "ソフトバンク")
+
+    def test_featured_game_uses_live_game_without_retention(self):
+        games = [
+            {
+                "home": "ソフトバンク", "away": "西武", "time": "14:00",
+                "status": "final",
+            },
+            {
+                "home": "阪神", "away": "DeNA", "time": "18:00",
+                "status": "live",
+            },
+        ]
+
+        featured = select_featured_game(games)
+
+        self.assertEqual(featured["home"], "阪神")
+
     def test_snapshot_normalizes_live_counts_and_bases(self):
         snapshot = gamecast_snapshot(
             {
