@@ -71,7 +71,7 @@ def cached_official_games(date_iso: str) -> list[dict]:
     return fetch_npb_schedule_day(date.fromisoformat(date_iso))
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=300, max_entries=32, show_spinner=False)
 def cached_handicaps(date_iso: str) -> list[dict]:
     return fetch_daily_handicaps(date.fromisoformat(date_iso))
 
@@ -140,12 +140,14 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
         game["result_source"] = game.get("result_source") or "保存済み試合結果"
         history_games.append(game)
 
-    is_past = selected_date < datetime.now(JST).date()
+    current_date = datetime.now(JST).date()
+    is_past = selected_date < current_date
+    is_current_or_past = selected_date <= current_date
     stored_results = [
         game for game in load_results_cache().get("games") or []
         if str(game.get("date") or "") == selected_iso
     ] if is_past else []
-    live_results = cached_handicaps(selected_iso) if is_past else []
+    live_results = cached_handicaps(selected_iso) if is_current_or_past else []
     daily_results = merge_game_sources(stored_results, live_results)
     # ハンデ掲載元の結果が未更新でも、NPB公式の確定スコアを併用する。
     official_games = cached_official_games(selected_iso)
@@ -156,7 +158,7 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
             if str(game.get("date") or "") == selected_iso
         ]
     games = merge_game_sources(official_games, history_games, local_games, daily_results)
-    if selected_date == datetime.now(JST).date():
+    if selected_date == current_date:
         hawks_index = next(
             (
                 index
@@ -174,7 +176,7 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
             )
             if live_update:
                 games[hawks_index] = merge_game_sources([game], [live_update])[0]
-    if selected_date < datetime.now(JST).date():
+    if is_current_or_past:
         games = attach_handicaps(games, daily_results)
 
     predictions_date = str(predictions.get("date") or "")
@@ -376,7 +378,7 @@ def render_match_center(target_date: date) -> None:
     pred_by_game = prediction_index(predictions)
     live_games = [game for game in games if is_live(game)]
     date_relation = "過去の結果" if target_date < today else "本日の試合" if target_date == today else "今後の予定"
-    if any(str(game.get("result_source") or "") == "ハンデの森" for game in games):
+    if any(game.get("handicap_source_url") for game in games):
         source_label = "結果・ハンデ取得"
     elif any(str(game.get("date") or "") == str(today_payload.get("date") or "") for game in games):
         source_label = "本番共有データ"
@@ -439,7 +441,7 @@ def render_match_center(target_date: date) -> None:
     <div class="vs">VS</div>
     <div class="team-side right"><div class="team-name">{home}</div><div class="team-score">{score_text(game.get("home_score"))}</div></div>
   </div>
-  {handicap_html(game, target_date < today)}
+  {handicap_html(game, target_date <= today)}
   <div class="game-meta"><span>STATUS: {html.escape(str(game.get("status") or "scheduled"))}</span><span>SOURCE: {result_source}</span></div>
   {prediction_html}
 </article>'''
@@ -448,4 +450,4 @@ def render_match_center(target_date: date) -> None:
 
 
 render_match_center(selected_date)
-st.caption("前日・翌日ボタンまたは日付欄で移動できます。過去日は試合結果と公開ハンデ、未来日は公式の開始時刻・球場を表示します。")
+st.caption("前日・翌日ボタンまたは日付欄で移動できます。過去日と当日は公開ハンデ、未来日は公式の開始時刻・球場を表示します。未掲載のハンデは推測せず、そのまま明示します。")
