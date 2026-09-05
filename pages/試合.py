@@ -68,12 +68,12 @@ def load_results_cache() -> dict:
 
 @st.cache_data(ttl=30, max_entries=32, show_spinner=False)
 def cached_official_games(date_iso: str) -> list[dict]:
-    return fetch_npb_schedule_day(date.fromisoformat(date_iso))
+    return fetch_npb_schedule_day(date.fromisoformat(date_iso), timeout=6)
 
 
 @st.cache_data(ttl=300, max_entries=32, show_spinner=False)
 def cached_handicaps(date_iso: str) -> list[dict]:
-    return fetch_daily_handicaps(date.fromisoformat(date_iso))
+    return fetch_daily_handicaps(date.fromisoformat(date_iso), timeout=6)
 
 
 @st.cache_data(ttl=15, max_entries=12, show_spinner=False)
@@ -148,7 +148,7 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
         if str(game.get("date") or "") == selected_iso
     ] if is_past else []
     live_results = cached_handicaps(selected_iso) if is_current_or_past else []
-    daily_results = merge_game_sources(stored_results, live_results)
+    daily_results = merge_game_sources(stored_results, live_results) if is_past else stored_results
     # ハンデ掲載元の結果が未更新でも、NPB公式の確定スコアを併用する。
     official_games = cached_official_games(selected_iso)
     if not official_games:
@@ -167,7 +167,7 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
             ),
             None,
         )
-        if hawks_index is not None:
+        if hawks_index is not None and not is_final(games[hawks_index]):
             game = games[hawks_index]
             live_update = cached_live_game(
                 selected_iso,
@@ -177,7 +177,7 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
             if live_update:
                 games[hawks_index] = merge_game_sources([game], [live_update])[0]
     if is_current_or_past:
-        games = attach_handicaps(games, daily_results)
+        games = attach_handicaps(games, live_results)
 
     predictions_date = str(predictions.get("date") or "")
     if predictions_date and predictions_date != selected_iso:

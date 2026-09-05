@@ -67,11 +67,20 @@ def test_parse_and_attach_daily_handicaps():
     </div>
     """
     handicaps = parse_handicap_html(markup, date(2026, 9, 3))
-    games = [{"home": "ヤクルト", "away": "阪神", "home_score": 4, "away_score": 7}]
+    games = [{
+        "home": "ヤクルト",
+        "away": "阪神",
+        "home_score": 4,
+        "away_score": 7,
+        "status": "scheduled",
+        "result_source": "NPB公式",
+    }]
     result = attach_handicaps(games, handicaps)
 
     assert result[0]["home_handicap"] is None
     assert result[0]["away_handicap"] == "1.1"
+    assert result[0]["status"] == "scheduled"
+    assert result[0]["result_source"] == "NPB公式"
     assert handicaps[0]["status"] == "final"
 
 
