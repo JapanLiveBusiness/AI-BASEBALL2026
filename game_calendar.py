@@ -51,6 +51,7 @@ TEAM_CODE_NAMES = {
     "h": "ソフトバンク",
 }
 LIVE_INNING_PATTERN = re.compile(r"(?:^|\s)(?:[1-9]|1[0-2])回(?:表|裏)?(?:\s|$)")
+FINAL_SCORE_PATTERN = re.compile(r"(?:試合終了|終了)")
 
 
 def clean_text(value) -> str:
@@ -145,7 +146,9 @@ def parse_npb_schedule_html(content, year: int, month: int) -> list[dict]:
         path_match = score_path.search(str(anchor.get("href") or ""))
         anchor_text = clean_text(anchor.get_text(" ", strip=True))
         score_match = re.search(r"(?<!\d)(\d{1,2})\s*-\s*(\d{1,2})(?!\d)", anchor_text)
-        if not path_match or not score_match or not LIVE_INNING_PATTERN.search(anchor_text):
+        is_live_score = bool(LIVE_INNING_PATTERN.search(anchor_text))
+        is_final_score = bool(FINAL_SCORE_PATTERN.search(anchor_text))
+        if not path_match or not score_match or not (is_live_score or is_final_score):
             continue
         mmdd, home_code, away_code = path_match.groups()
         try:
@@ -155,7 +158,7 @@ def parse_npb_schedule_html(content, year: int, month: int) -> list[dict]:
         key = (game_date.isoformat(), TEAM_CODE_NAMES.get(home_code, ""), TEAM_CODE_NAMES.get(away_code, ""))
         if key in unique:
             unique[key].update({
-                "status": "live",
+                "status": "final" if is_final_score else "live",
                 "home_score": int(score_match.group(1)),
                 "away_score": int(score_match.group(2)),
                 "result_source": "NPB公式速報",

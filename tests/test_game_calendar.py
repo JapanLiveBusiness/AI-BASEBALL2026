@@ -102,6 +102,21 @@ def test_parse_official_schedule_merges_compact_live_score_link():
     assert (game["home_score"], game["away_score"]) == (1, 0)
 
 
+def test_parse_official_schedule_merges_compact_final_score_link():
+    markup = """
+    <table>
+      <tr><td>9/5（土）</td><td>オリックス - ロッテ</td><td>京セラD大阪 14:00</td></tr>
+    </table>
+    <a href="/scores/2026/0905/b-m-22/">7-6 （京セラD大阪） 試合終了</a>
+    """
+
+    game = parse_npb_schedule_html(markup, 2026, 9)[0]
+
+    assert game["status"] == "final"
+    assert game["result_source"] == "NPB公式速報"
+    assert (game["home_score"], game["away_score"]) == (7, 6)
+
+
 def test_parse_and_attach_daily_handicaps():
     markup = """
     <div class="game-detail2">
