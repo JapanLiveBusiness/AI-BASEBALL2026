@@ -146,6 +146,8 @@ quick_features = {
 
 def readiness_badge(key):
     item = quick_features[key]
+    if item.status == "live":
+        return ""
     return f'<span class="readiness {item.status}">{STATUS_LABELS[item.status]}</span>'
 
 st.markdown(
