@@ -75,6 +75,13 @@ class GamecastTest(unittest.TestCase):
         self.assertEqual(snapshot["lineup"], [])
         self.assertEqual(occupied_bases({}), set())
 
+    def test_final_game_always_uses_finished_label(self):
+        snapshot = gamecast_snapshot(
+            {"status": "final", "inning": 9, "inning_half": "表"}
+        )
+
+        self.assertEqual(snapshot["inning_label"], "試合終了")
+
 
 if __name__ == "__main__":
     unittest.main()

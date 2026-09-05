@@ -133,10 +133,10 @@ def gamecast_snapshot(game: dict[str, Any]) -> dict[str, Any]:
     final = _is_final(game)
     inning = game.get("inning") or game.get("current_inning")
     half = str(game.get("inning_half") or game.get("half") or "").strip()
-    if inning:
-        inning_label = f"{inning}回{half}" if half else f"{inning}回"
-    elif final:
+    if final:
         inning_label = "試合終了"
+    elif inning:
+        inning_label = f"{inning}回{half}" if half else f"{inning}回"
     elif live:
         inning_label = "進行情報取得中"
     else:
