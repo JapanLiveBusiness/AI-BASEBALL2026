@@ -3,7 +3,6 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 import plotly.graph_objects as go
-import requests
 import streamlit as st
 
 from auth_session import user_bets_path
@@ -17,6 +16,7 @@ from bet_analytics import (
 )
 from bet_store import BetStoreError, append_bet, delete_bet, import_bets, load_bets, update_bet
 from bet_transfer import BetSpreadsheetError, bets_to_xlsx, read_bet_spreadsheet
+from game_calendar import fetch_npb_schedule_day
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links, render_section
 
 st.set_page_config(page_title="収支マップ | MY AI BASEBALL", page_icon="💰", layout="wide")
@@ -134,31 +134,16 @@ def delete_bet_dialog(bet):
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def fetch_games(selected_date):
-    from bs4 import BeautifulSoup
-
-    target = selected_date.strftime("%Y%m%d")
-    games = []
-    try:
-        url = f"https://npb.jp/bis/eng/2026/games/gm{target}.html"
-        response = requests.get(url, timeout=8)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        text = soup.get_text(" ", strip=True)
-        teams = [
-            "Hawks", "Fighters", "Marines", "Eagles", "Buffaloes", "Lions",
-            "Giants", "Tigers", "BayStars", "Carp", "Swallows", "Dragons",
-        ]
-        found = [team for team in teams if team in text]
-        for i in range(0, len(found) - 1, 2):
-            games.append({"home": found[i], "away": found[i + 1], "time": ""})
-    except Exception:
-        pass
-    return games
+    return fetch_npb_schedule_day(selected_date, timeout=10)
 
 
 render_section("ENTRY", "当日のBET・収支を入力")
 with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
-    selected_date = st.date_input("試合日", value=date.today(), key="manual_bet_date")
+    selected_date = st.date_input(
+        "試合日",
+        value=datetime.now(JST).date(),
+        key="manual_bet_date",
+    )
     games = fetch_games(selected_date)
 
     if games:
@@ -167,11 +152,18 @@ with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
         selected_game = games[game_labels.index(game_choice)]
         default_team = selected_game["home"]
         default_opponent = selected_game["away"]
+        default_time = selected_game.get("time") or "18:00"
         st.caption("選択した日付のNPB開催試合から選択できます。")
     else:
         st.info("この日付の開催試合を自動取得できませんでした。対戦カードを手動入力できます。")
         default_team = ""
         default_opponent = ""
+        default_time = "18:00"
+
+    try:
+        default_game_time = datetime.strptime(default_time, "%H:%M").time()
+    except ValueError:
+        default_game_time = datetime.strptime("18:00", "%H:%M").time()
 
     with st.form("manual_bet_form", clear_on_submit=False):
         c1, c2 = st.columns(2)
@@ -179,9 +171,9 @@ with st.expander("➕ 当日のBET・収支を手動入力", expanded=True):
         opponent = c2.text_input("対戦相手", value=default_opponent)
 
         c3, c4, c5 = st.columns(3)
-        game_time = c3.time_input("試合開始時刻", value=datetime.strptime("18:00", "%H:%M").time())
+        game_time = c3.time_input("試合開始時刻", value=default_game_time)
         bet_amount = c4.number_input("BET金額（円）", min_value=0, step=1000, value=10000)
-        handicap = c5.number_input("ハンディ", step=0.5, value=0.0)
+        handicap = c5.number_input("ハンディ", step=0.1, value=0.0)
 
         status_label = st.selectbox("状態", ["未確定", "確定"])
         st.caption("確定時は、BET先得点からハンディを差し引いて結果と損益を自動計算します。")

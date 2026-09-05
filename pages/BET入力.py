@@ -1,26 +1,18 @@
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-import re
-
-import requests
 import streamlit as st
-from bs4 import BeautifulSoup
 
 from auth_session import user_bets_path
 from bet_analytics import profit_for_result, settle_bet
 from bet_store import BetStoreError, append_bet
+from game_calendar import fetch_npb_schedule_day
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
 
 JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 PROD_DATA_DIR = Path("/app/data")
 DATA_DIR = PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
-TEAM_NAMES = [
-    "ソフトバンク", "日本ハム", "楽天", "西武", "ロッテ", "オリックス",
-    "巨人", "阪神", "DeNA", "広島", "ヤクルト", "中日",
-]
-
 st.set_page_config(page_title="BET入力 | MY AI BASEBALL", page_icon="✍️", layout="wide")
 apply_studio_theme()
 auth_user = render_topbar("BET MANAGEMENT")
@@ -36,45 +28,17 @@ render_nav_links()
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def fetch_npb_games(selected_date):
-    year, month = selected_date.year, selected_date.month
-    target_md = f"{selected_date.month}/{selected_date.day}"
-    url = f"https://npb.jp/games/{year}/schedule_{month:02d}_detail.html"
-    games = []
-    try:
-        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.content, "html.parser")
-        current_date = None
-        for tr in soup.find_all("tr"):
-            text = " ".join(tr.get_text(" ", strip=True).split())
-            dm = re.search(r"(\d{1,2})/(\d{1,2})", text)
-            if dm:
-                current_date = f"{int(dm.group(1))}/{int(dm.group(2))}"
-            if current_date != target_md:
-                continue
-            found = []
-            for team in TEAM_NAMES:
-                if team in text and team not in found:
-                    found.append(team)
-            if len(found) < 2:
-                continue
-            tm = re.search(r"(\d{1,2}:\d{2})", text)
-            pair = {"team1": found[0], "team2": found[1], "time": tm.group(1) if tm else "18:00"}
-            if pair not in games:
-                games.append(pair)
-    except Exception:
-        pass
-    return games
+    return fetch_npb_schedule_day(selected_date, timeout=10)
 
 
 selected_date = st.date_input("試合日", value=datetime.now(JST).date())
 games = fetch_npb_games(selected_date)
 
 if games:
-    labels = [f"{g['team1']} vs {g['team2']}（{g['time']}）" for g in games]
+    labels = [f"{g['home']} vs {g['away']}（{g['time']}）" for g in games]
     selected_label = st.selectbox("当日の開催試合", labels)
     game = games[labels.index(selected_label)]
-    team_options = [game["team1"], game["team2"]]
+    team_options = [game["home"], game["away"]]
     default_time = game["time"]
 else:
     st.info("指定日の試合を自動取得できませんでした。チーム名を手動入力できます。")
