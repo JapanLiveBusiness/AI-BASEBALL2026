@@ -35,7 +35,7 @@ jobs:
           docker run --rm --network none \
             --security-opt no-new-privileges:true --cap-drop ALL --cap-add DAC_OVERRIDE \
             -v "$AUTH_TEST_FILE:/app/.streamlit/secrets.toml:ro" \
-            ai-baseball2026-smoke python -c 'import streamlit as st; assert st.secrets["auth"]["client_id"]'
+            ai-baseball2026-smoke python -c 'import streamlit as st; assert st.secrets["auth"]["auth0"]["client_id"]'
           docker run -d --name ai-baseball2026-smoke -p 127.0.0.1:8501:8501 \
             --security-opt no-new-privileges:true --cap-drop ALL --cap-add DAC_OVERRIDE \
             -v "$AUTH_TEST_FILE:/app/.streamlit/secrets.toml:ro" \
