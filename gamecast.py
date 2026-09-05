@@ -27,27 +27,35 @@ def _is_final(game: dict[str, Any]) -> bool:
     )
 
 
-def _starts_in_hour(game: dict[str, Any], hour: int) -> bool:
+def _start_hour(game: dict[str, Any]) -> int | None:
     try:
-        return int(str(game.get("time") or "").split(":", 1)[0]) == hour
+        return int(str(game.get("time") or "").split(":", 1)[0])
     except (TypeError, ValueError):
-        return False
+        return None
 
 
 def select_featured_game(
     games: Iterable[dict[str, Any]],
     *,
-    retain_final_hour: int | None = None,
+    retain_final_hours: Iterable[int] | None = None,
 ) -> dict[str, Any] | None:
-    """Select the gamecast card, optionally retaining finals from one hour."""
+    """Select the gamecast card, optionally retaining finals from chosen hours."""
     rows = list(games)
     if not rows:
         return None
-    if retain_final_hour is not None:
-        retained = [
-            game
+    retained_hours = set(retain_final_hours or ())
+    if retained_hours:
+        retained_with_hours = [
+            (_start_hour(game), game)
             for game in rows
-            if _is_final(game) and _starts_in_hour(game, retain_final_hour)
+            if _is_final(game) and _start_hour(game) in retained_hours
+        ]
+        latest_hour = max(
+            (hour for hour, _game in retained_with_hours if hour is not None),
+            default=None,
+        )
+        retained = [
+            game for hour, game in retained_with_hours if hour == latest_hour
         ]
         if retained:
             return next(

@@ -29,7 +29,39 @@ class GamecastTest(unittest.TestCase):
             },
         ]
 
-        featured = select_featured_game(games, retain_final_hour=14)
+        featured = select_featured_game(games, retain_final_hours=(14, 18))
+
+        self.assertEqual(featured["home"], "ソフトバンク")
+
+    def test_featured_game_prefers_six_pm_final_over_two_pm_final(self):
+        games = [
+            {
+                "home": "ソフトバンク", "away": "西武", "time": "14:00",
+                "status": "final",
+            },
+            {
+                "home": "阪神", "away": "DeNA", "time": "18:00",
+                "status": "final",
+            },
+        ]
+
+        featured = select_featured_game(games, retain_final_hours=(14, 18))
+
+        self.assertEqual(featured["home"], "阪神")
+
+    def test_featured_game_prefers_hawks_within_six_pm_finals(self):
+        games = [
+            {
+                "home": "阪神", "away": "DeNA", "time": "18:00",
+                "status": "final",
+            },
+            {
+                "home": "ソフトバンク", "away": "西武", "time": "18:30",
+                "status": "final",
+            },
+        ]
+
+        featured = select_featured_game(games, retain_final_hours=(14, 18))
 
         self.assertEqual(featured["home"], "ソフトバンク")
 

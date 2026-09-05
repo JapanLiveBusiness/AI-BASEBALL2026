@@ -424,7 +424,9 @@ def render_match_center(target_date: date) -> None:
 
     featured_game = select_featured_game(
         games,
-        retain_final_hour=14 if target_date == datetime.now(JST).date() else None,
+        retain_final_hours=(14, 18)
+        if target_date == datetime.now(JST).date()
+        else None,
     )
     if featured_game:
         featured_key = (
