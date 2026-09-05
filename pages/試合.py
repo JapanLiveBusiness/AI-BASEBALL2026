@@ -396,6 +396,10 @@ refresh_every = "30s" if selected_date == today else None
 
 @st.fragment(run_every=refresh_every)
 def render_match_center(target_date: date) -> None:
+    current_today = datetime.now(JST).date()
+    if target_date == today and current_today != today:
+        st.session_state.games_calendar_date = current_today
+        st.rerun()
     games, today_payload, predictions = games_for_date(target_date)
     pred_by_game = prediction_index(predictions)
     live_games = [game for game in games if is_live(game)]
