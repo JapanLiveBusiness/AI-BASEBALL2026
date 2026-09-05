@@ -1,4 +1,5 @@
 from ai_detail_summary import (
+    build_final_history_record,
     calculate_context_adjustments,
     find_team_prediction,
     hawks_history_summary,
@@ -6,6 +7,49 @@ from ai_detail_summary import (
     live_simulation_context,
     simulate_hawks_win_probability,
 )
+
+
+def test_build_final_history_record_maps_home_hawks_result():
+    record = build_final_history_record({
+        "status": "final",
+        "date": "2026-09-05",
+        "home": "ソフトバンク",
+        "away": "西武",
+        "home_score": 5,
+        "away_score": 2,
+        "venue": "みずほPayPay",
+        "home_starter": "A",
+        "away_starter": "B",
+        "pick": "ソフトバンク",
+        "win_probability": 54.5,
+    })
+
+    assert record["game_id"] == "2026-09-05_ソフトバンク_西武"
+    assert record["result"] == "勝"
+    assert record["hawks_score"] == 5
+    assert record["opponent_score"] == 2
+    assert record["pregame_probability"] == 54.5
+    assert record["auto_saved"] is True
+
+
+def test_build_final_history_record_maps_away_hawks_and_rejects_unfinished():
+    record = build_final_history_record({
+        "status": "試合終了",
+        "date": "2026-09-06",
+        "home": "西武",
+        "away": "ソフトバンク",
+        "home_score": 4,
+        "away_score": 3,
+        "pick": "西武",
+        "win_probability": 60,
+    }, live_probability=12.34, source="AI詳細 手動保存")
+
+    assert record["result"] == "敗"
+    assert record["hawks_score"] == 3
+    assert record["pregame_probability"] == 40.0
+    assert record["live_probability"] == 12.3
+    assert record["auto_saved"] is False
+    assert build_final_history_record({"status": "scheduled"}) is None
 
 
 def test_find_team_prediction_merges_schedule_and_prediction():

@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from ai_detail_summary import (
+    build_final_history_record,
     calculate_context_adjustments,
     find_team_prediction,
     hawks_history_summary,
@@ -19,6 +20,7 @@ from daily_data import load_current_daily_json
 from handicap_source import fetch_hawks_handicap
 from npb_live import fetch_npb_live_game
 from prediction_metrics import build_prediction_metrics
+from storage.game_history import load_game_history, save_game_history
 from studio_theme import (
     apply_studio_theme,
     render_hero,
@@ -124,9 +126,26 @@ if game:
         game.update(stored_live)
         game["opponent"] = game.get("away") if game.get("home") == "ソフトバンク" else game.get("home")
 
-history = load_json(str(DATA_DIR / "game_history.json"), [])
+history_path = DATA_DIR / "game_history.json"
+history = load_game_history(history_path)
+official_history_record = build_final_history_record(game)
+if official_history_record:
+    existing_record = next(
+        (
+            row for row in history
+            if row.get("game_id") == official_history_record["game_id"]
+        ),
+        None,
+    )
+    needs_save = existing_record is None or any(
+        existing_record.get(key) != value
+        for key, value in official_history_record.items()
+    )
+    if needs_save:
+        save_game_history(history_path, official_history_record)
+        history = load_game_history(history_path)
 history_summary = hawks_history_summary(
-    history if isinstance(history, list) else []
+    history
 )
 metrics = build_prediction_metrics(
     DATA_DIR,
@@ -256,6 +275,7 @@ simulator_mode = st.segmented_control(
     key="ai_detail_simulator_mode",
 )
 base_probability = hawks_probability(game)
+manual_scores = None
 if simulator_mode == "試合前":
     published_handicap = (
         float(handicap.get("handicap_score") or 0.0)
@@ -330,6 +350,7 @@ else:
             step=1,
             key="ai_detail_opponent_score",
         )
+        manual_scores = (int(hawks_score), int(opponent_score))
         inning = inning_col.slider(
             "現在のイニング",
             min_value=1,
@@ -506,6 +527,47 @@ if use_context:
         f"救援 {context['reliever']:+.1f}%｜"
         f"主力 {context['keyman']:+.1f}%"
     )
+
+render_section("RESULT STORAGE", "試合結果の保存")
+if official_history_record:
+    st.success(
+        "NPB公式速報の確定結果を試合履歴へ保存済み｜"
+        f"ソフトバンク {official_history_record['hawks_score']} - "
+        f"{official_history_record['opponent_score']} {official_history_record['opponent']}"
+    )
+elif simulator_mode == "試合中" and game and manual_scores is not None:
+    st.caption(
+        "試合終了後は公式速報から自動保存します。速報を取得できない場合のみ、"
+        "入力スコアを確認して手動保存してください。"
+    )
+    manual_confirmed = st.checkbox(
+        "試合終了と入力スコアを確認しました",
+        value=False,
+        key="ai_detail_manual_result_confirmed",
+    )
+    if st.button(
+        "入力スコアを試合履歴へ保存",
+        icon=":material/save:",
+        disabled=not manual_confirmed,
+        key="ai_detail_manual_result_save",
+    ):
+        manual_game = dict(game)
+        manual_game["status"] = "final"
+        if manual_game.get("home") == "ソフトバンク":
+            manual_game["home_score"], manual_game["away_score"] = manual_scores
+        else:
+            manual_game["away_score"], manual_game["home_score"] = manual_scores
+        manual_record = build_final_history_record(
+            manual_game,
+            live_probability=simulation["final_probability"],
+            source="AI詳細 手動保存",
+        )
+        if manual_record:
+            save_game_history(history_path, manual_record)
+            st.success("試合結果を保存しました。")
+            st.rerun()
+else:
+    st.caption("試合情報の同期後、結果保存を利用できます。")
 
 render_section("LEGACY ANALYSIS", "従来版の高度分析")
 st.caption(

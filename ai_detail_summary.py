@@ -244,6 +244,57 @@ def find_team_prediction(
     return None
 
 
+def build_final_history_record(
+    game: dict[str, Any] | None,
+    *,
+    team: str = "ソフトバンク",
+    live_probability: float | None = None,
+    source: str = "NPB公式速報",
+) -> dict[str, Any] | None:
+    """Build one normalized history row from a confirmed final game."""
+    if not game:
+        return None
+    status = str(game.get("status") or "").strip().lower()
+    if not any(token in status for token in ("final", "finish", "completed", "終了")):
+        return None
+
+    home = str(game.get("home") or "")
+    away = str(game.get("away") or "")
+    if team not in {home, away}:
+        return None
+    try:
+        home_score = int(game.get("home_score"))
+        away_score = int(game.get("away_score"))
+    except (TypeError, ValueError):
+        return None
+
+    is_home = home == team
+    team_score = home_score if is_home else away_score
+    opponent_score = away_score if is_home else home_score
+    result = "勝" if team_score > opponent_score else "敗" if team_score < opponent_score else "分"
+    opponent = away if is_home else home
+    pregame_probability = hawks_probability(game)
+    record = {
+        "game_id": str(game.get("game_id") or f"{game.get('date')}_{home}_{away}"),
+        "date": str(game.get("date") or ""),
+        "opponent": opponent,
+        "stadium": str(game.get("venue") or game.get("stadium") or "-"),
+        "hawks_score": team_score,
+        "opponent_score": opponent_score,
+        "result": result,
+        "hawks_starter": str(game.get("home_starter" if is_home else "away_starter") or "-"),
+        "opponent_starter": str(game.get("away_starter" if is_home else "home_starter") or "-"),
+        "ai_probability": pregame_probability,
+        "pregame_probability": pregame_probability,
+        "base_probability": pregame_probability,
+        "auto_saved": source == "NPB公式速報",
+        "source": source,
+    }
+    if live_probability is not None:
+        record["live_probability"] = round(float(live_probability), 1)
+    return record
+
+
 def hawks_history_summary(history: list[dict[str, Any]]) -> dict[str, Any]:
     rows = [
         row for row in history
