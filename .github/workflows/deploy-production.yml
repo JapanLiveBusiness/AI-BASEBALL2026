@@ -115,7 +115,7 @@ jobs:
           done
 
           if [ "$configured" -eq 0 ]; then
-            echo "Auth0 secrets are not configured; retaining legacy single-user mode"
+            echo "Auth0 secrets are not configured; server configuration must pass validation"
             exit 0
           fi
           if [ "$missing" -ne 0 ]; then
@@ -129,6 +129,8 @@ jobs:
           import json
           import os
           from pathlib import Path
+          import tomllib
+          from auth_policy import validate_auth_config
 
           domain = os.environ["AUTH0_DOMAIN"].strip()
           domain = domain.removeprefix("https://").removeprefix("http://").rstrip("/")
@@ -142,7 +144,7 @@ jobs:
           content = "\n".join(
               [
                   "[auth]",
-                  f"redirect_uri = {quote('https://ai-baseball-studio.f-polaris.jp/oauth2callback')}",
+                  f"redirect_uri = {quote('https://ai-baseball.f-polaris.jp/oauth2callback')}",
                   f"cookie_secret = {quote(cookie_secret)}",
                   "",
                   "[auth.auth0]",
@@ -151,8 +153,16 @@ jobs:
                   f"server_metadata_url = {quote(f'https://{domain}/.well-known/openid-configuration')}",
                   'client_kwargs = { "prompt" = "login" }',
                   "",
+                  "[security]",
+                  'access_mode = "all_verified"',
+                  "session_max_age_seconds = 28800",
+                  "",
               ]
           )
+          try:
+              validate_auth_config(tomllib.loads(content))
+          except Exception:
+              raise SystemExit("Auth0 configuration failed validation") from None
           Path(os.environ["AUTH_FILE"]).write_text(content, encoding="utf-8")
           PY
           chmod 600 "$AUTH_FILE"

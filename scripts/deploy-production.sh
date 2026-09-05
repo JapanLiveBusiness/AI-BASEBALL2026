@@ -66,6 +66,15 @@ PREVIOUS_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev
 echo "[deploy] building $NEW_IMAGE"
 docker build -t "$NEW_IMAGE" .
 
+# Validate configuration before stopping the currently running service.
+if [ ! -f "$AUTH_SECRETS_FILE" ]; then
+  echo "[deploy] Auth0 configuration required; existing container retained"
+  exit 1
+fi
+docker run --rm --network none \
+  -v "$AUTH_SECRETS_FILE:/run/auth0-secrets.toml:ro" \
+  "$NEW_IMAGE" python scripts/validate_auth_config.py /run/auth0-secrets.toml
+
 if docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER_NAME"; then
   docker rm -f "$CONTAINER_NAME"
 fi
@@ -83,7 +92,8 @@ start_container() {
     auth_env=(-e "AI_BASEBALL_AUTH_ENABLED=1")
     echo "[deploy] Auth0 configuration mounted"
   else
-    echo "[deploy] Auth0 configuration not found; retaining legacy single-user mode"
+    echo "[deploy] Auth0 configuration required"
+    return 1
   fi
   docker run -d \
     --name "$CONTAINER_NAME" \
@@ -91,7 +101,9 @@ start_container() {
     --network "$TRAEFIK_NETWORK" \
     --dns 1.1.1.1 \
     --dns 8.8.8.8 \
-    -p "$PORT:8501" \
+    -p "127.0.0.1:$PORT:8501" \
+    --security-opt no-new-privileges:true \
+    --cap-drop ALL \
     -v "$DATA_DIR:/app/data" \
     "${shared_mount[@]}" \
     "${auth_mount[@]}" \
@@ -104,7 +116,11 @@ start_container() {
     --label "traefik.http.routers.ai-baseball-production.tls=true" \
     --label "traefik.http.routers.ai-baseball-production.tls.certresolver=letsencrypt" \
     --label "traefik.http.routers.ai-baseball-production.service=ai-baseball-production" \
-    --label "traefik.http.routers.ai-baseball-production.middlewares=ai-baseball-deploy-marker" \
+    --label "traefik.http.routers.ai-baseball-production.middlewares=ai-baseball-deploy-marker,ai-baseball-security" \
+    --label "traefik.http.middlewares.ai-baseball-security.headers.contenttypenosniff=true" \
+    --label "traefik.http.middlewares.ai-baseball-security.headers.framedeny=true" \
+    --label "traefik.http.middlewares.ai-baseball-security.headers.referrerpolicy=no-referrer" \
+    --label "traefik.http.middlewares.ai-baseball-security.headers.stsseconds=31536000" \
     --label "traefik.http.middlewares.ai-baseball-deploy-marker.headers.customresponseheaders.X-AI-Baseball-Deploy=$SHORT_SHA" \
     --label "traefik.http.services.ai-baseball-production.loadbalancer.server.port=8501" \
     "$image"

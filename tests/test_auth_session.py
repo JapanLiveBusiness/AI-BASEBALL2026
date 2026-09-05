@@ -23,13 +23,11 @@ class AuthSessionTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             user_from_claims({"email": "u@example.com"})
 
-    def test_storage_key_is_stable_and_legacy_path_is_preserved(self):
+    def test_storage_key_is_stable_and_unauthenticated_access_is_rejected(self):
         self.assertEqual(user_storage_key("auth0|abc"), user_storage_key("auth0|abc"))
         legacy = AuthUser("legacy-single-user", "現行利用者", "", False)
-        self.assertEqual(
-            user_bets_path(Path("data"), legacy),
-            Path("data") / "bet_records.json",
-        )
+        with self.assertRaises(PermissionError):
+            user_bets_path(Path("data"), legacy)
 
 
 if __name__ == "__main__":
