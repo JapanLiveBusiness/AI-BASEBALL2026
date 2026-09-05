@@ -199,7 +199,7 @@ def handicap_html(game: dict, show_handicap: bool) -> str:
         if token is not None:
             team = html.escape(str(game.get(side) or ("ホーム" if side == "home" else "ビジター")))
             entries.append(f"{team} {html.escape(str(token))}")
-    value = " / ".join(entries) if entries else "未掲載・未取得"
+    value = " / ".join(entries) if entries else "ハンデなし"
     return f'<div class="handicap"><span>HANDICAP</span><strong>{value}</strong></div>'
 
 
@@ -450,4 +450,4 @@ def render_match_center(target_date: date) -> None:
 
 
 render_match_center(selected_date)
-st.caption("前日・翌日ボタンまたは日付欄で移動できます。過去日と当日は公開ハンデ、未来日は公式の開始時刻・球場を表示します。未掲載のハンデは推測せず、そのまま明示します。")
+st.caption("前日・翌日ボタンまたは日付欄で移動できます。過去日と当日は公開ハンデ、未来日は公式の開始時刻・球場を表示します。ハンデは数値が入っている片側だけが対象で、空欄はハンデなしです。")
