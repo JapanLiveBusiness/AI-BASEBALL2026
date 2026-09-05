@@ -66,7 +66,7 @@ def load_results_cache() -> dict:
     return {"games": list(merged.values())}
 
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=30, max_entries=32, show_spinner=False)
 def cached_official_games(date_iso: str) -> list[dict]:
     return fetch_npb_schedule_day(date.fromisoformat(date_iso))
 

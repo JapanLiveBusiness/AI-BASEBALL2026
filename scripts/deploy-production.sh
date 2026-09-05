@@ -89,6 +89,8 @@ start_container() {
     --name "$CONTAINER_NAME" \
     --restart unless-stopped \
     --network "$TRAEFIK_NETWORK" \
+    --dns 1.1.1.1 \
+    --dns 8.8.8.8 \
     -p "$PORT:8501" \
     -v "$DATA_DIR:/app/data" \
     "${shared_mount[@]}" \

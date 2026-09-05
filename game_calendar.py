@@ -33,6 +33,21 @@ TEAM_ALIASES = {
     "福岡ソフトバンク": "ソフトバンク",
     "横浜DeNA": "DeNA",
 }
+TEAM_CODE_NAMES = {
+    "g": "巨人",
+    "s": "ヤクルト",
+    "db": "DeNA",
+    "d": "中日",
+    "t": "阪神",
+    "c": "広島",
+    "f": "日本ハム",
+    "e": "楽天",
+    "l": "西武",
+    "m": "ロッテ",
+    "b": "オリックス",
+    "h": "ソフトバンク",
+}
+LIVE_INNING_PATTERN = re.compile(r"(?:^|\s)(?:[1-9]|1[0-2])回(?:表|裏)?(?:\s|$)")
 
 
 def clean_text(value) -> str:
@@ -90,7 +105,9 @@ def parse_npb_schedule_html(content, year: int, month: int) -> list[dict]:
                 venue = candidate
 
         status = "scheduled"
-        if score_match:
+        if score_match and LIVE_INNING_PATTERN.search(text):
+            status = "live"
+        elif score_match:
             status = "final"
         elif any(token in text for token in ("中止", "ノーゲーム")):
             status = "cancelled"
@@ -114,6 +131,32 @@ def parse_npb_schedule_html(content, year: int, month: int) -> list[dict]:
     unique = {}
     for game in games:
         unique[(game["date"], game["home"], game["away"])] = game
+
+    # The official monthly page updates scores inside a linked compact view,
+    # while its detail row can remain as the original pre-game schedule.
+    # Merge those live link values over the corresponding detail row.
+    score_path = re.compile(
+        rf"/scores/{year}/(\d{{4}})/([a-z]+)-([a-z]+)-\d+/?(?:box\.html)?$"
+    )
+    for anchor in soup.find_all("a", href=True):
+        path_match = score_path.search(str(anchor.get("href") or ""))
+        anchor_text = clean_text(anchor.get_text(" ", strip=True))
+        score_match = re.search(r"(?<!\d)(\d{1,2})\s*-\s*(\d{1,2})(?!\d)", anchor_text)
+        if not path_match or not score_match or not LIVE_INNING_PATTERN.search(anchor_text):
+            continue
+        mmdd, home_code, away_code = path_match.groups()
+        try:
+            game_date = date(year, int(mmdd[:2]), int(mmdd[2:]))
+        except ValueError:
+            continue
+        key = (game_date.isoformat(), TEAM_CODE_NAMES.get(home_code, ""), TEAM_CODE_NAMES.get(away_code, ""))
+        if key in unique:
+            unique[key].update({
+                "status": "live",
+                "home_score": int(score_match.group(1)),
+                "away_score": int(score_match.group(2)),
+                "result_source": "NPB公式速報",
+            })
     return list(unique.values())
 
 
@@ -180,6 +223,17 @@ def same_match(left: dict, right: dict) -> bool:
     return "" not in left_teams and left_teams == right_teams
 
 
+def _status_phase(value) -> int:
+    status = clean_text(value).lower()
+    if status in {"final", "finished", "completed", "終了", "試合終了", "cancelled", "中止"}:
+        return 2
+    if status in {"live", "in_progress", "playing", "試合中", "開催中"} or any(
+        token in status for token in ("live", "progress", "試合中")
+    ):
+        return 1
+    return 0
+
+
 def merge_game_sources(*sources: list[dict]) -> list[dict]:
     """Merge schedule/result sources without downgrading confirmed results."""
     merged = []
@@ -189,15 +243,11 @@ def merge_game_sources(*sources: list[dict]) -> list[dict]:
             if existing is None:
                 merged.append(dict(incoming))
                 continue
-            existing_final = str(existing.get("status") or "").lower() in {
-                "final", "finished", "completed", "終了", "試合終了",
-            }
-            incoming_final = str(incoming.get("status") or "").lower() in {
-                "final", "finished", "completed", "終了", "試合終了",
-            }
+            existing_phase = _status_phase(existing.get("status"))
+            incoming_phase = _status_phase(incoming.get("status"))
             for key, value in incoming.items():
                 if value not in (None, "", "--:--", "会場未定"):
-                    if existing_final and not incoming_final and key in {
+                    if existing_phase > incoming_phase and key in {
                         "status", "home_score", "away_score", "result_source",
                     }:
                         continue

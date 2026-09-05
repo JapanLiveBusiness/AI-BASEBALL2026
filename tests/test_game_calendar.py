@@ -29,6 +29,34 @@ def test_parse_official_schedule_keeps_rowspan_date_and_schedule_details():
     assert (games[2]["home_score"], games[2]["away_score"]) == (5, 2)
 
 
+def test_parse_official_schedule_marks_inning_score_as_live():
+    markup = """
+    <table>
+      <tr><td>9/5（土）</td><td>ソフトバンク 1 - 0 西武</td><td>みずほPayPay 2回</td></tr>
+    </table>
+    """
+
+    game = parse_npb_schedule_html(markup, 2026, 9)[0]
+
+    assert game["status"] == "live"
+    assert (game["home_score"], game["away_score"]) == (1, 0)
+
+
+def test_parse_official_schedule_merges_compact_live_score_link():
+    markup = """
+    <table>
+      <tr><td>9/5（土）</td><td>ソフトバンク - 西武</td><td>みずほPayPay 14:00</td></tr>
+    </table>
+    <a href="/scores/2026/0905/h-l-22/">1-0 （みずほPayPay） 1回裏</a>
+    """
+
+    game = parse_npb_schedule_html(markup, 2026, 9)[0]
+
+    assert game["status"] == "live"
+    assert game["result_source"] == "NPB公式速報"
+    assert (game["home_score"], game["away_score"]) == (1, 0)
+
+
 def test_parse_and_attach_daily_handicaps():
     markup = """
     <div class="game-detail2">
@@ -88,3 +116,27 @@ def test_merge_sources_does_not_downgrade_official_final_result():
     assert result[0]["away_score"] == 2
     assert result[0]["result_source"] == "NPB公式"
     assert result[0]["away_handicap"] == "0.6"
+
+
+def test_merge_sources_does_not_downgrade_live_game_with_daily_schedule():
+    live = [{
+        "home": "ソフトバンク",
+        "away": "西武",
+        "home_score": 1,
+        "away_score": 0,
+        "status": "live",
+        "result_source": "NPB公式速報",
+    }]
+    daily_schedule = [{
+        "home": "ソフトバンク",
+        "away": "西武",
+        "status": "scheduled",
+        "result_source": "本番共有データ",
+    }]
+
+    result = merge_game_sources(live, daily_schedule)
+
+    assert result[0]["status"] == "live"
+    assert result[0]["home_score"] == 1
+    assert result[0]["away_score"] == 0
+    assert result[0]["result_source"] == "NPB公式速報"
