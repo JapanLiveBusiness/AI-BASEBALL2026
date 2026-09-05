@@ -22,6 +22,23 @@ from studio_theme import apply_studio_theme, render_topbar, render_hero, render_
 
 st.set_page_config(page_title="収支マップ | MY AI BASEBALL", page_icon="💰", layout="wide")
 apply_studio_theme()
+st.markdown(
+    """
+<style>
+.st-key-weekly-profit-metrics [data-testid="stMetricValue"],
+.st-key-weekly-profit-metrics [data-testid="stMetricValue"] > div,
+.st-key-total-profit-metrics [data-testid="stMetricValue"],
+.st-key-total-profit-metrics [data-testid="stMetricValue"] > div {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    text-overflow: clip !important;
+    overflow: visible !important;
+    font-size: clamp(1.25rem, 2.5vw, 2rem);
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
 auth_user = render_topbar("PROFIT MAP")
 render_hero(
     "収支マップ",
@@ -237,24 +254,25 @@ st.caption(
     f"対象期間: {weekly['week_start'].strftime('%Y/%m/%d')}〜"
     f"{weekly['week_end'].strftime('%Y/%m/%d')}（日本時間・月曜始まり）"
 )
-w1, w2, w3, w4, w5 = st.columns(5)
-w1.metric("週次確定損益", yen(weekly["profit"]))
-w2.metric("確定BET", f"{weekly['final_count']}試合")
-w3.metric(
-    "勝敗",
-    f"{weekly['wins']}勝 {weekly['losses']}敗"
-    + (f" {weekly['pushes']}分" if weekly["pushes"] else ""),
-)
-w4.metric(
-    "週次ROI",
-    f"{weekly['roi']:+.1f}%" if weekly["roi"] is not None else "-",
-)
-w5.metric(
-    "未確定BET",
-    yen(weekly["pending_amount"]),
-    f"{weekly['pending_count']}試合",
-    delta_color="off",
-)
+with st.container(key="weekly-profit-metrics"):
+    st.metric("週次確定損益", yen(weekly["profit"]))
+    w2, w3, w4, w5 = st.columns(4)
+    w2.metric("確定BET", f"{weekly['final_count']}試合")
+    w3.metric(
+        "勝敗",
+        f"{weekly['wins']}勝 {weekly['losses']}敗"
+        + (f" {weekly['pushes']}分" if weekly["pushes"] else ""),
+    )
+    w4.metric(
+        "週次ROI",
+        f"{weekly['roi']:+.1f}%" if weekly["roi"] is not None else "-",
+    )
+    w5.metric(
+        "未確定BET",
+        yen(weekly["pending_amount"]),
+        f"{weekly['pending_count']}試合",
+        delta_color="off",
+    )
 
 sort_option = st.selectbox("履歴の並び順", SORT_OPTIONS, key="profit_map_sort")
 sorted_settled = sort_bets(settled, sort_option)
@@ -270,12 +288,13 @@ if settled:
     roi = (total_profit / total_bet * 100.0) if total_bet else 0.0
 
     render_section("PERFORMANCE", "収支サマリー")
-    s1, s2, s3, s4, s5 = st.columns(5)
-    s1.metric("総収支", yen(total_profit))
-    s2.metric("確定BET", f"{len(settled)}試合")
-    s3.metric("勝敗", f"{wins}勝 {losses}敗" + (f" {pushes}分" if pushes else ""))
-    s4.metric("的中率", f"{hit_rate:.1f}%" if hit_rate is not None else "-")
-    s5.metric("ROI", f"{roi:+.1f}%" if total_bet else "-")
+    with st.container(key="total-profit-metrics"):
+        st.metric("総収支", yen(total_profit))
+        s2, s3, s4, s5 = st.columns(4)
+        s2.metric("確定BET", f"{len(settled)}試合")
+        s3.metric("勝敗", f"{wins}勝 {losses}敗" + (f" {pushes}分" if pushes else ""))
+        s4.metric("的中率", f"{hit_rate:.1f}%" if hit_rate is not None else "-")
+        s5.metric("ROI", f"{roi:+.1f}%" if total_bet else "-")
 
     running = 0
     x_values, y_values, hover_values = [], [], []
