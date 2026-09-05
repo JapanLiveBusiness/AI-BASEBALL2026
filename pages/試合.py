@@ -9,7 +9,13 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 
-from game_calendar import attach_handicaps, fetch_daily_handicaps, fetch_npb_schedule_day, merge_game_sources
+from game_calendar import (
+    attach_handicaps,
+    attach_hawks_history_results,
+    fetch_daily_handicaps,
+    fetch_npb_schedule_day,
+    merge_game_sources,
+)
 from gamecast import gamecast_snapshot, select_featured_game
 from daily_data import load_current_daily_json
 from npb_live import fetch_npb_live_game
@@ -158,6 +164,9 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
             if str(game.get("date") or "") == selected_iso
         ]
     games = merge_game_sources(official_games, history_games, local_games, daily_results)
+    saved_hawks_history = load_json("game_history.json", [])
+    if isinstance(saved_hawks_history, list):
+        games = attach_hawks_history_results(games, saved_hawks_history)
     if selected_date == current_date:
         hawks_index = next(
             (

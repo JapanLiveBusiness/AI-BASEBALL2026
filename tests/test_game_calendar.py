@@ -2,6 +2,7 @@ from datetime import date
 
 from game_calendar import (
     attach_handicaps,
+    attach_hawks_history_results,
     load_npb_schedule_day,
     merge_game_sources,
     parse_handicap_html,
@@ -192,4 +193,29 @@ def test_merge_sources_does_not_downgrade_live_game_with_daily_schedule():
     assert result[0]["status"] == "live"
     assert result[0]["home_score"] == 1
     assert result[0]["away_score"] == 0
+
+
+def test_saved_hawks_final_overrides_regressed_schedule_status():
+    games = [{
+        "date": "2026-09-05",
+        "time": "14:00",
+        "home": "ソフトバンク",
+        "away": "西武",
+        "status": "scheduled",
+        "home_score": None,
+        "away_score": None,
+    }]
+    history = [{
+        "date": "2026-09-05",
+        "opponent": "西武",
+        "hawks_score": 2,
+        "opponent_score": 0,
+        "source": "NPB公式速報",
+    }]
+
+    result = attach_hawks_history_results(games, history)
+
+    assert result[0]["status"] == "final"
+    assert (result[0]["home_score"], result[0]["away_score"]) == (2, 0)
+    assert result[0]["result_source"] == "NPB公式速報"
     assert result[0]["result_source"] == "NPB公式速報"

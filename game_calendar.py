@@ -291,3 +291,39 @@ def attach_handicaps(games: list[dict], handicaps: list[dict]) -> list[dict]:
             for key in ("home_handicap", "away_handicap", "handicap_source_url"):
                 game[key] = row.get(key)
     return output
+
+
+def attach_hawks_history_results(
+    games: list[dict],
+    history: list[dict],
+) -> list[dict]:
+    """Restore persisted Hawks finals when the schedule source regresses."""
+    output = [dict(game) for game in games]
+    for record in history or []:
+        if not isinstance(record, dict):
+            continue
+        opponent = normalize_team(record.get("opponent"))
+        record_date = str(record.get("date") or "")
+        game = next(
+            (
+                row
+                for row in output
+                if str(row.get("date") or "") == record_date
+                and {normalize_team(row.get("home")), normalize_team(row.get("away"))}
+                == {"ソフトバンク", opponent}
+            ),
+            None,
+        )
+        if game is None:
+            continue
+        hawks_score = record.get("hawks_score")
+        opponent_score = record.get("opponent_score")
+        if hawks_score is None or opponent_score is None:
+            continue
+        game["status"] = "final"
+        game["result_source"] = record.get("source") or "保存済み試合結果"
+        if normalize_team(game.get("home")) == "ソフトバンク":
+            game["home_score"], game["away_score"] = hawks_score, opponent_score
+        else:
+            game["home_score"], game["away_score"] = opponent_score, hawks_score
+    return output
