@@ -55,6 +55,10 @@ def profit_for_result(result, amount):
 
 def profit_for_record(record):
     """Return canonical profit, recalculating settled legacy records."""
+    if record.get("settlement_rule") == "jpb_fractional_v1":
+        # Preserve the versioned settlement saved with the record. Do not apply
+        # a different table to historical records while merely viewing them.
+        return int(round(_number(record.get("profit"))))
     if record.get("status") == "final" and record.get("result") in {
         "win", "loss", "push",
     }:

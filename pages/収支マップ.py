@@ -15,9 +15,10 @@ from bet_analytics import (
     sort_bets,
     weekly_bet_summary,
 )
-from bet_store import BetStoreError, append_bet, delete_bet, import_bets, load_bets, update_bet
+from bet_store import BetStoreError, append_bet, delete_bet, import_bets, load_bets, update_bet, recalculate_handicap_history
 from bet_transfer import BetSpreadsheetError, bets_to_xlsx, read_bet_spreadsheet
 from manual_bet_form import render_manual_bet_form
+from handicap_rules import fractional_settlement, normalize_handicap, RULE
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links, render_section
 
 st.set_page_config(page_title="収支マップ | MY AI BASEBALL", page_icon="💰", layout="wide")
@@ -73,6 +74,7 @@ def _record_time(value):
 @st.dialog("BETを編集", width="large")
 def edit_bet_dialog(bet):
     record_id = bet["id"]
+    fractional = bet.get("settlement_rule") == RULE
     with st.form(f"edit_bet_{record_id}"):
         c1, c2 = st.columns(2)
         selected_date = c1.date_input("試合日", value=_record_date(bet.get("date")))
@@ -82,7 +84,7 @@ def edit_bet_dialog(bet):
         opponent = c4.text_input("対戦相手", value=str(bet.get("opponent", "")))
         c5, c6 = st.columns(2)
         amount = c5.number_input("BET金額（円）", min_value=0, step=1000, value=int(abs(float(bet.get("bet_amount", 0) or float(bet.get("bet_units", 0) or 0) * 10000))))
-        handicap = c6.number_input("ハンディ", step=0.1, value=float(bet.get("handicap", 0) or 0))
+        handicap = c6.text_input("ハンディ", value=str(bet.get("handicap", "0"))) if fractional else c6.number_input("ハンディ", step=0.1, value=float(bet.get("handicap", 0) or 0))
         status_label = st.selectbox("状態", ["未確定", "確定"], index=1 if bet.get("status") == "final" else 0)
         c7, c8 = st.columns(2)
         team_score = c7.number_input("BET先チーム得点", min_value=0, step=1, value=int(bet.get("team_score") or 0))
@@ -97,13 +99,21 @@ def edit_bet_dialog(bet):
         return
 
     is_final = status_label == "確定"
-    adjusted_score, result = settle_bet(team_score, opponent_score, handicap) if is_final else (None, None)
+    settlement = {}
+    if fractional:
+        try:
+            handicap = normalize_handicap(handicap)
+            settlement = fractional_settlement(team_score, opponent_score, handicap, amount) if is_final else {"settlement_label": None, "settlement_fraction": None}
+        except ValueError as exc:
+            st.error(str(exc))
+            return
+    adjusted_score, result = settle_bet(team_score, opponent_score, handicap) if is_final and not fractional else (None, None)
     changes = {
         "date": selected_date.isoformat(),
         "time": game_time.strftime("%H:%M"),
         "team": team.strip(),
         "opponent": opponent.strip(),
-        "handicap": float(handicap),
+        "handicap": handicap if fractional else float(handicap),
         "bet_units": float(amount) / 10000.0,
         "bet_amount": int(amount),
         "status": "final" if is_final else "pending",
@@ -115,6 +125,7 @@ def edit_bet_dialog(bet):
         "adjusted_score": adjusted_score,
         "memo": memo.strip(),
         "updated_at": datetime.now().isoformat(timespec="seconds"),
+        **settlement,
     }
     try:
         update_bet(BETS_FILE, record_id, changes)
@@ -153,6 +164,18 @@ except BetStoreError as exc:
     st.stop()
 
 render_section("SPREADSHEET", "BET履歴のエクスポート・インポート")
+if bets:
+    with st.expander("ハンデ表で既存履歴を再計算"):
+        st.caption("現在の利用者の履歴をバックアップしてから、丸勝ち・分勝ち・分負けのルールで再計算します。1.5と1半は別のハンデです。")
+        if st.button("バックアップして既存履歴を再計算", key="recalculate_fractional_history"):
+            try:
+                report = recalculate_handicap_history(BETS_FILE)
+            except BetStoreError as exc:
+                st.error(str(exc))
+            else:
+                backup_notice = "更新前の履歴はサーバーにバックアップ済みです。" if report["backup"] else "すべて新しい計算ルールで反映済みです。"
+                st.session_state["bet_notice"] = f"{report['count']}件を確認し、{report['changed']}件を再計算しました。総収支 {report['before']:+,}円 → {report['after']:+,}円。{backup_notice}"
+                st.rerun()
 with st.container(border=True):
     st.caption(
         "現在ログイン中の利用者の履歴だけをExcelへ出力します。"
@@ -292,7 +315,7 @@ if settled:
         hover_values.append(
             f"<b>{team_name} vs {opponent_name}</b><br>日時: {bet_date} {bet_time}<br>BET先: {team_name}"
             f"<br>ハンディ: {bet.get('handicap', 0)}<br>BET額: {yen(amount)}<br>スコア: {score}"
-            f"<br>結果: {result_label(bet.get('result'))}<br>この試合の損益: {yen(profit_value)}"
+            f"<br>結果: {bet.get('settlement_label') or result_label(bet.get('result'))}<br>この試合の損益: {yen(profit_value)}"
             f"<br><b>累積収支: {yen(running)}</b>"
         )
 
@@ -320,7 +343,7 @@ if settled:
             c2.metric("BET額", yen(amount))
             c3.metric("ハンディ", str(bet.get("handicap", 0)))
             c4.metric("損益", yen(profit_value))
-            st.write(f"**試合スコア:** {score}　｜　**結果:** {result_label(bet.get('result'))}")
+            st.write(f"**試合スコア:** {score}　｜　**結果:** {bet.get('settlement_label') or result_label(bet.get('result'))}")
             if bet.get("memo"):
                 st.write(f"**メモ:** {bet['memo']}")
             actions = st.container(horizontal=True)
@@ -346,7 +369,9 @@ if pending:
                 opponent_score = c2.number_input("対戦相手得点", min_value=0, step=1, value=0, key=f"settle_opponent_{bet['id']}")
                 settle_submitted = st.form_submit_button("スコアを確定して精算", type="primary", width="stretch")
             if settle_submitted:
-                adjusted_score, result = settle_bet(team_score, opponent_score, bet.get("handicap", 0))
+                fractional = bet.get("settlement_rule") == RULE
+                settlement = fractional_settlement(team_score, opponent_score, bet.get("handicap", "0"), amount) if fractional else {}
+                adjusted_score, result = settle_bet(team_score, opponent_score, bet.get("handicap", 0)) if not fractional else (None, settlement["result"])
                 changes = {
                     "status": "final",
                     "result": result,
@@ -356,6 +381,7 @@ if pending:
                     "adjusted_score": adjusted_score,
                     "settled": True,
                     "updated_at": datetime.now().isoformat(timespec="seconds"),
+                    **settlement,
                 }
                 try:
                     update_bet(BETS_FILE, bet["id"], changes)

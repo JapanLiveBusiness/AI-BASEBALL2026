@@ -47,8 +47,8 @@ def test_duplicate_across_entry_pages_and_user_isolation(tmp_path):
 def test_final_defaults_follow_selected_team_and_handicap_sign():
     home = entry_defaults(GAME, "阪神")
     away = entry_defaults(GAME, "ヤクルト")
-    assert (home["team_score"], home["opponent_score"], home["handicap"]) == (1, 4, 0.6)
-    assert (away["team_score"], away["opponent_score"], away["handicap"]) == (4, 1, -0.6)
+    assert (home["team_score"], home["opponent_score"], home["handicap"]) == (1, 4, "0.6")
+    assert (away["team_score"], away["opponent_score"], away["handicap"]) == (4, 1, "-0.6")
     assert home["status"] == away["status"] == "確定"
 
 
@@ -58,7 +58,7 @@ def test_missing_values_and_live_scores_are_not_confirmed_zeros():
     live = entry_defaults(dict(GAME, status="live"), "阪神")
     assert live["status"] == "未確定" and live["team_score"] is None
     zero = entry_defaults(dict(GAME, home_score=0, home_handicap=0), "阪神")
-    assert zero["team_score"] == 0 and zero["handicap"] == 0
+    assert zero["team_score"] == 0 and zero["handicap"] == "0"
 
 
 def test_stale_past_cache_refresh_and_reversed_handicap_source(monkeypatch):
@@ -79,7 +79,7 @@ def test_persisted_final_autofills_during_network_outage(tmp_path, monkeypatch):
     monkeypatch.setattr("manual_bet_defaults.fetch_daily_handicaps", lambda *a, **k: [])
     games = load_entry_games(date(2026, 8, 20), [tmp_path / "npb_today.json"], today=date(2026, 9, 6))
     defaults = entry_defaults(games[0], "阪神")
-    assert (defaults["status"], defaults["team_score"], defaults["opponent_score"], defaults["handicap"]) == ("確定", 1, 4, 0.6)
+    assert (defaults["status"], defaults["team_score"], defaults["opponent_score"], defaults["handicap"]) == ("確定", 1, 4, "0.6")
 
 
 def make_app(tmp_path, monkeypatch, games=None):
@@ -99,11 +99,11 @@ def test_form_autofill_switch_sides_and_repeat_submission(tmp_path, monkeypatch)
     app, path = make_app(tmp_path, monkeypatch)
     assert app.number_input(key="test_team_score").value == 1
     assert app.number_input(key="test_opponent_score").value == 4
-    assert app.number_input(key="test_handicap").value == 0.6
+    assert app.text_input(key="test_handicap").value == "0.6"
     assert app.selectbox(key="test_status").value == "確定"
     [x for x in app.selectbox if x.label == "BET先 / チーム"][0].select("ヤクルト").run()
     assert app.number_input(key="test_team_score").value == 4
-    assert app.number_input(key="test_handicap").value == -0.6
+    assert app.text_input(key="test_handicap").value == "-0.6"
     app.button[0].click().run()
     assert not app.exception
     assert len(load_bets(path)) == 1
@@ -120,7 +120,7 @@ def test_changing_match_clears_stale_scores_and_handicap(tmp_path, monkeypatch):
     assert not app.exception
     assert app.number_input(key="test_team_score").value is None
     assert app.number_input(key="test_opponent_score").value is None
-    assert app.number_input(key="test_handicap").value is None
+    assert app.text_input(key="test_handicap").value == ""
     assert app.selectbox(key="test_status").value == "未確定"
     app.button[0].click().run()
     assert load_bets(path) == []

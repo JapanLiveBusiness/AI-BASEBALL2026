@@ -13,9 +13,10 @@ import pandas as pd
 
 from bet_analytics import bet_amount as record_bet_amount
 from bet_analytics import profit_for_record, profit_for_result, settle_bet
+from handicap_rules import RULE, normalize_handicap, fractional_settlement
 
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 MAX_IMPORT_ROWS = 5000
 EXPORT_COLUMNS = {
     "id": "BET ID",
@@ -34,6 +35,7 @@ EXPORT_COLUMNS = {
     "source": "登録元",
     "created_at": "登録日時",
     "updated_at": "更新日時",
+    "settlement_rule": "計算ルール",
 }
 IMPORT_ALIASES = {label: key for key, label in EXPORT_COLUMNS.items()}
 IMPORT_ALIASES.update({key: key for key in EXPORT_COLUMNS})
@@ -167,7 +169,13 @@ def normalize_import_frame(frame: pd.DataFrame) -> list[dict[str, Any]]:
         handicap_value = row.get("handicap", 0)
         if pd.isna(handicap_value) or str(handicap_value).strip() == "":
             handicap_value = 0
-        handicap = _number(handicap_value, "ハンディ", row_number, -100, 100)
+        rule = _restore_safe_text(row.get("settlement_rule"))
+        if rule not in {"", RULE}:
+            raise BetSpreadsheetError(f"{row_number}行目: 未対応の計算ルールです。")
+        try:
+            handicap = normalize_handicap(_restore_safe_text(handicap_value)) if rule == RULE else _number(handicap_value, "ハンディ", row_number, -100, 100)
+        except ValueError as exc:
+            raise BetSpreadsheetError(f"{row_number}行目: {exc}") from exc
         team_score = _optional_score(row.get("team_score"), "BET先得点", row_number)
         opponent_score = _optional_score(row.get("opponent_score"), "対戦相手得点", row_number)
         if is_final and (team_score is None or opponent_score is None):
@@ -175,7 +183,7 @@ def normalize_import_frame(frame: pd.DataFrame) -> list[dict[str, Any]]:
 
         adjusted_score, result = (
             settle_bet(team_score, opponent_score, handicap)
-            if is_final
+            if is_final and rule != RULE
             else (None, None)
         )
         record_id = _restore_safe_text(row.get("id")) or f"import-{uuid4().hex}"
@@ -201,6 +209,7 @@ def normalize_import_frame(frame: pd.DataFrame) -> list[dict[str, Any]]:
                 "created_at": _restore_safe_text(row.get("created_at"))[:100]
                 or datetime.now().astimezone().isoformat(timespec="seconds"),
                 "updated_at": _restore_safe_text(row.get("updated_at"))[:100],
+                **(fractional_settlement(team_score, opponent_score, handicap, amount) if is_final and rule == RULE else {"settlement_rule": RULE} if rule == RULE else {}),
             }
         )
     return records
