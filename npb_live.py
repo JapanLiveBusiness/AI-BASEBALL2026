@@ -122,24 +122,37 @@ def parse_play_by_play(content: bytes | str) -> dict[str, Any]:
     if not headings:
         return {}
 
-    heading, match = headings[-1]
+    # NPB renders headings for later innings before those innings begin. Walk
+    # backwards and use the newest section that contains an actual play row.
+    selected = None
+    rows: list[list[str]] = []
+    for heading, match in reversed(headings):
+        section_rows: list[list[str]] = []
+        cursor = heading.find_next()
+        while cursor is not None:
+            if cursor.name in {"h3", "h4", "h5", "h6"} and inning_pattern.search(
+                _text(cursor.get_text(" ", strip=True))
+            ):
+                break
+            if cursor.name == "tr":
+                cells = [_text(cell.get_text(" ", strip=True)) for cell in cursor.find_all(["th", "td"])]
+                if len(cells) >= 5 and re.match(r"^[0-2]アウト$", cells[0]):
+                    section_rows.append(cells)
+            cursor = cursor.find_next()
+        if section_rows:
+            selected = (heading, match)
+            rows = section_rows
+            break
+
+    if selected is None:
+        return {}
+
+    heading, match = selected
     result: dict[str, Any] = {
         "inning": int(match.group(1)),
         "inning_half": match.group(2),
         "batting_team": normalize_team(match.group(3)),
     }
-    rows: list[list[str]] = []
-    cursor = heading.find_next()
-    while cursor is not None:
-        if cursor.name in {"h3", "h4", "h5", "h6"} and inning_pattern.search(
-            _text(cursor.get_text(" ", strip=True))
-        ):
-            break
-        if cursor.name == "tr":
-            cells = [_text(cell.get_text(" ", strip=True)) for cell in cursor.find_all(["th", "td"])]
-            if len(cells) >= 5 and re.match(r"^[0-2]アウト$", cells[0]):
-                rows.append(cells)
-        cursor = cursor.find_next()
 
     current = next((cells for cells in reversed(rows) if cells[2] and not cells[4]), None)
     if current is None:

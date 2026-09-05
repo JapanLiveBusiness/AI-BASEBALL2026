@@ -41,6 +41,20 @@ class NpbLiveTest(unittest.TestCase):
         self.assertEqual(result["strikes"], 1)
         self.assertEqual(result["current_batter"], "打者A")
 
+    def test_parse_play_by_play_skips_future_empty_inning_headings(self):
+        content = """
+        <h3>2回裏（ソフトバンクの攻撃）</h3>
+        <table><tr><td>1アウト</td><td>なし</td><td>打者B</td><td>1－1</td><td></td></tr></table>
+        <h3>3回表（西武の攻撃）</h3><table><tr><th>試合前</th></tr></table>
+        <h3>9回裏（ソフトバンクの攻撃）</h3><table><tr><th>試合前</th></tr></table>
+        """
+
+        result = parse_play_by_play(content)
+
+        self.assertEqual(result["inning"], 2)
+        self.assertEqual(result["inning_half"], "裏")
+        self.assertEqual(result["current_batter"], "打者B")
+
     def test_live_update_keeps_match_identity_for_merge(self):
         scheduled = {
             "date": "2026-09-05",
