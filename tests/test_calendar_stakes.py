@@ -4,6 +4,17 @@ from virtual_replay import replay_records, load_verified_scores
 
 
 class CalendarStakesTests(unittest.TestCase):
+    def test_six_columns_hide_monday_without_changing_totals(self):
+        from virtual_dashboard import summarize
+        rows = [dict(date='2026-09-07', team='月曜記録', bet_amount=10000,
+                     status='calculated', points_delta=9000)]
+        html = calendar_html(rows, '2026-09')
+        self.assertNotIn('vp-weekday">月', html)
+        self.assertNotIn('edit_date=2026-09-07', html)
+        self.assertIn('edit_date=2026-09-08', html)
+        self.assertIn('repeat(6,minmax(0,1fr))', html)
+        self.assertEqual(summarize(rows)['points'], 9000)
+
     def test_labels(self):
         self.assertEqual(bet_amount_label({'bet_amount':200000}), '20万 pt')
         self.assertEqual(bet_amount_label({'bet_units':-40}), '40万 pt')

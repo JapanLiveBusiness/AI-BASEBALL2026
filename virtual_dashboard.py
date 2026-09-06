@@ -63,7 +63,7 @@ def calendar_html(rows, month):
         bets.setdefault(str(row.get("date")), []).append(row)
     cells = []
     for week in calendar.Calendar(firstweekday=0).monthdayscalendar(first.year, first.month):
-        for day in week:
+        for day in week[1:]:
             if day == 0:
                 cells.append('<div class="vp-cell vp-empty"></div>')
                 continue
@@ -78,8 +78,8 @@ def calendar_html(rows, month):
                     notes.append(f"{label} {status.count(state)}")
             details = ''.join(f'<span class="vp-bet"><span>{escape(str(r.get("team") or "チーム未確認"))}</span><span class="vp-stake">{escape(bet_amount_label(r))}</span></span>' for r in bets.get(key, []))
             cells.append(f'<a class="vp-cell {color}" href="?edit_date={key}#day-editor" target="_self" aria-label="{key} の内容を編集"><b>{day}</b><strong>{value}</strong><span class="vp-bets">{details}</span><small>{escape(" / ".join(notes))}</small></a>')
-    style = '<style>.vp-bets{display:block;margin-top:8px}.vp-bet{display:block;color:#253044;font-size:12px;line-height:1.5;overflow-wrap:anywhere;margin-top:6px}.vp-bet>span{display:block}.vp-stake{font-weight:600}@media(max-width:600px){.vp-bet{font-size:10px;line-height:1.4}}</style>'
-    return style + '<div class="vp-calendar">' + ''.join(f'<div class="vp-weekday">{day}</div>' for day in "月火水木金土日") + ''.join(cells) + '</div>'
+    style = '<style>.vp-calendar{grid-template-columns:repeat(6,minmax(0,1fr))!important}.vp-calendar .vp-cell{min-height:150px}.vp-bets{display:block;margin-top:8px}.vp-bet{display:block;color:#253044;font-size:12px;line-height:1.5;overflow-wrap:anywhere;margin-top:6px}.vp-bet>span{display:block}.vp-stake{font-weight:600}@media(max-width:600px){.vp-calendar .vp-cell{min-height:130px}.vp-bet{font-size:10px;line-height:1.4}}</style>'
+    return style + '<div class="vp-calendar">' + ''.join(f'<div class="vp-weekday">{day}</div>' for day in "火水木金土日") + ''.join(cells) + '</div>'
 
 
 def history_rows(rows):
