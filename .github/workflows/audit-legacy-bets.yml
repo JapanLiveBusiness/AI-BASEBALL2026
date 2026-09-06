@@ -1,0 +1,140 @@
+name: Audit legacy BET history (read-only)
+
+on:
+  push:
+    branches:
+      - recovery/audit-legacy-bets
+
+concurrency:
+  group: audit-legacy-bets
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+    steps:
+      - name: Validate deploy secrets
+        shell: bash
+        run: |
+          missing=0
+          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_PORT DEPLOY_SSH_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not available to this workflow"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Check out deployment scripts
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Connect to Tailscale with OAuth
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ env.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ env.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          timeout: 1m
+
+      - name: Resolve current server-01 peer and probe SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          resolved=""
+          for attempt in $(seq 1 12); do
+            echo "Tailscale peer discovery attempt $attempt/12"
+            resolved="$(tailscale status --json | jq -r '
+              [
+                .Peer[]
+                | select(.HostName == "server-01" and .Online == true)
+                | (.TailscaleIPs // [])[0]
+              ]
+              | map(select(. != null))
+              | .[0] // empty
+            ')"
+            if [ -n "$resolved" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          if [ -z "$resolved" ]; then
+            echo "::error::server-01 is not visible as an online Tailscale peer from tag:ci. Check the tailnet Grant destination/source before retrying deployment."
+            exit 1
+          fi
+
+          if [ "$resolved" != "$DEPLOY_HOST" ]; then
+            echo "::warning::Configured DEPLOY_HOST differs from the live server-01 Tailscale address; using the live address for this deployment"
+          fi
+
+          echo "Testing production SSH endpoint on the live server-01 Tailscale peer"
+          nc -vz -w 10 "$resolved" "$DEPLOY_PORT"
+          timeout 15 bash -c "</dev/tcp/$resolved/$DEPLOY_PORT"
+          echo "DEPLOY_HOST_RESOLVED=$resolved" >> "$GITHUB_ENV"
+
+      - name: Configure deployment SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+          ssh-keygen -y -f "$HOME/.ssh/deploy_key" > "$HOME/.ssh/deploy_key.pub"
+          echo "Deployment public key fingerprint:"
+          ssh-keygen -lf "$HOME/.ssh/deploy_key.pub" -E sha256
+
+
+      - name: Read legacy and per-user BET file inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -p "$DEPLOY_PORT" -i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" 'python3 -' <<'PY'
+          import json, hashlib, os
+          from pathlib import Path
+          roots = [Path("/opt/hawks-ai"), Path("/home/user/apps/AI-BASEBALL2026")]
+          skip = {".git", ".venv", "venv", "node_modules", "static", "auth0", "__pycache__"}
+          found = 0
+          for root in roots:
+              if not root.exists():
+                  print(json.dumps({"root": str(root), "exists": False}))
+                  continue
+              for current, dirs, files in os.walk(root, followlinks=False):
+                  dirs[:] = [d for d in dirs if d not in skip and not Path(current, d).is_symlink()]
+                  for name in sorted(files):
+                      path = Path(current, name)
+                      if "bet" not in name.lower() or path.is_symlink():
+                          continue
+                      if not any(ext in name.lower() for ext in (".json", ".bak", ".backup")):
+                          continue
+                      info = {"path": str(path), "bytes": path.stat().st_size}
+                      if path.stat().st_size > 20000000:
+                          info["skipped"] = "over 20MB"
+                      else:
+                          raw = path.read_bytes()
+                          info["sha256"] = hashlib.sha256(raw).hexdigest()
+                          try:
+                              data = json.loads(raw)
+                              if isinstance(data, list):
+                                  records = [r for r in data if isinstance(r, dict)]
+                                  dates = sorted(str(r.get("date")) for r in records if r.get("date"))
+                                  info.update(records=len(records), first_date=dates[0] if dates else None, last_date=dates[-1] if dates else None)
+                              else:
+                                  info["type"] = "non-list JSON"
+                          except (ValueError, UnicodeError):
+                              info["type"] = "non-JSON backup"
+                      print(json.dumps(info, ensure_ascii=False))
+                      found += 1
+          print(json.dumps({"candidate_files": found}))
+          PY
