@@ -4,6 +4,15 @@ from virtual_replay import replay_records, load_verified_scores
 
 
 class CalendarStakesTests(unittest.TestCase):
+    def test_cumulative_includes_hidden_monday_and_excludes_review(self):
+        rows = [dict(date='2026-09-07', status='calculated', points_delta=9000),
+                dict(date='2026-09-08', status='calculated', points_delta=-4000),
+                dict(date='2026-09-08', status='review', points_delta=99999)]
+        html = calendar_html(rows, '2026-09')
+        self.assertIn('累積収支<br>+5,000 pt', html)
+        self.assertNotIn('+104,999', html)
+        self.assertIn('累積収支<br>—', calendar_html([dict(date='2026-09-01', status='review')], '2026-09'))
+
     def test_six_columns_hide_monday_without_changing_totals(self):
         from virtual_dashboard import summarize
         rows = [dict(date='2026-09-07', team='月曜記録', bet_amount=10000,
