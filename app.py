@@ -3065,17 +3065,13 @@ def fetch_hawks_npb_data():
                 game_url = f"https://handenomori.com/jpb/{target_ymd}/"
 
                 try:
-                    r = requests.get(
-                        game_url,
-                        headers=headers,
-                        timeout=10
-                    )
-                    r.raise_for_status()
+                    from handenomori_client import fetch_member_page
+                    member_html = fetch_member_page(game_url, timeout=10)
                 except Exception:
                     continue
 
                 game_soup = BeautifulSoup(
-                    r.text,
+                    member_html,
                     "html.parser"
                 )
 

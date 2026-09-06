@@ -1,7 +1,7 @@
 from datetime import date
 import re
 
-import requests
+from handenomori_client import fetch_member_page
 from bs4 import BeautifulSoup
 
 
@@ -120,18 +120,23 @@ def fetch_hawks_handicap(target_date=None, timeout=10):
     }
 
     try:
-        response = requests.get(
-            url,
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, "html.parser")
-
-        for block in _game_blocks(soup):
-            parsed = _parse_from_text(block)
-            if parsed:
-                result.update(parsed)
+        from game_calendar import parse_handicap_html
+        games = parse_handicap_html(fetch_member_page(url, timeout=timeout), target_date)
+        for game in games:
+            if "ソフトバンク" not in (game["home"], game["away"]):
+                continue
+            for side in ("home", "away"):
+                token = game.get(f"{side}_handicap")
+                value = handicap_token_to_value(token)
+                if value is None:
+                    continue
+                favored = game[side]
+                result.update({
+                    "published": True, "team": "ソフトバンク",
+                    "opponent": game["away"] if game["home"] == "ソフトバンク" else game["home"],
+                    "favored_team": favored, "token": token, "value": value,
+                    "handicap_score": -value if favored == "ソフトバンク" else value,
+                })
                 return result
     except Exception:
         return result

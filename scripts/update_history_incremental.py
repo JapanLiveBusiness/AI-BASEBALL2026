@@ -5,12 +5,15 @@ import argparse
 import json
 import re
 import time
-import urllib.request
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from handenomori_client import fetch_member_page
 
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -46,18 +49,10 @@ def clean(value):
 def fetch_day(target_date):
     url = BASE_URL.format(target_date)
 
-    req = urllib.request.Request(
-        url,
-        headers=HEADERS,
-    )
-
     try:
-        html = urllib.request.urlopen(
-            req,
-            timeout=15,
-        ).read()
-    except Exception as exc:
-        print("FETCH ERROR", target_date, repr(exc))
+        html = fetch_member_page(url, timeout=15)
+    except Exception:
+        print("FETCH ERROR", target_date, "authenticated source unavailable")
         return []
 
     soup = BeautifulSoup(
