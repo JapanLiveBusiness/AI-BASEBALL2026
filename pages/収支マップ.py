@@ -13,6 +13,7 @@ from virtual_dashboard import summarize, month_options, calendar_html, history_r
 from virtual_editor_ui import render_day_editor
 from virtual_approval_ui import render_approval
 from virtual_calendar_rank import load_calendar_predictions
+from virtual_accuracy import render_accuracy
 
 st.set_page_config(page_title="収支マップ | 仮想ポイント", page_icon="📊", layout="wide")
 apply_studio_theme()
@@ -80,6 +81,7 @@ if summary["review"] or summary["pending"]:
     st.warning("要確認・未確定の記録はポイント集計から除外しています。表示値は全記録の確定合計ではありません。")
 overview, history, review = st.tabs(["推移・日別カレンダー", "全履歴", "要確認一覧"])
 with overview:
+    render_accuracy(rows, originals, calendar_predictions)
     st.subheader("累積ポイント")
     st.caption("選択期間の開始を0として、計算できた記録だけを日付順に積み上げます。保有残高ではありません。")
     if summary["series"]:
