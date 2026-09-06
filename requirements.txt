@@ -1,4 +1,4 @@
-streamlit[auth]>=1.63,<2
+streamlit[auth]==1.63.0
 tomli>=2,<3
 filelock>=3.16,<4
 beautifulsoup4
