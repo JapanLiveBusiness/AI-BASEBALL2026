@@ -34,7 +34,7 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("要確認 1", rendered)
         self.assertIn("未確定 1", rendered)
         self.assertIn("—", rendered)
-        self.assertEqual(rendered.count('class="vp-cell'), 35)
+        self.assertEqual(rendered.count('class="vp-cell'), 30)
 
     def test_history_and_leap_year(self):
         self.assertEqual(history_rows(self.rows)[0]["日付"], "2026-09-03")

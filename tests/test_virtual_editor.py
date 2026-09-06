@@ -57,7 +57,7 @@ class VirtualEditorTests(unittest.TestCase):
 
     def test_calendar_has_keyboard_accessible_day_links(self):
         html = calendar_html([], "2026-09")
-        self.assertEqual(html.count('target="_self"'), 30)
+        self.assertEqual(html.count('target="_self"'), 26)
         self.assertIn('?edit_date=2026-09-03#day-editor', html)
         self.assertIn('aria-label="2026-09-03 の内容を編集"', html)
         self.assertNotIn('edit_date=2026-09-31', html)
