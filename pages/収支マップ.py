@@ -41,6 +41,7 @@ except (BetStoreError, OSError, ValueError) as exc:
 all_rows = report["results"]
 with st.expander("適用ルール・データ範囲"):
     st.write("1〜9回の得点のみを使用し、延長を除外します。1.5と1半は別ルールです。")
+    st.write("追加確認済み: 同点・0.2もらいは2分勝ち。100,000ポイントなら100,000×0.2×0.9＝18,000ポイント。0.2出しの同点は20,000ポイント減です。")
     st.write("プラス分のポイント付与率は従来の90%を維持。部分勝敗の割合を適用し、1ポイント単位で四捨五入します。")
     st.write("確認済み得点は2026年9月1〜6日。範囲外、元のハンデ表記が不明、画像にない値は要確認です。")
     st.write("元記録が未確定なら自動確定しません。中止は得点判定しません。")
@@ -89,4 +90,3 @@ with review:
 st.download_button("全期間の元履歴・再計算結果を保存（JSON）",
                    data=json.dumps(report, ensure_ascii=False, indent=2),
                    file_name="virtual-points-history.json", mime="application/json")
-
