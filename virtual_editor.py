@@ -49,3 +49,27 @@ def save_virtual_edit(path, expected, values):
             _atomic_write(path, records)
             return deepcopy(updated)
     raise BetNotFoundError("この記録は削除されたか、見つかりません。")
+
+
+def set_virtual_deleted(path, expected, deleted):
+    """Recoverable removal from virtual views; retain source and audit atomically."""
+    if type(deleted) is not bool:
+        raise ValueError("削除状態が不正です")
+    with _locked(path):
+        records = load_bets(path)
+        for index, record in enumerate(records):
+            if record["id"] != expected.get("id"):
+                continue
+            if record != expected:
+                raise BetStoreError("別の画面で変更されています。再読み込みしてください。")
+            if bool(record.get("virtual_deleted")) == deleted:
+                return deepcopy(record)
+            updated = deepcopy(record)
+            updated["virtual_deleted"] = deleted
+            updated.setdefault("virtual_deletion_history", []).append({
+                "saved_at": datetime.now(timezone.utc).isoformat(),
+                "action": "delete" if deleted else "restore"})
+            records[index] = updated
+            _atomic_write(path, records)
+            return deepcopy(updated)
+    raise BetNotFoundError("この記録は見つかりません。")
