@@ -1,13 +1,15 @@
 """Virtual-points performance dashboard. Source records are never overwritten."""
 from pathlib import Path
+from datetime import date
 import json
 import streamlit as st
 
 from auth_session import user_bets_path
 from bet_store import BetStoreError, load_bets
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
-from virtual_replay import load_verified_scores, replay_records
+from virtual_replay import load_verified_scores, load_verified_handicaps, replay_records
 from virtual_dashboard import summarize, month_options, calendar_html, history_rows
+from virtual_editor_ui import render_day_editor
 
 st.set_page_config(page_title="収支マップ | 仮想ポイント", page_icon="📊", layout="wide")
 apply_studio_theme()
@@ -15,7 +17,9 @@ auth_user = render_topbar("VIRTUAL POINTS / PERFORMANCE")
 render_hero("収支マップ", "9回までの公式得点と画像ルールで、仮想ポイントを振り返る。",
             kicker="AI BASEBALL STUDIO / VIRTUAL GAME", accent="POINTS")
 render_nav_links()
-st.caption("換金・景品交換のない仮想ゲーム専用。元の履歴は保持し、この画面では更新・削除しません。")
+st.caption("換金・景品交換のない仮想ゲーム専用。カレンダーの日付を押すと内容を編集できます。元履歴と編集履歴は保持します。")
+if st.session_state.pop("virtual_edit_saved", None):
+    st.success("保存しました。カレンダーと集計を再計算しました。")
 st.markdown("""
 <style>
 .vp-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:16px 0}
@@ -26,14 +30,21 @@ st.markdown("""
 .vp-positive{background:#edf9f3;border-color:#b3dfc7}.vp-positive strong{color:#146c43}
 .vp-negative{background:#fff1f0;border-color:#f1c6c2}.vp-negative strong{color:#ad332b}
 .vp-empty{border:none;background:transparent}
+a.vp-cell{text-decoration:none!important;display:block;color:#253044!important}
+a.vp-cell:hover,a.vp-cell:focus-visible{outline:3px solid #c99300;outline-offset:1px}
 @media(max-width:600px){.vp-calendar{gap:3px}.vp-cell{padding:5px;min-height:92px;border-radius:6px}
 .vp-cell strong{font-size:10px}.vp-cell small{font-size:9px}}
 </style>
 """, unsafe_allow_html=True)
 data_dir = Path("/app/data") if Path("/app/data").exists() else Path(__file__).resolve().parents[1] / "data"
+bets_path = user_bets_path(data_dir, auth_user)
 try:
-    originals = load_bets(user_bets_path(data_dir, auth_user))
-    report = replay_records(originals, load_verified_scores())
+    edit_day = date.fromisoformat(st.query_params.get("edit_date", "")).isoformat()
+except ValueError:
+    edit_day = None
+try:
+    originals = load_bets(bets_path)
+    report = replay_records(originals, load_verified_scores(), handicaps=load_verified_handicaps())
 except (BetStoreError, OSError, ValueError) as exc:
     st.error(f"履歴または確認済み得点を読み込めません: {exc}")
     st.stop()
@@ -43,7 +54,8 @@ with st.expander("適用ルール・データ範囲"):
     st.write("1〜9回の得点のみを使用し、延長を除外します。1.5と1半は別ルールです。")
     st.write("追加確認済み: 同点・0.2もらいは2分勝ち。100,000ポイントなら100,000×0.2×0.9＝18,000ポイント。0.2出しの同点は20,000ポイント減です。")
     st.write("プラス分のポイント付与率は従来の90%を維持。部分勝敗の割合を適用し、1ポイント単位で四捨五入します。")
-    st.write("確認済み得点は2026年9月1〜6日。範囲外、元のハンデ表記が不明、画像にない値は要確認です。")
+    st.write("確認済み得点は2026年9月1〜6日。9月7日に再取得した7件のハンデは元履歴と別に適用し、履歴に保存値・適用値・出典を表示します。")
+    st.write("0.8・1.1・1.6は指定された比例配分ルールで補足しています。範囲外の得点や未対応のハンデは要確認です。")
     st.write("元記録が未確定なら自動確定しません。中止は得点判定しません。")
     st.caption("旧画面の円表示・最終得点による集計とは別の仮想ポイント表示です。")
 
@@ -55,11 +67,11 @@ months = month_options(all_rows)
 period = st.selectbox("集計期間", ["全期間", *months])
 rows = all_rows if period == "全期間" else [r for r in all_rows if str(r.get("date") or "").startswith(period + "-")]
 summary = summarize(rows)
-cols = st.columns(4)
-cols[0].metric("確認済み分の増減", f"{summary['points']:+,} pt" if summary["calculated"] else "—")
-cols[1].metric("計算済み", f"{summary['calculated']} 件")
-cols[2].metric("要確認", f"{summary['review']} 件")
-cols[3].metric("未確定 / 中止", f"{summary['pending']} / {summary['cancelled']} 件")
+st.metric("確認済み分の増減", f"{summary['points']:+,} pt" if summary["calculated"] else "—")
+cols = st.columns(3)
+cols[0].metric("計算済み", f"{summary['calculated']} 件")
+cols[1].metric("要確認", f"{summary['review']} 件")
+cols[2].metric("未確定 / 中止", f"{summary['pending']} / {summary['cancelled']} 件")
 if summary["review"] or summary["pending"]:
     st.warning("要確認・未確定の記録はポイント集計から除外しています。表示値は全記録の確定合計ではありません。")
 overview, history, review = st.tabs(["推移・日別カレンダー", "全履歴", "要確認一覧"])
@@ -71,9 +83,12 @@ with overview:
     else:
         st.info("この期間に計算済みの記録はありません。")
     if months:
-        calendar_month = period if period != "全期間" else st.selectbox("表示月", months)
+        default_month = months.index(edit_day[:7]) if edit_day and edit_day[:7] in months else 0
+        calendar_month = period if period != "全期間" else st.selectbox("表示月", months, index=default_month)
         st.markdown(calendar_html(rows, calendar_month), unsafe_allow_html=True)
         st.caption("＋ / −は当日のポイント増減。—は計算済み記録なし。要確認・未確定・中止は別記です。")
+    if edit_day:
+        render_day_editor(edit_day, originals, all_rows, bets_path)
 with history:
     st.caption("選択期間の全状態を表示します。元記録の点数・金額は上書きしていません。")
     if rows:

@@ -4,7 +4,7 @@ import json
 import streamlit as st
 
 from bet_store import BetStoreError, load_bets
-from virtual_replay import load_verified_scores, replay_records
+from virtual_replay import load_verified_scores, load_verified_handicaps, replay_records
 
 
 def render_virtual_replay(bets_file):
@@ -17,7 +17,7 @@ def render_virtual_replay(bets_file):
                    "マイナス分はその割合を減算します。1ポイント単位で四捨五入します。")
         try:
             records = load_bets(bets_file)
-            report = replay_records(records, load_verified_scores())
+            report = replay_records(records, load_verified_scores(), handicaps=load_verified_handicaps())
         except (BetStoreError, OSError, ValueError) as exc:
             st.error(f"仮想再計算を読み込めません: {exc}")
             return
@@ -36,7 +36,8 @@ def render_virtual_replay(bets_file):
         labels = {"calculated": "計算済み", "review": "要確認", "cancelled": "中止", "pending": "未確定"}
         st.dataframe([{
             "日付": r["date"], "チーム": r["team"], "相手": r["opponent"],
-            "状態": labels[r["status"]], "ハンデ元表記": r.get("handicap_raw"),
+            "状態": labels[r["status"]], "適用ハンデ": r.get("handicap_raw"),
+            "元履歴ハンデ": r.get("stored_handicap"), "ハンデ出典": r.get("handicap_source", ""),
             "9回時点": (f"{r['team_score_9']}–{r['opponent_score_9']}" if "team_score_9" in r else None),
             "ポイント増減": r["points_delta"], "確認事項": r.get("reason", ""),
             "公式得点の出典": r.get("score_source", ""),
