@@ -9,6 +9,30 @@ from virtual_replay import outcome_fraction
 TEAMS = ["巨人", "阪神", "DeNA", "広島", "ヤクルト", "中日", "ソフトバンク", "日本ハム", "ロッテ", "楽天", "オリックス", "西武"]
 
 
+def save_virtual_approval(path, expected, values, *, confirmed=False):
+    from virtual_approval import validate_approval, fingerprint
+    from virtual_replay import load_verified_scores
+    if confirmed is not True:
+        raise ValueError('得点・ハンデ・判定内容と重複の有無を確認してください')
+    with _locked(path):
+        records = load_bets(path)
+        for index, record in enumerate(records):
+            if record['id'] != expected.get('id'):
+                continue
+            if record != expected:
+                raise BetStoreError('別の画面で変更されています。再読み込みしてください。')
+            checked = validate_approval(record, values, load_verified_scores())
+            checked.update(saved_at=datetime.now(timezone.utc).isoformat(), source_fingerprint=fingerprint(record))
+            updated = deepcopy(record)
+            updated.setdefault('virtual_approval_history', []).append(dict(
+                saved_at=checked['saved_at'], before=deepcopy(record.get('virtual_approval')), after=deepcopy(checked)))
+            updated['virtual_approval'] = checked
+            records[index] = updated
+            _atomic_write(path, records)
+            return deepcopy(updated)
+    raise BetNotFoundError('この記録は見つかりません。')
+
+
 def validate_edit(values):
     try:
         points = Decimal(str(values.get("bet_amount")))

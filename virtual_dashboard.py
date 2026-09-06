@@ -116,6 +116,8 @@ def history_rows(rows):
              "元履歴ハンデ": r.get("stored_handicap"),
              "再取得適用": "あり" if r.get("handicap_refetched") else "なし",
              "手動編集": "あり" if r.get("virtual_edited") else "なし",
+             "手動承認": "あり" if r.get("manual_approved") else "なし",
+             "承認日時": r.get("approved_at", ""),
              "9回時点": f"{r['team_score_9']}–{r['opponent_score_9']}" if "team_score_9" in r else None,
              "ポイント増減": r.get("points_delta"), "確認事項": r.get("reason", ""),
              "公式記録": r.get("score_source", ""),

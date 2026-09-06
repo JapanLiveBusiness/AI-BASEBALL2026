@@ -11,6 +11,7 @@ from studio_theme import apply_studio_theme, render_topbar, render_hero, render_
 from virtual_replay import load_verified_scores, load_verified_handicaps, replay_records
 from virtual_dashboard import summarize, month_options, calendar_html, history_rows
 from virtual_editor_ui import render_day_editor
+from virtual_approval_ui import render_approval
 from virtual_calendar_rank import load_calendar_predictions
 
 st.set_page_config(page_title="収支マップ | 仮想ポイント", page_icon="📊", layout="wide")
@@ -104,6 +105,10 @@ with review:
     if unresolved:
         st.dataframe(history_rows(unresolved), hide_index=True, width="stretch")
         st.info("元のハンデ表記や9回時点の公式得点を確認するまで、推測で判定しません。")
+        original_by_id = {r['id']: r for r in originals}
+        for result in unresolved:
+            with st.expander(f"承認確認：{result['date']} {result['team']} vs {result['opponent']} · {result['id'][-6:]}"):
+                render_approval(original_by_id[result['id']], result, bets_path, 'list')
     else:
         st.success("この期間に要確認の記録はありません。")
 st.download_button("全期間の元履歴・再計算結果を保存（JSON）",
