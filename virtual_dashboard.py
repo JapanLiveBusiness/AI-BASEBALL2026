@@ -3,6 +3,8 @@ import calendar
 from datetime import date
 from html import escape
 from decimal import Decimal, InvalidOperation
+import re
+import unicodedata
 
 TEAM_SHORT = {"巨人": "巨人", "阪神": "阪神", "DeNA": "横浜", "広島": "広島",
               "ヤクルト": "ヤク", "中日": "中日", "ソフトバンク": "ソフ",
@@ -23,6 +25,21 @@ def bet_amount_label(row):
         return f"{amount:,.0f}" if amount == amount.to_integral_value() else f"{amount:,f}"
     except (InvalidOperation, ValueError, TypeError, KeyError):
         return "金額要確認"
+
+
+def handicap_side_badge(row):
+    """Display only the applied handicap; never infer from profit or old data."""
+    raw = row.get("handicap_raw")
+    token = unicodedata.normalize("NFKC", str(raw if raw is not None else "")).strip().strip("<>")
+    if not re.fullmatch(r"[+-]?(?:\d+(?:\.\d+)?|\d+半[357]?)", token):
+        mark, label = "?", "ハンデ未確認"
+    elif "半" not in token and Decimal(token) == 0:
+        mark, label = "—", "ハンデなし"
+    elif token.startswith("-"):
+        mark, label = "🉈", "ハンデをもらう側"
+    else:
+        mark, label = "🉇", "ハンデを出す側"
+    return f'<span class="vp-handicap-side" title="{label}" aria-label="{label}">{mark}</span>'
 
 
 def summarize(rows):
@@ -81,7 +98,7 @@ def calendar_html(rows, month, predictions=()):
                 if state in status:
                     notes.append(f"{label} {status.count(state)}")
             from virtual_calendar_rank import ranked_bets
-            details = ''.join(f'<span class="vp-bet" title="{escape(str(r.get("team") or "チーム未確認"), quote=True)}"><span class="vp-rank">{escape(mark)}</span> <span>{escape(TEAM_SHORT.get(r.get("team"), "不明"))}</span> <span class="vp-stake">{escape(bet_amount_label(r))}</span>{f" <span>{prob:.0f}%</span>" if prob is not None else ""}</span>' for r, mark, prob in ranked_bets(bets.get(key, []), predictions))
+            details = ''.join(f'<span class="vp-bet" title="{escape(str(r.get("team") or "チーム未確認"), quote=True)}"><span class="vp-rank">{escape(mark)}</span> <span>{escape(TEAM_SHORT.get(r.get("team"), "不明"))}</span> <span class="vp-stake">{escape(bet_amount_label(r))}</span> {handicap_side_badge(r)}{f" <span>{prob:.0f}%</span>" if prob is not None else ""}</span>' for r, mark, prob in ranked_bets(bets.get(key, []), predictions))
             through_day = [v for d, v in summary["daily"].items() if d <= key]
             cumulative_value = f'{sum(through_day):+,}' if through_day else '—'
             cumulative = f'<span class="vp-cumulative">累積 {cumulative_value}</span>' if status else ''
@@ -93,7 +110,7 @@ def calendar_html(rows, month, predictions=()):
     style += '<style>.vp-calendar{container-type:inline-size}.vp-calendar .vp-cell{aspect-ratio:auto;min-height:calc((100cqw - 30px)/6);height:auto}.vp-calendar .vp-bet{overflow:visible}.vp-calendar .vp-cell:has(.vp-bet:nth-child(4)){min-height:max(170px,calc((100cqw - 30px)/6))}@media(max-width:600px){.vp-calendar .vp-cell{min-height:calc((100cqw - 15px)/6)}.vp-calendar .vp-cell:has(.vp-bet:nth-child(4)){min-height:150px}}</style>'
     style += '<style>.vp-day-header{display:flex;align-items:flex-start;justify-content:flex-start;gap:5px;border-bottom:1px solid #dce3eb;padding-bottom:4px;text-align:left}.vp-day-header>b{flex:none;line-height:1.25}.vp-day-totals{display:block;min-width:0}.vp-calendar .vp-day-header strong{margin:0;font-size:11px;line-height:1.4}.vp-calendar .vp-day-header .vp-cumulative{border:0;margin:0;padding:0;font-size:9px;line-height:1.4}.vp-calendar .vp-day-header+.vp-bets{margin-top:4px}@media(max-width:600px){.vp-day-header{gap:3px}.vp-calendar .vp-day-header strong{font-size:9px}.vp-calendar .vp-day-header .vp-cumulative{font-size:8px}}</style>'
     style += '<style>.vp-calendar .vp-day-header{justify-content:space-between}.vp-calendar .vp-day-totals{margin-left:auto;text-align:right}.vp-calendar .vp-day-totals strong,.vp-calendar .vp-day-totals .vp-cumulative{text-align:right}</style>'
-    return style + '<div class="vp-calendar">' + ''.join(f'<div class="vp-weekday">{day}</div>' for day in "火水木金土日") + ''.join(cells) + '</div><p style="font-size:12px;color:#667085">累積収支：選択期間の初日を0とした計算済み収支の合計（非表示の月曜日を含む）。未確定・要確認は含みません。</p>'
+    return style + '<p style="font-size:12px;color:#667085">金額右の記号：🉇＝ハンデを出す側／🉈＝もらう側／—＝ハンデなし／?＝ハンデ未確認</p><div class="vp-calendar">' + ''.join(f'<div class="vp-weekday">{day}</div>' for day in "火水木金土日") + ''.join(cells) + '</div><p style="font-size:12px;color:#667085">累積収支：選択期間の初日を0とした計算済み収支の合計（非表示の月曜日を含む）。未確定・要確認は含みません。</p>'
 
 
 def history_rows(rows):
