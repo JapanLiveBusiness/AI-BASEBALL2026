@@ -124,6 +124,7 @@ def replay_records(records, games, *, positive_rate="0.90", handicaps=()):
         row = {"id": original.get("id"), "date": original.get("date"),
                "team": original.get("team"), "opponent": original.get("opponent"),
                "bet_amount": original.get("bet_amount"), "bet_units": original.get("bet_units"),
+               "source": original.get("source"),
                "rule_version": RULE_VERSION, "status": "review", "points_delta": None,
                "virtual_edited": bool(source_record.get("virtual_edit"))}
         try:
