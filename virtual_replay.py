@@ -117,6 +117,8 @@ def replay_records(records, games, *, positive_rate="0.90", handicaps=()):
         raise ValueError("ポイント付与率が不正です")
     results = []
     for source_record in records:
+        if source_record.get("virtual_deleted"):
+            continue
         original = {**source_record, **{k: v for k, v in source_record.get("virtual_edit", {}).items()
                     if k in {"team", "opponent", "bet_amount", "handicap_raw", "status", "memo"}}}
         row = {"id": original.get("id"), "date": original.get("date"),

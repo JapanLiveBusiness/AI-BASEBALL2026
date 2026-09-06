@@ -1,7 +1,7 @@
 """Per-day virtual record editor; only saves on explicit form submission."""
 import streamlit as st
 from bet_store import BetStoreError
-from virtual_editor import TEAMS, save_virtual_edit
+from virtual_editor import TEAMS, save_virtual_edit, set_virtual_deleted
 
 
 def render_day_editor(day, originals, results, bets_path):
@@ -16,6 +16,18 @@ def render_day_editor(day, originals, results, bets_path):
     calculated = {r["id"]: r for r in results}
     for record in daily:
         active = {**record, **record.get("virtual_edit", {})}
+        if record.get("virtual_deleted"):
+            with st.expander(f"削除済み：{active.get('team')} vs {active.get('opponent')} · {record['id'][-6:]}"):
+                st.caption("カレンダー・仮想集計から削除済み。元記録は保持されています。")
+                if st.button("この記録を復元", key=f"restore_{record['id']}"):
+                    try:
+                        set_virtual_deleted(bets_path, record, False)
+                    except (BetStoreError, ValueError) as exc:
+                        st.error(str(exc))
+                    else:
+                        st.session_state["virtual_edit_saved"] = day
+                        st.rerun()
+            continue
         result = calculated.get(record["id"], {})
         with st.expander(f"{active.get('team')} vs {active.get('opponent')} · {record['id'][-6:]}", expanded=len(daily) <= 2):
             with st.form(f"virtual_edit_{record['id']}"):
@@ -41,3 +53,18 @@ def render_day_editor(day, originals, results, bets_path):
                 else:
                     st.session_state["virtual_edit_saved"] = day
                     st.rerun()
+            with st.form(f"virtual_delete_{record['id']}"):
+                st.caption(f"{day} {active.get('team')} vs {active.get('opponent')} を仮想集計から削除します。元記録は残り、復元できます。")
+                confirmed = st.checkbox("この1件を削除することを確認しました")
+                remove = st.form_submit_button("この1件を削除して再計算")
+            if remove:
+                if not confirmed:
+                    st.warning("削除対象を確認してチェックしてください。")
+                else:
+                    try:
+                        set_virtual_deleted(bets_path, record, True)
+                    except (BetStoreError, ValueError) as exc:
+                        st.error(str(exc))
+                    else:
+                        st.session_state["virtual_edit_saved"] = day
+                        st.rerun()
