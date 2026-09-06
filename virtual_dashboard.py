@@ -56,14 +56,18 @@ def calendar_html(rows, month):
             for state, label in [("review", "要確認"), ("pending", "未確定"), ("cancelled", "中止")]:
                 if state in status:
                     notes.append(f"{label} {status.count(state)}")
-            cells.append(f'<div class="vp-cell {color}"><b>{day}</b><strong>{value}</strong><small>{escape(" / ".join(notes))}</small></div>')
+            cells.append(f'<a class="vp-cell {color}" href="?edit_date={key}#day-editor" target="_self" aria-label="{key} の内容を編集"><b>{day}</b><strong>{value}</strong><small>{escape(" / ".join(notes))}</small></a>')
     return '<div class="vp-calendar">' + ''.join(f'<div class="vp-weekday">{day}</div>' for day in "月火水木金土日") + ''.join(cells) + '</div>'
 
 
 def history_rows(rows):
     labels = {"calculated": "計算済み", "review": "要確認", "pending": "未確定", "cancelled": "中止"}
     return [{"日付": r.get("date"), "チーム": r.get("team"), "相手": r.get("opponent"),
-             "状態": labels.get(r.get("status"), "要確認"), "ハンデ元表記": r.get("handicap_raw"),
+             "状態": labels.get(r.get("status"), "要確認"), "適用ハンデ": r.get("handicap_raw"),
+             "元履歴ハンデ": r.get("stored_handicap"),
+             "再取得適用": "あり" if r.get("handicap_refetched") else "なし",
+             "手動編集": "あり" if r.get("virtual_edited") else "なし",
              "9回時点": f"{r['team_score_9']}–{r['opponent_score_9']}" if "team_score_9" in r else None,
              "ポイント増減": r.get("points_delta"), "確認事項": r.get("reason", ""),
-             "公式記録": r.get("score_source", "")} for r in sorted(rows, key=lambda r: str(r.get("date") or ""), reverse=True)]
+             "公式記録": r.get("score_source", ""),
+             "ハンデ出典": r.get("handicap_source", "")} for r in sorted(rows, key=lambda r: str(r.get("date") or ""), reverse=True)]

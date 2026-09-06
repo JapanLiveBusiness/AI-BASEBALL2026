@@ -9,9 +9,13 @@ import re
 from pathlib import Path
 import unicodedata
 
-RULE_VERSION = "virtual-nine-innings-image-v2"
+RULE_VERSION = "virtual-nine-innings-image-v3"
 # Columns: tie, win by one, win by two, win by three (giving side).
 TABLE = {
+    # Refetched values, using the user's proportional partial-result rule.
+    "0.8": ("-.8", ".2", "1", "1"),
+    "1.1": ("-1", "-.1", "1", "1"),
+    "1.6": ("-1", "-.6", "1", "1"),
     "0.3": ("-.3", ".7", "1", "1"),
     "0.5": ("-.5", ".5", "1", "1"),
     "0.7": ("-.7", ".3", "1", "1"),
@@ -101,16 +105,24 @@ def load_verified_scores(path=None):
     return json.loads(Path(path).read_text(encoding="utf-8"))["games"]
 
 
-def replay_records(records, games, *, positive_rate="0.90"):
+def load_verified_handicaps(path=None):
+    path = path or Path(__file__).with_name("virtual_verified_handicaps.json")
+    return json.loads(Path(path).read_text(encoding="utf-8"))["records"]
+
+
+def replay_records(records, games, *, positive_rate="0.90", handicaps=()):
     """Replay all dates; missing evidence stays review-only, with no zero fallback."""
     rate = Decimal(str(positive_rate))
     if not rate.is_finite() or not 0 <= rate <= 1:
         raise ValueError("ポイント付与率が不正です")
     results = []
-    for original in records:
+    for source_record in records:
+        original = {**source_record, **{k: v for k, v in source_record.get("virtual_edit", {}).items()
+                    if k in {"team", "opponent", "bet_amount", "handicap_raw", "status", "memo"}}}
         row = {"id": original.get("id"), "date": original.get("date"),
                "team": original.get("team"), "opponent": original.get("opponent"),
-               "rule_version": RULE_VERSION, "status": "review", "points_delta": None}
+               "rule_version": RULE_VERSION, "status": "review", "points_delta": None,
+               "virtual_edited": bool(source_record.get("virtual_edit"))}
         try:
             day = date.fromisoformat(str(original.get("date"))).isoformat()
             team, opponent = team_name(row["team"]), team_name(row["opponent"])
@@ -132,7 +144,22 @@ def replay_records(records, games, *, positive_rate="0.90"):
                 home_side = team == team_name(game["home"])
                 own = game["home_9"] if home_side else game["away_9"]
                 other = game["away_9"] if home_side else game["home_9"]
-                token = raw_handicap(original)
+                evidence = [h for h in handicaps if h.get("date") == day
+                            and team_name(h.get("team")) == team
+                            and team_name(h.get("opponent")) == opponent]
+                if len(evidence) > 1:
+                    raise ValueError("再取得ハンデを一意に特定できません")
+                row["stored_handicap"] = source_record.get("handicap_raw") or source_record.get("handicap")
+                if source_record.get("virtual_edit", {}).get("handicap_raw"):
+                    token = raw_handicap(original)
+                    row["handicap_source"] = "日付別編集で指定"
+                elif evidence:
+                    token = str(evidence[0]["handicap_raw"])
+                    row["handicap_source"] = evidence[0]["source_url"]
+                    row["handicap_refetched"] = True
+                else:
+                    token = raw_handicap(original)
+                row.update(handicap_raw=token, team_score_9=own, opponent_score_9=other)
                 fraction = outcome_fraction(own, other, token)
                 amount = original.get("bet_amount")
                 if amount is None:
@@ -151,5 +178,6 @@ def replay_records(records, games, *, positive_rate="0.90"):
             row["reason"] = str(exc)
         results.append(row)
     return {"rule_version": RULE_VERSION, "virtual_only": True,
+            "handicap_evidence": deepcopy(list(handicaps)),
             "source_sha256": hashlib.sha256(json.dumps(records, ensure_ascii=False, sort_keys=True).encode()).hexdigest(),
             "original_records": deepcopy(records), "results": results}
