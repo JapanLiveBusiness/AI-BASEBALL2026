@@ -7,6 +7,7 @@ from auth_session import user_bets_path
 from bet_analytics import profit_for_result, settle_bet
 from bet_store import BetStoreError, append_bet
 from manual_bet_form import render_manual_bet_form
+from virtual_replay_ui import render_virtual_replay
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_nav_links
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -30,6 +31,7 @@ render_hero(
     accent="BET",
 )
 render_nav_links()
+render_virtual_replay(BETS_FILE)
 
 
 render_manual_bet_form(BETS_FILE, SCHEDULE_CACHE_PATHS, prefix="bet_manual")
