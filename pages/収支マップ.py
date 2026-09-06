@@ -88,8 +88,8 @@ with overview:
     if months:
         default_month = months.index(edit_day[:7]) if edit_day and edit_day[:7] in months else 0
         calendar_month = period if period != "全期間" else st.selectbox("表示月", months, index=default_month)
+        st.caption("チーム左の記号：1・2・3…＝その日のAI勝率順位（高い順・同率は同順位）｜M＝手動入力・手動編集｜—＝試合前のAI勝率が未確認で順位なし。チーム右の％＝AI勝率です。")
         st.markdown(calendar_html(rows, calendar_month, calendar_predictions), unsafe_allow_html=True)
-        st.caption("順位は日付枠内のAI勝率順（同率は同順位）。M＝手動入力・手動編集、—＝試合前の保存済みAI勝率が未確認。")
         st.caption("＋ / −は当日のポイント増減。—は計算済み記録なし。要確認・未確定・中止は別記です。")
     if edit_day:
         render_day_editor(edit_day, originals, all_rows, bets_path)
