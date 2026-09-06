@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
 from daily_data import load_current_daily_json
+from result_sources import load_final_results
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
-from team_insights import TEAM_META, TEAMS, league_standings, team_summary, upcoming_team_game
+from team_insights import TEAM_META, TEAMS, league_standings, merge_team_history, team_summary, upcoming_team_game
 
 ROOT = Path(__file__).resolve().parents[1]
 PROD_DATA_DIR = Path("/app/data")
@@ -44,6 +46,13 @@ if requested_team != team:
     st.query_params["team"] = team
 
 history = load_json("historical_games_2017_2026.json", [])
+history = merge_team_history(
+    history if isinstance(history, list) else [],
+    load_final_results(
+        PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR,
+        Path(os.getenv("AI_BASEBALL_SHARED_DATA_DIR", "/app/shared-data")),
+    ),
+)
 schedule = load_current_daily_json("npb_today.json", {})
 predictions = load_current_daily_json("today_ai_predictions.json", {})
 available_seasons = sorted({int(row.get("season") or 0) for row in history if isinstance(row, dict) and row.get("season")}, reverse=True)

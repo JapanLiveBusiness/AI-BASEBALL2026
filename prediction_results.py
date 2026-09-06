@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from storage.json_store import load_json, save_json_atomic
+from result_sources import final_game, load_final_results
 
 
 def _score(value: Any) -> tuple[int, int] | None:
@@ -106,11 +107,14 @@ def settle_predictions(
     schedule_date = str(schedule.get("date") or "")
     final_index = {}
     for game in schedule.get("games") or []:
-        if not isinstance(game, dict) or str(game.get("status") or "") != "final":
+        game = final_game(game, schedule_date)
+        if game is None:
             continue
-        if game.get("home_score") is None or game.get("away_score") is None:
-            continue
-        final_index[(schedule_date, str(game.get("home") or ""), str(game.get("away") or ""))] = game
+        final_index[(game["date"], game["home"], game["away"])] = game
+        final_index[(game["date"], game["away"], game["home"])] = dict(
+            game, home=game["away"], away=game["home"],
+            home_score=game["away_score"], away_score=game["home_score"],
+        )
 
     settled = 0
     for row in result:
@@ -231,11 +235,14 @@ def sync_prediction_results(
         archive, shared_settled = settle_predictions(archive, shared_schedule)
     archive, added = archive_predictions(archive, predictions, schedule)
     archive, settled = settle_predictions(archive, schedule)
+    archive, cached_settled = settle_predictions(
+        archive, {"games": load_final_results(data_dir, shared_data_dir)}
+    )
     save_json_atomic(archive_path, archive)
     save_json_atomic(data_dir / "ai_prediction_performance.json", build_performance(archive))
     return {
         "added": added + shared_added,
-        "settled": settled + shared_settled,
+        "settled": settled + shared_settled + cached_settled,
         "shared": shared_count + shared_added,
         "total": len(archive),
     }
