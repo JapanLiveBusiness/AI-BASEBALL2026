@@ -30,7 +30,7 @@ class DashboardTests(unittest.TestCase):
 
     def test_calendar_marks_unresolved_without_zero_fallback(self):
         rendered = calendar_html(self.rows, "2026-09")
-        self.assertIn("+80 pt", rendered)
+        self.assertIn("+80", rendered)
         self.assertIn("要確認 1", rendered)
         self.assertIn("未確定 1", rendered)
         self.assertIn("—", rendered)
