@@ -180,7 +180,8 @@ def replay_records(records, games, *, positive_rate="0.90", handicaps=()):
                            points_delta=int(delta.quantize(Decimal("1"), rounding=ROUND_HALF_UP)))
         except (ValueError, TypeError, KeyError, InvalidOperation) as exc:
             row["reason"] = str(exc)
-        results.append(row)
+        from virtual_approval import apply_approval
+        results.append(apply_approval(source_record, row, games))
     return {"rule_version": RULE_VERSION, "virtual_only": True,
             "handicap_evidence": deepcopy(list(handicaps)),
             "source_sha256": hashlib.sha256(json.dumps(records, ensure_ascii=False, sort_keys=True).encode()).hexdigest(),

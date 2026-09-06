@@ -2,6 +2,7 @@
 import streamlit as st
 from bet_store import BetStoreError
 from virtual_editor import TEAMS, save_virtual_edit, set_virtual_deleted
+from virtual_approval_ui import render_approval
 
 
 def render_day_editor(day, originals, results, bets_path):
@@ -30,6 +31,7 @@ def render_day_editor(day, originals, results, bets_path):
             continue
         result = calculated.get(record["id"], {})
         with st.expander(f"{active.get('team')} vs {active.get('opponent')} · {record['id'][-6:]}", expanded=len(daily) <= 2):
+            render_approval(record, result, bets_path, 'day')
             with st.form(f"virtual_edit_{record['id']}"):
                 c1, c2 = st.columns(2)
                 team = c1.selectbox("対象チーム", TEAMS, index=TEAMS.index(active["team"]) if active.get("team") in TEAMS else 0)
