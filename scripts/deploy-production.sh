@@ -156,6 +156,32 @@ rollback() {
 
 start_container "$NEW_IMAGE"
 
+PAGE_PATHS=(
+  "/"
+  "/%E8%A9%A6%E5%90%88"
+  "/%E6%9C%AC%E6%97%A5%E3%81%AEAI%E4%BA%88%E6%83%B3"
+  "/%E4%BA%88%E6%83%B3%E7%B5%90%E6%9E%9C"
+  "/BET%E5%85%A5%E5%8A%9B"
+  "/%E5%8F%8E%E6%94%AF%E3%83%9E%E3%83%83%E3%83%97"
+  "/AI%E8%A9%B3%E7%B4%B0"
+  "/%E7%90%83%E5%9B%A3%E5%88%A5%E8%A9%B3%E7%B4%B0"
+)
+
+verify_internal_pages() {
+  local host="$1"
+  local path
+  for path in "${PAGE_PATHS[@]}"; do
+    if ! curl -k -fsS \
+      --max-time 15 \
+      --resolve "$host:443:$TRAEFIK_IP" \
+      "https://$host$path" >/dev/null; then
+      echo "[deploy] page route failed: https://$host$path"
+      return 1
+    fi
+    echo "[deploy] page route healthy: https://$host$path"
+  done
+}
+
 for attempt in $(seq 1 30); do
   if curl -fsS "http://127.0.0.1:$PORT/_stcore/health" >/dev/null; then
     echo "[deploy] app healthy: $NEW_IMAGE"
@@ -169,6 +195,7 @@ for attempt in $(seq 1 30); do
       --resolve "$TRAEFIK_HOST:443:$TRAEFIK_IP" \
       "https://$TRAEFIK_HOST/_stcore/health" | grep -Fqi "x-ai-baseball-deploy: $SHORT_SHA"; then
       echo "[deploy] primary Traefik route healthy: https://$TRAEFIK_HOST/ -> $CONTAINER_NAME:8501"
+      verify_internal_pages "$TRAEFIK_HOST" || rollback
     else
       echo "[deploy] primary Traefik route health check failed for https://$TRAEFIK_HOST/"
       rollback
@@ -177,6 +204,7 @@ for attempt in $(seq 1 30); do
       --resolve "$TRAEFIK_LEGACY_HOST:443:$TRAEFIK_IP" \
       "https://$TRAEFIK_LEGACY_HOST/_stcore/health" | grep -Fqi "x-ai-baseball-deploy: $SHORT_SHA"; then
       echo "[deploy] legacy Traefik route healthy: https://$TRAEFIK_LEGACY_HOST/ -> $CONTAINER_NAME:8501"
+      verify_internal_pages "$TRAEFIK_LEGACY_HOST" || rollback
       docker tag "$NEW_IMAGE" "$IMAGE_NAME:latest"
       exit 0
     fi
