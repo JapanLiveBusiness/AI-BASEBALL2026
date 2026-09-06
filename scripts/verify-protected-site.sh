@@ -40,21 +40,42 @@ if [ -z "$CF_ACCESS_CLIENT_ID" ] || [ -z "$CF_ACCESS_CLIENT_SECRET" ]; then
   exit 1
 fi
 
-for attempt in $(seq 1 20); do
-  if curl \
-    --fail \
-    --silent \
-    --show-error \
-    --location \
-    --max-time 10 \
-    --header "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
-    --header "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
-    "$SITE_URL" >/dev/null; then
-    echo "Protected production site is responding through Cloudflare Access"
-    exit 0
-  fi
-  sleep 3
+SITE_ROOT="${SITE_URL%/}"
+PAGE_PATHS=(
+  "/"
+  "/%E8%A9%A6%E5%90%88"
+  "/%E6%9C%AC%E6%97%A5%E3%81%AEAI%E4%BA%88%E6%83%B3"
+  "/%E4%BA%88%E6%83%B3%E7%B5%90%E6%9E%9C"
+  "/BET%E5%85%A5%E5%8A%9B"
+  "/%E5%8F%8E%E6%94%AF%E3%83%9E%E3%83%83%E3%83%97"
+  "/AI%E8%A9%B3%E7%B4%B0"
+  "/%E7%90%83%E5%9B%A3%E5%88%A5%E8%A9%B3%E7%B4%B0"
+)
+
+verify_page() {
+  local path="$1"
+  local page_url="${SITE_ROOT}${path}"
+  for attempt in $(seq 1 5); do
+    if curl \
+      --fail \
+      --silent \
+      --show-error \
+      --location \
+      --max-time 15 \
+      --header "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+      --header "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+      "$page_url" >/dev/null; then
+      echo "Protected page OK: $path"
+      return 0
+    fi
+    sleep 3
+  done
+  echo "::error::Protected production page failed: $path"
+  return 1
+}
+
+for path in "${PAGE_PATHS[@]}"; do
+  verify_page "$path"
 done
 
-echo "Protected production site health check failed"
-exit 1
+echo "All protected production pages are responding through Cloudflare Access"
