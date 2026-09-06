@@ -42,7 +42,9 @@ done
 # so the first page load after a release cannot use a stale daily slate.
 if [ -x /usr/local/bin/hawks-data-sync ]; then
   echo "[deploy] refreshing live baseball data"
-  /usr/local/bin/hawks-data-sync
+  if ! /usr/local/bin/hawks-data-sync; then
+    echo "[deploy] live refresh failed; validating the most recent timer-produced data"
+  fi
 fi
 
 if [ -n "$DEPLOY_SHA" ]; then
