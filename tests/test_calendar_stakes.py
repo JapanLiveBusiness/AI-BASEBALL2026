@@ -9,7 +9,7 @@ class CalendarStakesTests(unittest.TestCase):
                 dict(date='2026-09-08', status='calculated', points_delta=-4000),
                 dict(date='2026-09-08', status='review', points_delta=99999)]
         html = calendar_html(rows, '2026-09')
-        self.assertIn('累積収支<br>+5,000 pt', html)
+        self.assertIn('累積収支<br>+5,000', html)
         self.assertNotIn('+104,999', html)
         self.assertIn('累積収支<br>—', calendar_html([dict(date='2026-09-01', status='review')], '2026-09'))
 
@@ -25,9 +25,9 @@ class CalendarStakesTests(unittest.TestCase):
         self.assertEqual(summarize(rows)['points'], 9000)
 
     def test_labels(self):
-        self.assertEqual(bet_amount_label({'bet_amount':200000}), '20万 pt')
-        self.assertEqual(bet_amount_label({'bet_units':-40}), '40万 pt')
-        self.assertEqual(bet_amount_label({'bet_amount':12500}), '12,500 pt')
+        self.assertEqual(bet_amount_label({'bet_amount':200000}), '20万')
+        self.assertEqual(bet_amount_label({'bet_units':-40}), '40万')
+        self.assertEqual(bet_amount_label({'bet_amount':12500}), '12,500')
         for value in [None, 0, -1, 'NaN', 'Infinity', 'bad']:
             self.assertEqual(bet_amount_label({'bet_amount':value}), '金額要確認')
 
@@ -40,11 +40,20 @@ class CalendarStakesTests(unittest.TestCase):
                    dict(id='c', date='2026-09-03', team='削除対象', virtual_deleted=True)]
         result = replay_records(records, load_verified_scores())['results']
         html = calendar_html(result, '2026-09')
-        self.assertIn('20万 pt', html)
-        self.assertIn('40万 pt', html)
-        self.assertIn('-200,000 pt', html)
+        self.assertIn('20万', html)
+        self.assertIn('40万', html)
+        self.assertIn('-200,000', html)
         self.assertIn('要確認 1', html)
         self.assertNotIn('削除対象', html)
         self.assertNotIn('<script>', html)
         self.assertIn('&lt;script&gt;', html)
         self.assertEqual(html.count('class="vp-bet"'), 2)
+
+    def test_two_character_names_inline_without_pt(self):
+        from virtual_dashboard import TEAM_SHORT
+        self.assertTrue(all(len(name) == 2 for name in TEAM_SHORT.values()))
+        html = calendar_html([dict(date='2026-09-03', team='ヤクルト', bet_amount=200000,
+                                   status='calculated', points_delta=-200000)], '2026-09')
+        self.assertIn('<span>ヤク</span> <span class="vp-stake">20万</span>', html)
+        self.assertNotIn(' pt', html)
+        self.assertIn('white-space:nowrap', html)

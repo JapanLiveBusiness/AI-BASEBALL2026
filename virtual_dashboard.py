@@ -4,6 +4,10 @@ from datetime import date
 from html import escape
 from decimal import Decimal, InvalidOperation
 
+TEAM_SHORT = {"巨人": "巨人", "阪神": "阪神", "DeNA": "横浜", "広島": "広島",
+              "ヤクルト": "ヤク", "中日": "中日", "ソフトバンク": "ソフ",
+              "日本ハム": "日ハ", "ロッテ": "ロッ", "楽天": "楽天", "オリックス": "オリ", "西武": "西武"}
+
 
 def bet_amount_label(row):
     """Show stakes, not profit; unknown amounts must not look like zero."""
@@ -15,8 +19,8 @@ def bet_amount_label(row):
         if not amount.is_finite() or amount <= 0:
             return "金額要確認"
         if amount % 10000 == 0:
-            return f"{amount / 10000:,.0f}万 pt"
-        return f"{amount:,.0f} pt" if amount == amount.to_integral_value() else f"{amount:,f} pt"
+            return f"{amount / 10000:,.0f}万"
+        return f"{amount:,.0f}" if amount == amount.to_integral_value() else f"{amount:,f}"
     except (InvalidOperation, ValueError, TypeError, KeyError):
         return "金額要確認"
 
@@ -71,18 +75,19 @@ def calendar_html(rows, month):
             delta = summary["daily"].get(key)
             status = states.get(key, [])
             color = "vp-positive" if delta is not None and delta > 0 else "vp-negative" if delta is not None and delta < 0 else ""
-            value = f"{delta:+,} pt" if delta is not None else "—"
+            value = f"{delta:+,}" if delta is not None else "—"
             notes = []
             for state, label in [("review", "要確認"), ("pending", "未確定"), ("cancelled", "中止")]:
                 if state in status:
                     notes.append(f"{label} {status.count(state)}")
-            details = ''.join(f'<span class="vp-bet"><span>{escape(str(r.get("team") or "チーム未確認"))}</span><span class="vp-stake">{escape(bet_amount_label(r))}</span></span>' for r in bets.get(key, []))
+            details = ''.join(f'<span class="vp-bet" title="{escape(str(r.get("team") or "チーム未確認"), quote=True)}"><span>{escape(TEAM_SHORT.get(r.get("team"), "不明"))}</span> <span class="vp-stake">{escape(bet_amount_label(r))}</span></span>' for r in bets.get(key, []))
             through_day = [v for d, v in summary["daily"].items() if d <= key]
-            cumulative_value = f'{sum(through_day):+,} pt' if through_day else '—'
+            cumulative_value = f'{sum(through_day):+,}' if through_day else '—'
             cumulative = f'<span class="vp-cumulative">累積収支<br>{cumulative_value}</span>' if status else ''
             cells.append(f'<a class="vp-cell {color}" href="?edit_date={key}#day-editor" target="_self" aria-label="{key} の内容を編集"><b>{day}</b><strong>{value}</strong>{cumulative}<span class="vp-bets">{details}</span><small>{escape(" / ".join(notes))}</small></a>')
     style = '<style>.vp-calendar{grid-template-columns:repeat(6,minmax(0,1fr))!important}.vp-calendar .vp-cell{min-height:150px}.vp-bets{display:block;margin-top:8px}.vp-bet{display:block;color:#253044;font-size:12px;line-height:1.5;overflow-wrap:anywhere;margin-top:6px}.vp-bet>span{display:block}.vp-stake{font-weight:600}@media(max-width:600px){.vp-calendar .vp-cell{min-height:130px}.vp-bet{font-size:10px;line-height:1.4}}</style>'
     style += '<style>.vp-cumulative{display:block;margin-top:8px;padding-top:6px;border-top:1px solid #dce3eb;font-size:12px;color:#475467;overflow-wrap:anywhere}@media(max-width:600px){.vp-cumulative{font-size:10px}}</style>'
+    style += '<style>.vp-bet{white-space:nowrap;overflow-x:auto;overflow-wrap:normal}.vp-bet>span{display:inline}</style>'
     return style + '<div class="vp-calendar">' + ''.join(f'<div class="vp-weekday">{day}</div>' for day in "火水木金土日") + ''.join(cells) + '</div><p style="font-size:12px;color:#667085">累積収支：選択期間の初日を0とした計算済み収支の合計（非表示の月曜日を含む）。未確定・要確認は含みません。</p>'
 
 
