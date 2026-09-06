@@ -124,6 +124,9 @@ start_container() {
     --label "traefik.http.middlewares.ai-baseball-security.headers.framedeny=true" \
     --label "traefik.http.middlewares.ai-baseball-security.headers.referrerpolicy=no-referrer" \
     --label "traefik.http.middlewares.ai-baseball-security.headers.stsseconds=31536000" \
+    --label "traefik.http.middlewares.ai-baseball-security.headers.customresponseheaders.Cache-Control=no-store, no-cache, must-revalidate" \
+    --label "traefik.http.middlewares.ai-baseball-security.headers.customresponseheaders.Pragma=no-cache" \
+    --label "traefik.http.middlewares.ai-baseball-security.headers.customresponseheaders.Expires=0" \
     --label "traefik.http.middlewares.ai-baseball-deploy-marker.headers.customresponseheaders.X-AI-Baseball-Deploy=$SHORT_SHA" \
     --label "traefik.http.services.ai-baseball-production.loadbalancer.server.port=8501" \
     "$image"
