@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation
 
 TEAM_SHORT = {"巨人": "巨人", "阪神": "阪神", "DeNA": "横浜", "広島": "広島",
               "ヤクルト": "ヤク", "中日": "中日", "ソフトバンク": "ソフ",
-              "日本ハム": "日ハ", "ロッテ": "ロッ", "楽天": "楽天", "オリックス": "オリ", "西武": "西武"}
+              "日本ハム": "日ハ", "ロッテ": "ﾛｯﾃ", "楽天": "楽天", "オリックス": "オリ", "西武": "西武"}
 
 
 def bet_amount_label(row):
@@ -56,7 +56,7 @@ def month_options(rows):
     return sorted(months, reverse=True)
 
 
-def calendar_html(rows, month):
+def calendar_html(rows, month, predictions=()):
     rows = [r for r in rows if not r.get("virtual_deleted")]
     first = date.fromisoformat(month + "-01")
     summary = summarize(rows)
@@ -80,14 +80,16 @@ def calendar_html(rows, month):
             for state, label in [("review", "要確認"), ("pending", "未確定"), ("cancelled", "中止")]:
                 if state in status:
                     notes.append(f"{label} {status.count(state)}")
-            details = ''.join(f'<span class="vp-bet" title="{escape(str(r.get("team") or "チーム未確認"), quote=True)}"><span>{escape(TEAM_SHORT.get(r.get("team"), "不明"))}</span> <span class="vp-stake">{escape(bet_amount_label(r))}</span></span>' for r in bets.get(key, []))
+            from virtual_calendar_rank import ranked_bets
+            details = ''.join(f'<span class="vp-bet" title="{escape(str(r.get("team") or "チーム未確認"), quote=True)}"><span class="vp-rank">{escape(mark)}</span> <span>{escape(TEAM_SHORT.get(r.get("team"), "不明"))}</span> <span class="vp-stake">{escape(bet_amount_label(r))}</span>{f" <span>{prob:.0f}%</span>" if prob is not None else ""}</span>' for r, mark, prob in ranked_bets(bets.get(key, []), predictions))
             through_day = [v for d, v in summary["daily"].items() if d <= key]
             cumulative_value = f'{sum(through_day):+,}' if through_day else '—'
-            cumulative = f'<span class="vp-cumulative">累積収支<br>{cumulative_value}</span>' if status else ''
+            cumulative = f'<span class="vp-cumulative">累積 {cumulative_value}</span>' if status else ''
             cells.append(f'<a class="vp-cell {color}" href="?edit_date={key}#day-editor" target="_self" aria-label="{key} の内容を編集"><b>{day}</b><strong>{value}</strong>{cumulative}<span class="vp-bets">{details}</span><small>{escape(" / ".join(notes))}</small></a>')
     style = '<style>.vp-calendar{grid-template-columns:repeat(6,minmax(0,1fr))!important}.vp-calendar .vp-cell{min-height:150px}.vp-bets{display:block;margin-top:8px}.vp-bet{display:block;color:#253044;font-size:12px;line-height:1.5;overflow-wrap:anywhere;margin-top:6px}.vp-bet>span{display:block}.vp-stake{font-weight:600}@media(max-width:600px){.vp-calendar .vp-cell{min-height:130px}.vp-bet{font-size:10px;line-height:1.4}}</style>'
     style += '<style>.vp-cumulative{display:block;margin-top:8px;padding-top:6px;border-top:1px solid #dce3eb;font-size:12px;color:#475467;overflow-wrap:anywhere}@media(max-width:600px){.vp-cumulative{font-size:10px}}</style>'
     style += '<style>.vp-bet{white-space:nowrap;overflow-x:auto;overflow-wrap:normal}.vp-bet>span{display:inline}</style>'
+    style += '<style>.vp-calendar{align-items:start}.vp-calendar .vp-cell{box-sizing:border-box;aspect-ratio:1;min-height:0;padding:7px}.vp-calendar .vp-cell strong{margin-top:3px;font-size:12px}.vp-calendar .vp-cumulative{border-top:0;border-bottom:1px solid #dce3eb;padding:2px 0 4px;margin-top:2px;font-size:10px}.vp-bets{margin-top:3px}.vp-calendar .vp-bet{margin-top:1px;font-size:11px;line-height:1.35}.vp-calendar .vp-cell small:empty{display:none}.vp-rank{font-weight:700;color:#667085}@media(max-width:600px){.vp-calendar .vp-cell{padding:4px}.vp-calendar .vp-bet{font-size:9px}.vp-calendar .vp-cell strong{font-size:10px}.vp-calendar .vp-cumulative{font-size:9px}}</style>'
     return style + '<div class="vp-calendar">' + ''.join(f'<div class="vp-weekday">{day}</div>' for day in "火水木金土日") + ''.join(cells) + '</div><p style="font-size:12px;color:#667085">累積収支：選択期間の初日を0とした計算済み収支の合計（非表示の月曜日を含む）。未確定・要確認は含みません。</p>'
 
 

@@ -9,9 +9,9 @@ class CalendarStakesTests(unittest.TestCase):
                 dict(date='2026-09-08', status='calculated', points_delta=-4000),
                 dict(date='2026-09-08', status='review', points_delta=99999)]
         html = calendar_html(rows, '2026-09')
-        self.assertIn('累積収支<br>+5,000', html)
+        self.assertIn('累積 +5,000', html)
         self.assertNotIn('+104,999', html)
-        self.assertIn('累積収支<br>—', calendar_html([dict(date='2026-09-01', status='review')], '2026-09'))
+        self.assertIn('累積 —', calendar_html([dict(date='2026-09-01', status='review')], '2026-09'))
 
     def test_six_columns_hide_monday_without_changing_totals(self):
         from virtual_dashboard import summarize
@@ -51,7 +51,8 @@ class CalendarStakesTests(unittest.TestCase):
 
     def test_two_character_names_inline_without_pt(self):
         from virtual_dashboard import TEAM_SHORT
-        self.assertTrue(all(len(name) == 2 for name in TEAM_SHORT.values()))
+        self.assertTrue(all(len(name) == 2 for team, name in TEAM_SHORT.items() if team != 'ロッテ'))
+        self.assertEqual(TEAM_SHORT['ロッテ'], 'ﾛｯﾃ')
         html = calendar_html([dict(date='2026-09-03', team='ヤクルト', bet_amount=200000,
                                    status='calculated', points_delta=-200000)], '2026-09')
         self.assertIn('<span>ヤク</span> <span class="vp-stake">20万</span>', html)

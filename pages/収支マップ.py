@@ -2,6 +2,7 @@
 from pathlib import Path
 from datetime import date
 import json
+import os
 import streamlit as st
 
 from auth_session import user_bets_path
@@ -10,6 +11,7 @@ from studio_theme import apply_studio_theme, render_topbar, render_hero, render_
 from virtual_replay import load_verified_scores, load_verified_handicaps, replay_records
 from virtual_dashboard import summarize, month_options, calendar_html, history_rows
 from virtual_editor_ui import render_day_editor
+from virtual_calendar_rank import load_calendar_predictions
 
 st.set_page_config(page_title="収支マップ | 仮想ポイント", page_icon="📊", layout="wide")
 apply_studio_theme()
@@ -50,6 +52,7 @@ except (BetStoreError, OSError, ValueError) as exc:
     st.stop()
 
 all_rows = report["results"]
+calendar_predictions = load_calendar_predictions(data_dir, Path(os.getenv("AI_BASEBALL_SHARED_DATA_DIR", "/app/shared-data")))
 with st.expander("適用ルール・データ範囲"):
     st.write("1〜9回の得点のみを使用し、延長を除外します。1.5と1半は別ルールです。")
     st.write("追加確認済み: 同点・0.2もらいは2分勝ち。100,000ポイントなら100,000×0.2×0.9＝18,000ポイント。0.2出しの同点は20,000ポイント減です。")
@@ -85,7 +88,8 @@ with overview:
     if months:
         default_month = months.index(edit_day[:7]) if edit_day and edit_day[:7] in months else 0
         calendar_month = period if period != "全期間" else st.selectbox("表示月", months, index=default_month)
-        st.markdown(calendar_html(rows, calendar_month), unsafe_allow_html=True)
+        st.markdown(calendar_html(rows, calendar_month, calendar_predictions), unsafe_allow_html=True)
+        st.caption("順位は日付枠内のAI勝率順（同率は同順位）。M＝手動入力・手動編集、—＝試合前の保存済みAI勝率が未確認。")
         st.caption("＋ / −は当日のポイント増減。—は計算済み記録なし。要確認・未確定・中止は別記です。")
     if edit_day:
         render_day_editor(edit_day, originals, all_rows, bets_path)
