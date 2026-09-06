@@ -4,10 +4,11 @@ from virtual_replay import replay_records, load_verified_scores
 
 
 class CalendarStakesTests(unittest.TestCase):
-    def test_day_and_totals_share_top_left_header(self):
+    def test_day_left_and_totals_right_share_header(self):
         html = calendar_html([dict(date='2026-09-03', status='calculated', points_delta=-400000)], '2026-09')
         self.assertIn('<span class="vp-day-header"><b>3</b><span class="vp-day-totals"><strong>-400,000</strong><span class="vp-cumulative">累積 -400,000</span></span></span>', html)
-        self.assertIn('align-items:flex-start;justify-content:flex-start', html)
+        self.assertIn('.vp-calendar .vp-day-header{justify-content:space-between}', html)
+        self.assertIn('.vp-calendar .vp-day-totals{margin-left:auto;text-align:right}', html)
 
     def test_cumulative_includes_hidden_monday_and_excludes_review(self):
         rows = [dict(date='2026-09-07', status='calculated', points_delta=9000),
