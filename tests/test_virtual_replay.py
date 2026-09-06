@@ -55,6 +55,23 @@ class VirtualReplayTests(unittest.TestCase):
         row = replay_records([self.record(team="ロッテ", opponent="オリックス", handicap=-.3)], load_verified_scores())["results"][0]
         self.assertEqual(row["points_delta"], 2700)
 
+    def test_giants_receiving_two_tenths_tied_after_nine(self):
+        original = self.record(team="巨人", opponent="広島", handicap=-.2,
+                               bet_amount=100000, team_score=10, opponent_score=5, profit=90000)
+        row = replay_records([original], load_verified_scores())["results"][0]
+        self.assertEqual((row["team_score_9"], row["opponent_score_9"]), (5, 5))
+        self.assertEqual(row["points_delta"], 18000)
+        self.assertEqual(original["profit"], 90000)
+        giving = self.record(team="広島", opponent="巨人", handicap=.2, bet_amount=100000)
+        self.assertEqual(replay_records([giving], load_verified_scores())["results"][0]["points_delta"], -20000)
+
+    def test_partial_credit_for_other_confirmed_handicaps(self):
+        for token, amount in [("-0.3",27000),("-0.5",45000),("-0.7",63000),
+                              ("0.3",-30000),("0.5",-50000),("0.7",-70000)]:
+            with self.subTest(token=token):
+                row = replay_records([self.record(handicap_raw=token, bet_amount=100000)], load_verified_scores())["results"][0]
+                self.assertEqual(row["points_delta"], amount)
+
     def test_missing_ambiguous_pending_cancelled(self):
         records = [self.record(date="2026-08-01"), self.record(handicap=1.5),
                    self.record(status="pending"), self.record(date="2026-09-06", team="ヤクルト", opponent="中日")]

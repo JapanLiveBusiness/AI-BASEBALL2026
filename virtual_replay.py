@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 import unicodedata
 
-RULE_VERSION = "virtual-nine-innings-image-v1"
+RULE_VERSION = "virtual-nine-innings-image-v2"
 # Columns: tie, win by one, win by two, win by three (giving side).
 TABLE = {
     "0.3": ("-.3", ".7", "1", "1"),
@@ -81,6 +81,11 @@ def outcome_fraction(team_score, opponent_score, token):
         except InvalidOperation as exc:
             raise ValueError("ハンデ表記が不正です") from exc
     margin = team_score - opponent_score
+    # User-confirmed supplement: a tied game with 0.2 received is
+    # a 20% partial win (90% credit is applied in replay_records).
+    # Non-tie 0.2 outcomes remain unconfirmed, not interpolated.
+    if token == "0.2" and margin == 0:
+        return Decimal(".2") if receiving else Decimal("-.2")
     if token == "0":
         return Decimal((margin > 0) - (margin < 0))
     if token not in TABLE:
