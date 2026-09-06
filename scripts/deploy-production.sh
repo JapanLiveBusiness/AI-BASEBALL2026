@@ -37,6 +37,14 @@ for artifact in \
   install -m 0644 "$APP_DIR/data/$artifact" "$DATA_DIR/$artifact"
 done
 
+# Refresh the live schedule and predictions before validating the new release.
+# The server timer normally runs this every two minutes; deployment also runs it
+# so the first page load after a release cannot use a stale daily slate.
+if [ -x /usr/local/bin/hawks-data-sync ]; then
+  echo "[deploy] refreshing live baseball data"
+  /usr/local/bin/hawks-data-sync
+fi
+
 if [ -n "$DEPLOY_SHA" ]; then
   ACTUAL_SHA="$(git rev-parse HEAD)"
   if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
@@ -108,6 +116,7 @@ start_container() {
     --cap-drop ALL \
     --cap-add DAC_OVERRIDE \
     -v "$DATA_DIR:/app/data" \
+    -e "AI_BASEBALL_SHARED_DATA_DIR=/app/shared-data" \
     "${shared_mount[@]}" \
     "${auth_mount[@]}" \
     "${auth_env[@]}" \
@@ -148,6 +157,12 @@ start_container "$NEW_IMAGE"
 for attempt in $(seq 1 30); do
   if curl -fsS "http://127.0.0.1:$PORT/_stcore/health" >/dev/null; then
     echo "[deploy] app healthy: $NEW_IMAGE"
+    if ! docker exec "$CONTAINER_NAME" python /app/scripts/validate_runtime_data.py \
+      --data-dir /app/data \
+      --shared-data-dir /app/shared-data; then
+      echo "[deploy] production data validation failed"
+      rollback
+    fi
     if curl -k -fsSI \
       --resolve "$TRAEFIK_HOST:443:$TRAEFIK_IP" \
       "https://$TRAEFIK_HOST/_stcore/health" | grep -Fqi "x-ai-baseball-deploy: $SHORT_SHA"; then
