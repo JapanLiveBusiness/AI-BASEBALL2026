@@ -4,6 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from result_sources import merge_final_games
+
+
+def merge_team_history(history: list[dict], results: list[dict]) -> list[dict]:
+    """Add cached finals to historical records without counting a game twice."""
+    historical = [dict(row, status=row.get("status") or "final")
+                  for row in history if isinstance(row, dict)]
+    return merge_final_games(historical, results)
+
 
 TEAMS = (
     "ソフトバンク", "日本ハム", "楽天", "西武", "ロッテ", "オリックス",

@@ -8,6 +8,7 @@ import streamlit as st
 
 from prediction_metrics import build_prediction_metrics
 from prediction_results import archive_predictions, build_performance, merge_prediction_archives, settle_predictions
+from result_sources import load_final_results
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
 
 PROD_DATA_DIR = Path("/app/data")
@@ -23,7 +24,7 @@ st.set_page_config(
 
 
 def active_data_dir() -> Path:
-    return PROD_DATA_DIR if (PROD_DATA_DIR / "game_history.json").exists() else REPO_DATA_DIR
+    return PROD_DATA_DIR if PROD_DATA_DIR.exists() else REPO_DATA_DIR
 
 
 def pct(value):
@@ -275,6 +276,10 @@ if shared_available:
     ai_history, _ = settle_predictions(ai_history, shared_schedule)
 ai_history, _ = archive_predictions(ai_history, current_predictions, current_schedule)
 ai_history, _ = settle_predictions(ai_history, current_schedule)
+ai_history, _ = settle_predictions(
+    ai_history,
+    {"games": load_final_results(active_data_dir(), SHARED_DATA_DIR if shared_available else None)},
+)
 ai_perf = build_performance(ai_history)
 shared_prediction_count = len(shared_history) + len(shared_predictions.get("games") or [])
 
@@ -358,7 +363,7 @@ pending = [
 ]
 
 if pending:
-    st.markdown("#### 本日の固定予測")
+    st.markdown("#### 未確定の固定予測")
 
     pending_rows = []
 

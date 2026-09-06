@@ -13,6 +13,50 @@ def _write_json(path, payload):
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
+def test_settlement_uses_each_cached_game_date_and_not_envelope_date():
+    predictions = {"date": "2026-09-05", "games": [
+        {"home": "A", "away": "B", "pick": "A", "win_probability": 60}]}
+    archive, _ = archive_predictions([], predictions, {"date": "2026-09-05", "games": []})
+    cache = {"date": "2026-09-06", "games": [
+        {"date": "2026-09-05", "home": "A", "away": "B", "status": "final",
+         "home_score": 2, "away_score": 0},
+        {"date": "2026-09-06", "home": "A", "away": "B", "status": "live",
+         "home_score": 0, "away_score": 1}]}
+    settled, count = settle_predictions(archive, cache)
+    assert count == 1
+    assert settled[0]["hit"] is True
+    assert settled[0]["actual_home_score"] == 2
+    assert settled[0]["win_probability"] == 60
+    assert archive[0]["status"] == "pending"
+    assert settle_predictions(settled, cache)[1] == 0
+
+
+def test_settlement_maps_scores_to_archived_home_away_order():
+    archive = [{"date": "2026-09-05", "home": "A", "away": "B", "pick": "A",
+                "home_win_probability": 60, "status": "pending"}]
+    cache = {"games": [{"date": "2026-09-05", "home": "B", "away": "A",
+                         "status": "final", "home_score": 0, "away_score": 2}]}
+    settled, count = settle_predictions(archive, cache)
+    assert count == 1
+    assert settled[0]["hit"] is True
+    assert settled[0]["actual_home_score"] == 2
+
+
+def test_sync_settles_previous_day_from_results_cache(tmp_path):
+    _write_json(tmp_path / "ai_prediction_history.json", [
+        {"game_id": "2026-09-05_A_B", "date": "2026-09-05", "home": "A",
+         "away": "B", "pick": "A", "win_probability": 60, "status": "pending"}])
+    _write_json(tmp_path / "npb_today.json", {"date": "2026-09-06", "games": []})
+    _write_json(tmp_path / "npb_results_cache.json", {"games": [
+        {"date": "2026-09-05", "home": "A", "away": "B", "status": "final",
+         "home_score": 2, "away_score": 0}]})
+    result = sync_prediction_results(tmp_path, None)
+    saved = json.loads((tmp_path / "ai_prediction_history.json").read_text(encoding="utf-8"))
+    assert result["settled"] == 1
+    assert saved[0]["status"] == "final"
+    assert saved[0]["win_probability"] == 60
+
+
 def test_all_predictions_are_locked_and_settled_from_final_schedule():
     predictions = {
         "date": "2026-09-04",

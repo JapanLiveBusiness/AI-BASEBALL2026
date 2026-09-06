@@ -15,6 +15,7 @@ from game_calendar import (
     fetch_daily_handicaps,
     fetch_npb_schedule_day,
     merge_game_sources,
+    pending_status_label,
 )
 from gamecast import gamecast_snapshot, select_featured_game
 from daily_data import load_current_daily_json
@@ -110,7 +111,7 @@ def status_label(game: dict) -> tuple[str, str]:
     if "cancel" in key or "中止" in key:
         return "中止", "cancelled"
     if key == "result_pending":
-        return "結果確認中", "scheduled"
+        return pending_status_label(game), "scheduled"
     return "開始前", "scheduled"
 
 

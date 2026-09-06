@@ -20,6 +20,10 @@ STUDIO_CSS = r'''
 [data-testid="stAppViewContainer"] {background:var(--studio-bg) !important; color:var(--studio-ink) !important;}
 .block-container {max-width:1320px !important; padding:0 24px 56px !important;}
 [data-testid="stSidebar"] {background:#181818;}
+[data-testid="stSidebar"] a, [data-testid="stSidebar"] a span {color:#e9e9e9 !important;}
+[data-testid="stSidebar"] a:hover, [data-testid="stSidebar"] a:hover span,
+[data-testid="stSidebar"] a[aria-current="page"], [data-testid="stSidebar"] a[aria-current="page"] span {color:var(--studio-gold) !important;}
+[data-testid="stSidebar"] a:focus-visible {outline:2px solid var(--studio-gold);outline-offset:2px;}
 h1,h2,h3,h4,p,label,span {font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;}
 h1,h2,h3 {color:var(--studio-ink) !important;}
 

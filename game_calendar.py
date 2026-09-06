@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Iterable
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
@@ -52,6 +53,17 @@ TEAM_CODE_NAMES = {
 }
 LIVE_INNING_PATTERN = re.compile(r"(?:^|\s)(?:[1-9]|1[0-2])回(?:表|裏)?(?:\s|$)")
 FINAL_SCORE_PATTERN = re.compile(r"(?:試合終了|終了)")
+
+
+def pending_status_label(game: dict, now: datetime | None = None) -> str:
+    """A missing score is not a pending result before the scheduled start."""
+    jst = ZoneInfo("Asia/Tokyo")
+    current = now.astimezone(jst) if now is not None else datetime.now(jst)
+    try:
+        start = datetime.fromisoformat(f"{game['date']}T{game['time']}").replace(tzinfo=jst)
+    except (KeyError, TypeError, ValueError):
+        return "結果確認中"
+    return "開始前" if current < start else "結果確認中"
 
 
 def clean_text(value) -> str:

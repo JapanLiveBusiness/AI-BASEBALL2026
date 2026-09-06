@@ -1,4 +1,13 @@
-from datetime import date
+from datetime import date, datetime, timezone
+
+from game_calendar import pending_status_label
+
+
+def test_pending_label_respects_scheduled_start_in_japan():
+    game = {"date": "2026-09-06", "time": "13:00"}
+    assert pending_status_label(game, datetime(2026, 9, 6, 2, tzinfo=timezone.utc)) == "開始前"
+    assert pending_status_label(game, datetime(2026, 9, 6, 4, tzinfo=timezone.utc)) == "結果確認中"
+    assert pending_status_label({"date": "2026-09-05", "time": "--:--"}) == "結果確認中"
 
 from game_calendar import (
     attach_handicaps,
