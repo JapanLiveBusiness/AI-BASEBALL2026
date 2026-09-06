@@ -80,7 +80,7 @@ def cached_official_games(date_iso: str) -> list[dict]:
 
 @st.cache_data(ttl=300, max_entries=32, show_spinner=False)
 def cached_handicaps(date_iso: str) -> list[dict]:
-    return fetch_daily_handicaps(date.fromisoformat(date_iso), timeout=6)
+    return fetch_daily_handicaps(date.fromisoformat(date_iso), timeout=6, strict=True)
 
 
 @st.cache_data(ttl=15, max_entries=12, show_spinner=False)
@@ -154,7 +154,11 @@ def games_for_date(selected_date: date) -> tuple[list[dict], dict, dict]:
         game for game in load_results_cache().get("games") or []
         if str(game.get("date") or "") == selected_iso
     ] if is_current_or_past else []
-    live_results = cached_handicaps(selected_iso) if is_current_or_past else []
+    try:
+        live_results = cached_handicaps(selected_iso) if is_current_or_past else []
+    except Exception:
+        live_results = []
+        st.warning("ハンデの森の認証付き取得に失敗しました。表示値は保存済みデータで、空欄は未取得です。")
     daily_results = (
         merge_game_sources(stored_results, live_results)
         if is_current_or_past
@@ -213,7 +217,7 @@ def handicap_html(game: dict, show_handicap: bool) -> str:
         if token is not None:
             team = html.escape(str(game.get(side) or ("ホーム" if side == "home" else "ビジター")))
             entries.append(f"{team} {html.escape(str(token))}")
-    value = " / ".join(entries) if entries else "ハンデなし"
+    value = " / ".join(entries) if entries else "未掲載・未取得"
     return f'<div class="handicap"><span>HANDICAP</span><strong>{value}</strong></div>'
 
 
@@ -486,4 +490,4 @@ def render_match_center(target_date: date) -> None:
 
 
 render_match_center(selected_date)
-st.caption("前日・翌日ボタンまたは日付欄で移動できます。過去日と当日は公開ハンデ、未来日は公式の開始時刻・球場を表示します。ハンデは数値が入っている片側だけが対象で、空欄はハンデなしです。")
+st.caption("前日・翌日ボタンまたは日付欄で移動できます。過去日と当日は会員ページのハンデ、未来日は公式の開始時刻・球場を表示します。ハンデは数値が入っている片側だけが対象で、空欄は未掲載または未取得です。")

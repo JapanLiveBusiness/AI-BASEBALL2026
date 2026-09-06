@@ -15,6 +15,7 @@ TRAEFIK_HOST="${TRAEFIK_HOST:-ai-baseball-studio.f-polaris.jp}"
 TRAEFIK_LEGACY_HOST="${TRAEFIK_LEGACY_HOST:-ai-baseball.f-polaris.jp}"
 TRAEFIK_CONTAINER="${TRAEFIK_CONTAINER:-miki-traefik}"
 AUTH_SECRETS_FILE="${AUTH_SECRETS_FILE:-/opt/hawks-ai/auth0/secrets.toml}"
+HANDENOMORI_CREDENTIALS_FILE="${HANDENOMORI_CREDENTIALS_FILE:-/opt/hawks-ai/handenomori/credentials.json}"
 
 cd "$APP_DIR"
 
@@ -96,6 +97,10 @@ start_container() {
   local shared_mount=()
   local auth_mount=()
   local auth_env=()
+  local handicap_mount=()
+  if [ -f "$HANDENOMORI_CREDENTIALS_FILE" ]; then
+    handicap_mount=(-v "$HANDENOMORI_CREDENTIALS_FILE:/run/handenomori/credentials.json:ro")
+  fi
   if [ -n "$SHARED_DATA_DIR" ] && [ -d "$SHARED_DATA_DIR" ]; then
     shared_mount=(-v "$SHARED_DATA_DIR:/app/shared-data:ro")
   fi
@@ -122,6 +127,7 @@ start_container() {
     "${shared_mount[@]}" \
     "${auth_mount[@]}" \
     "${auth_env[@]}" \
+    "${handicap_mount[@]}" \
     --label "traefik.enable=true" \
     --label "traefik.docker.network=$TRAEFIK_NETWORK" \
     --label "traefik.http.routers.ai-baseball-production.rule=Host(\`$TRAEFIK_HOST\`) || Host(\`$TRAEFIK_LEGACY_HOST\`)" \

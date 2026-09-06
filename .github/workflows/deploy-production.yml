@@ -185,6 +185,52 @@ jobs:
             'install -d -m 700 /opt/hawks-ai/auth0 && install -m 600 /tmp/ai-baseball-auth0.toml /opt/hawks-ai/auth0/secrets.toml && rm -f /tmp/ai-baseball-auth0.toml'
           echo "Auth0 configuration installed on the production host"
 
+      - name: Provision Handenomori credentials when available
+        shell: bash
+        env:
+          HANDENOMORI_EMAIL: ${{ secrets.HANDENOMORI_EMAIL }}
+          HANDENOMORI_PASSWORD: ${{ secrets.HANDENOMORI_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$HANDENOMORI_EMAIL" ] && [ -z "$HANDENOMORI_PASSWORD" ]; then
+            echo "Handenomori secrets not supplied; retaining server configuration"
+            exit 0
+          fi
+          if [ -z "$HANDENOMORI_EMAIL" ] || [ -z "$HANDENOMORI_PASSWORD" ]; then
+            echo "::error::Configure both HANDENOMORI_EMAIL and HANDENOMORI_PASSWORD"
+            exit 1
+          fi
+          export HANDENOMORI_STAGING_FILE="$RUNNER_TEMP/handenomori-credentials.json"
+          trap 'rm -f "$HANDENOMORI_STAGING_FILE"' EXIT
+          umask 077
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          Path(os.environ['HANDENOMORI_STAGING_FILE']).write_text(json.dumps({
+              'email': os.environ['HANDENOMORI_EMAIL'],
+              'password': os.environ['HANDENOMORI_PASSWORD'],
+          }), encoding='utf-8')
+          PY
+          # Use the same production SSH identity and connection policy as deployment.
+          COMMON_SSH_OPTS=(
+            -i "$HOME/.ssh/deploy_key"
+            -o IdentitiesOnly=yes -o BatchMode=yes
+            -o PreferredAuthentications=publickey -o PasswordAuthentication=no
+            -o ConnectTimeout=15 -o StrictHostKeyChecking=no
+            -o UserKnownHostsFile=/dev/null
+          )
+          ssh -p "$DEPLOY_PORT" "${COMMON_SSH_OPTS[@]}" \
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
+            'install -d -m 700 /opt/hawks-ai/handenomori'
+          scp -P "$DEPLOY_PORT" "${COMMON_SSH_OPTS[@]}" \
+            "$HANDENOMORI_STAGING_FILE" \
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/opt/hawks-ai/handenomori/credentials.json.next"
+          ssh -p "$DEPLOY_PORT" "${COMMON_SSH_OPTS[@]}" \
+            "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" \
+            'chmod 600 /opt/hawks-ai/handenomori/credentials.json.next && mv -f /opt/hawks-ai/handenomori/credentials.json.next /opt/hawks-ai/handenomori/credentials.json'
+          echo "Handenomori credentials installed; values are not logged"
+
       - name: Deploy to production server
         shell: bash
         env:

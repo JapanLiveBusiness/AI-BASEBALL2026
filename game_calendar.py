@@ -8,6 +8,7 @@ from typing import Iterable
 from zoneinfo import ZoneInfo
 
 import requests
+from handenomori_client import fetch_member_page
 from bs4 import BeautifulSoup
 
 
@@ -250,13 +251,13 @@ def parse_handicap_html(content, target_date: date) -> list[dict]:
     return games
 
 
-def fetch_daily_handicaps(target_date: date, timeout: int = 12) -> list[dict]:
+def fetch_daily_handicaps(target_date: date, timeout: int = 12, *, strict: bool = False) -> list[dict]:
     url = HANDICAP_URL.format(ymd=target_date.strftime("%Y%m%d"))
     try:
-        response = requests.get(url, headers=HEADERS, timeout=timeout)
-        response.raise_for_status()
-        return parse_handicap_html(response.content, target_date)
+        return parse_handicap_html(fetch_member_page(url, timeout=timeout), target_date)
     except Exception:
+        if strict:
+            raise
         return []
 
 
