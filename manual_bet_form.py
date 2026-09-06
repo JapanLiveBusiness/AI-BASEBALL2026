@@ -4,9 +4,9 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 import streamlit as st
 
-from bet_analytics import profit_for_result, settle_bet
 from bet_store import BetStoreError, append_bet
 from manual_bet_defaults import entry_defaults, load_entry_games
+from handicap_rules import normalize_handicap, fractional_settlement, RULE
 
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -37,6 +37,8 @@ def render_manual_bet_form(bets_file, cache_paths, *, prefix="manual"):
     if st.session_state.get(f"{prefix}_context") != context:
         st.session_state[f"{prefix}_context"] = context
         for field, value in defaults.items():
+            if field == "handicap" and value is None:
+                value = ""
             if field == "time":
                 try:
                     value = datetime.strptime(value, "%H:%M").time()
@@ -55,9 +57,9 @@ def render_manual_bet_form(bets_file, cache_paths, *, prefix="manual"):
         c3, c4, c5 = st.columns(3)
         game_time = c3.time_input("試合開始時刻", key=f"{prefix}_time")
         amount = c4.number_input("BET金額（円）", min_value=0, step=1000, value=10000, key=f"{prefix}_amount")
-        handicap = c5.number_input("ハンディ", value=None, step=0.1, key=f"{prefix}_handicap")
+        handicap = c5.text_input("ハンディ", key=f"{prefix}_handicap", placeholder="例: 0.7、1.5、1半3")
         status = st.selectbox("状態", ["未確定", "確定"], key=f"{prefix}_status")
-        st.caption("BET先得点からハンデを差し引いて判定します。的中 +BET額の90%、外れ -BET額の100%、PUSH 0円です。")
+        st.caption("ハンデ表に従って丸勝ち・分勝ち・分負けを判定します。1.5と1半は別のハンデです。受け側は-を付けます。勝ち分の90%を利益、負け分の100%を損失として計算します。")
         c6, c7 = st.columns(2)
         team_score = c6.number_input("BET先チーム得点", min_value=0, value=None, step=1, key=f"{prefix}_team_score")
         opponent_score = c7.number_input("対戦相手得点", min_value=0, value=None, step=1, key=f"{prefix}_opponent_score")
@@ -68,23 +70,27 @@ def render_manual_bet_form(bets_file, cache_paths, *, prefix="manual"):
     if not team.strip() or not opponent.strip() or team.strip() == opponent.strip():
         st.error("異なる2チームを入力してください。")
         return
-    if amount <= 0 or handicap is None:
+    if amount <= 0 or not handicap.strip():
         st.error("BET金額は1円以上、ハンデは数値で入力してください。")
+        return
+    try:
+        handicap = normalize_handicap(handicap)
+    except ValueError as exc:
+        st.error(str(exc))
         return
     final = status == "確定"
     if final and (team_score is None or opponent_score is None):
         st.error("確定するには両チームの得点が必要です。未取得の得点を0として保存することはありません。")
         return
-    adjusted, result = settle_bet(team_score, opponent_score, handicap) if final else (None, None)
+    settlement = fractional_settlement(team_score, opponent_score, handicap, amount) if final else {"settlement_rule": RULE, "result": None, "profit": 0, "adjusted_score": None}
     record = {
         "id": f"manual-{uuid4().hex}", "date": selected_date.isoformat(),
         "time": game_time.strftime("%H:%M"), "team": team.strip(), "opponent": opponent.strip(),
-        "handicap": float(handicap), "bet_units": float(amount) / 10000, "bet_amount": int(amount),
-        "status": "final" if final else "pending", "settled": final, "result": result,
-        "profit": profit_for_result(result, amount) if final else 0,
+        "handicap": handicap, "bet_units": float(amount) / 10000, "bet_amount": int(amount),
+        "status": "final" if final else "pending", "settled": final,
         "team_score": int(team_score) if final else None,
         "opponent_score": int(opponent_score) if final else None,
-        "adjusted_score": adjusted, "memo": memo.strip(), "source": "manual",
+        **settlement, "memo": memo.strip(), "source": "manual",
         "created_at": datetime.now(JST).isoformat(timespec="seconds"),
     }
     try:

@@ -3,8 +3,7 @@ from datetime import date
 import json
 import math
 from pathlib import Path
-import re
-import unicodedata
+from handicap_rules import normalize_handicap
 
 from game_calendar import (
     fetch_daily_handicaps, fetch_npb_schedule_day, load_npb_schedule_day,
@@ -87,27 +86,25 @@ def load_entry_games(target_date, cache_paths, *, today=None):
     return games
 
 
-def _handicap_number(value):
+def _handicap_token(value):
     if value is None or str(value).strip() == "":
         return None
-    text = unicodedata.normalize("NFKC", str(value)).strip().strip("<>")
-    if re.fullmatch(r"\d*半", text):
-        return float(text[:-1] or 0) + 0.5
     try:
-        number = float(text)
+        return normalize_handicap(value)
     except (TypeError, ValueError):
         return None
-    return number if math.isfinite(number) else None
 
 
 def entry_defaults(game, team):
     game = game or {}
     side = "home" if normalize_team(team) == normalize_team(game.get("home")) else "away"
     other = "away" if side == "home" else "home"
-    handicap = _handicap_number(game.get(f"{side}_handicap"))
+    handicap = _handicap_token(game.get(f"{side}_handicap"))
     if handicap is None:
-        opposing = _handicap_number(game.get(f"{other}_handicap"))
-        handicap = -opposing if opposing is not None else None
+        opposing = _handicap_token(game.get(f"{other}_handicap"))
+        handicap = (opposing[1:] if opposing.startswith("-") else "-" + opposing) if opposing is not None else None
+        if handicap == "-0":
+            handicap = "0"
     final = str(game.get("status") or "").lower() in {"final", "finished", "completed", "終了", "試合終了"}
     def score(key):
         value = game.get(key)
