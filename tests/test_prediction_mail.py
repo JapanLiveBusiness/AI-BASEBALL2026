@@ -54,7 +54,7 @@ class MailTests(unittest.TestCase):
         message = build_message('2026-09-06', [self.pick], 'owner@example.com')
         settings = dict(SMTP_HOST='smtp.example.invalid', SMTP_USER='test', SMTP_PASSWORD='test-only')
         with patch('prediction_mail.smtplib.SMTP_SSL') as factory:
-            client = factory.return_value.__enter__.return_value
+            client = factory.return_value
             client.send_message.return_value = {}
             smtp_deliver(message, settings)
             client.login.assert_called_once_with('test', 'test-only')
@@ -69,3 +69,4 @@ class MailTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
