@@ -134,6 +134,9 @@ def main():
                 "calibration_method": pred.get(
                     "calibration_method"
                 ),
+                "confidence_basis": pred.get(
+                    "confidence_basis"
+                ),
                 "predicted_score": pred.get(
                     "predicted_score"
                 ),

@@ -227,6 +227,7 @@ def archive_predictions(
                 "validation_sample_size": prediction.get("validation_sample_size"),
                 "validation_home_win_rate": prediction.get("validation_home_win_rate"),
                 "calibration_method": prediction.get("calibration_method"),
+                "confidence_basis": prediction.get("confidence_basis"),
                 "predicted_score": prediction.get("predicted_score"),
                 "confidence": prediction.get("confidence"),
                 "model": prediction.get("model") or predictions.get("model"),

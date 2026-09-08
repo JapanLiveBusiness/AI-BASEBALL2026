@@ -102,15 +102,29 @@ for idx, game in enumerate(prediction_games[:3], start=1):
         if isinstance(probability, (int, float))
         else "--"
     )
+    raw_home = game.get("raw_home_win_probability")
+    raw_pick = None
+    if isinstance(raw_home, (int, float)):
+        raw_pick = float(raw_home) if game.get("pick") == game.get("home") else 100.0 - float(raw_home)
+    raw_label = f"補正前 {raw_pick:.1f}%" if raw_pick is not None else "補正前 --"
+    validation_count = int(game.get("validation_sample_size") or 0)
+    confidence = safe(game.get("confidence"), "--")
+    score = safe(game.get("predicted_score"), "--")
+    validation_label = (
+        f"検証反映済 {validation_count}試合"
+        if validation_count >= 20
+        else f"検証データ不足 {validation_count}/20"
+    )
     rank_cards.append(
         f"""
         <article class="ranking-card">
           <div class="ranking-no">{idx}</div>
           <div class="ranking-copy">
             <strong>{safe(game.get('pick'))}</strong>
-            <span>{safe(game.get('home'))} vs {safe(game.get('away'))}</span>
+            <span class="ranking-match">{safe(game.get('away'))} @ {safe(game.get('home'))}</span>
+            <span class="ranking-meta">予想 {score}　予測強度 {confidence}　{validation_label}</span>
           </div>
-          <div class="ranking-score"><b>{probability_label}</b><small>AI勝率</small></div>
+          <div class="ranking-score"><small>勝利予測</small><b>{probability_label}</b><small>{raw_label}</small></div>
         </article>
         """.strip()
     )
@@ -163,7 +177,7 @@ st.markdown(
 .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}.kpi{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:17px 19px;display:flex;align-items:center;justify-content:space-between;min-height:83px}.kpi-copy span{font-size:8px;letter-spacing:.18em;color:var(--gold-dark);font-weight:950}.kpi-copy b{display:block;font-size:25px;margin-top:5px}.kpi small{font-size:9px;color:var(--muted);text-align:right;line-height:1.45}
 
 .content-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);gap:14px;margin-top:14px}.panel{background:rgba(255,255,255,.64);border:1px solid var(--line);border-radius:18px;padding:18px}.panel-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:14px}.panel-head h2{font-size:21px!important;margin:0!important;color:var(--ink)!important}.panel-head span{font-size:8px;letter-spacing:.15em;color:var(--muted)}
-.ranking-list{display:grid;gap:8px}.ranking-card{display:grid;grid-template-columns:42px 1fr 90px;gap:12px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:13px 15px}.ranking-no{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#171717;color:var(--gold);font-weight:950}.ranking-copy{display:flex;flex-direction:column}.ranking-copy strong{font-size:16px}.ranking-copy span{font-size:10px;color:var(--muted);margin-top:3px}.ranking-score{text-align:right}.ranking-score b{display:block;font-size:20px}.ranking-score small{font-size:8px;color:var(--muted)}.empty-state{background:var(--paper);border:1px dashed #cfc6b7;border-radius:13px;padding:22px;display:flex;flex-direction:column;gap:5px}.empty-state b{font-size:14px}.empty-state span{font-size:10px;color:var(--muted)}
+.ranking-list{display:grid;gap:9px}.ranking-card{display:grid;grid-template-columns:42px 1fr 112px;gap:12px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:14px 15px}.ranking-no{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#171717;color:var(--gold);font-weight:950}.ranking-copy{display:flex;flex-direction:column}.ranking-copy strong{font-size:17px}.ranking-copy span{font-size:12px;color:var(--muted);margin-top:3px}.ranking-copy .ranking-match{font-weight:750;color:#374151}.ranking-copy .ranking-meta{font-size:11px}.ranking-score{text-align:right}.ranking-score b{display:block;font-size:22px;color:#8a6700}.ranking-score small{display:block;font-size:10px;color:var(--muted);line-height:1.45}.empty-state{background:var(--paper);border:1px dashed #cfc6b7;border-radius:13px;padding:22px;display:flex;flex-direction:column;gap:5px}.empty-state b{font-size:14px}.empty-state span{font-size:10px;color:var(--muted)}
 
 .actions{display:grid;gap:8px}.action{text-decoration:none;color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:14px 15px;display:grid;grid-template-columns:35px 1fr 18px;align-items:center;gap:10px;min-height:69px}.action.primary{background:#171717;color:#fff;border-color:#282828}.action-icon{width:34px;height:34px;border-radius:9px;background:#f5ebbd;color:#8a6700;display:grid;place-items:center;font-weight:950}.action.primary .action-icon{background:var(--gold);color:#111}.action-copy b{display:flex;align-items:center;gap:7px;font-size:14px}.action-copy>span{display:block;font-size:9px;color:var(--muted);margin-top:3px}.action.primary .action-copy>span{color:#aeb4bd}.action-arrow{color:#b08b00;font-weight:950}.readiness{display:inline-flex!important;margin:0!important;padding:2px 6px;border-radius:999px;font-size:7px!important;line-height:1.2;font-weight:900;background:#e8e3d8;color:#625d54!important}.readiness.live{background:#dff4e7;color:#176b3a!important}.readiness.beta{background:#fff0bd;color:#765800!important}.readiness.preview{background:#e9e2ff;color:#5b3ca5!important}
 
@@ -210,7 +224,7 @@ st.markdown(
 
   <section class="content-grid">
     <div class="panel">
-      <div class="panel-head"><h2>今日のAIランキング</h2><span>TOP 3 / CONFIDENCE</span></div>
+      <div class="panel-head"><h2>勝敗予測ランキング</h2><span>勝率が高い順・上位3試合</span></div>
       <div class="ranking-list">{rank_html}</div>
     </div>
     <div class="panel">

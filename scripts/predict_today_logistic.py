@@ -530,6 +530,8 @@ def main():
                     calibration["validation_home_win_rate"],
                 "calibration_method":
                     calibration["calibration_method"],
+                "confidence_basis":
+                    "calibrated_win_probability",
                 "predicted_score":
                     score_prediction(
                         home_history,
