@@ -2,7 +2,10 @@ import json
 
 from prediction_results import (
     archive_predictions,
+    backfill_season_predictions,
     build_performance,
+    calibrate_home_probability,
+    load_historical_validation,
     merge_prediction_archives,
     settle_predictions,
     sync_prediction_results,
@@ -144,3 +147,61 @@ def test_sync_archives_current_research_prediction(tmp_path):
     assert result["added"] == 1
     assert result["shared"] == 1
     assert saved[0]["game_id"] == "2026-09-05_A_B"
+
+
+def test_backfill_starts_at_first_season_game_and_preserves_real_record(tmp_path):
+    csv_path = tmp_path / "historical_backtest_predictions.csv"
+    csv_path.write_text(
+        "date,season,home,away,actual_home_win,model,home_win_probability,correct\n"
+        "2026-03-28,A,B,C,1,logistic_rolling,0.60,True\n"
+        "2026-03-29,2026,A,B,1,logistic_rolling,0.60,True\n"
+        "2026-03-30,2026,C,D,0,logistic_rolling,0.45,True\n",
+        encoding="utf-8",
+    )
+    real = [{
+        "game_id": "2026-03-29_A_B", "date": "2026-03-29", "home": "A",
+        "away": "B", "pick": "B", "status": "final", "hit": False,
+        "model": "logistic_rolling_v1", "saved_at": "real",
+    }]
+
+    merged, added = backfill_season_predictions(real, csv_path, season=2026)
+
+    assert added == 1
+    assert merged[0]["date"] == "2026-03-29"
+    assert merged[0]["saved_at"] == "real"
+    assert merged[1]["actual_winner"] == "D"
+    assert merged[1]["historical_validation"] is True
+
+
+def test_calibration_uses_only_prior_games_in_same_probability_band():
+    validation = []
+    for index in range(20):
+        validation.append({
+            "date": f"2026-04-{index + 1:02d}", "status": "final",
+            "home": "H", "away": "A", "actual_winner": "H",
+            "home_win_probability": 55.0,
+            "raw_home_win_probability": 55.0,
+        })
+    validation.append({
+        "date": "2026-06-01", "status": "final", "home": "H", "away": "A",
+        "actual_winner": "A", "home_win_probability": 55.0,
+    })
+
+    result = calibrate_home_probability(54.0, validation, "2026-05-01")
+
+    assert result["validation_sample_size"] == 20
+    assert result["home_win_probability"] > 54.0
+    assert result["calibration_method"] == "season_10point_empirical_bayes"
+
+
+def test_load_historical_validation_accepts_utf8_bom(tmp_path):
+    csv_path = tmp_path / "history.csv"
+    csv_path.write_text(
+        "\ufeffdate,season,home,away,actual_home_win,model,home_win_probability,correct\n"
+        "2026-03-28,A,B,C,1,logistic_rolling,0.60,True\n"
+        "2026-03-28,2026,A,B,1,logistic_rolling,0.60,True\n",
+        encoding="utf-8",
+    )
+    rows = load_historical_validation(csv_path, season=2026)
+    assert len(rows) == 1
+    assert rows[0]["win_probability"] == 60.0
