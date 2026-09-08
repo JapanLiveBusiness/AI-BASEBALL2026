@@ -57,12 +57,21 @@ available_dates = sorted(
     {str(row.get("date") or "")[:10] for row in history if row.get("date")} | {current_date},
     reverse=True,
 )
-selected_date = st.selectbox(
-    "表示する試合日",
-    available_dates,
-    format_func=lambda value: f"{value}（本日）" if value == today_jst else value,
-    key="ai_prediction_display_date",
+display_mode = st.radio(
+    "表示内容",
+    ("本日の予想と公式結果", "全NPB AI予測履歴"),
+    horizontal=True,
+    key="ai_prediction_display_mode",
 )
+if display_mode == "本日の予想と公式結果":
+    selected_date = current_date
+else:
+    selected_date = st.selectbox(
+        "履歴の試合日",
+        available_dates,
+        format_func=lambda value: f"{value}（本日）" if value == today_jst else value,
+        key="ai_prediction_display_date",
+    )
 
 if selected_date == current_date:
     games = today_games
@@ -86,7 +95,8 @@ else:
         )
         games.append(row)
 status = coverage(games)
-render_section("WIN / LOSS RANKING", f"{selected_date} NPB 勝敗予測ランキング")
+section_kicker = "TODAY / OFFICIAL RESULT" if display_mode == "本日の予想と公式結果" else "ALL NPB / AI HISTORY"
+render_section(section_kicker, f"{display_mode}｜{selected_date}")
 
 st.info(
     "予測強度は補正後勝率で分類します（高：65%以上、中：58%以上、標準：58%未満）。"
