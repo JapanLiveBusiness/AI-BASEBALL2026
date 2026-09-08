@@ -119,6 +119,21 @@ def main():
                 "home_win_probability": pred.get(
                     "home_win_probability"
                 ),
+                "raw_home_win_probability": pred.get(
+                    "raw_home_win_probability"
+                ),
+                "calibration_adjustment": pred.get(
+                    "calibration_adjustment"
+                ),
+                "validation_sample_size": pred.get(
+                    "validation_sample_size"
+                ),
+                "validation_home_win_rate": pred.get(
+                    "validation_home_win_rate"
+                ),
+                "calibration_method": pred.get(
+                    "calibration_method"
+                ),
                 "predicted_score": pred.get(
                     "predicted_score"
                 ),
