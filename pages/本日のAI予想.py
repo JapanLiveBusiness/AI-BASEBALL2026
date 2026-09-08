@@ -154,10 +154,10 @@ st.markdown(
 .prediction-card{background:#fffdf8;border:1px solid #ddd5c8;border-radius:16px;padding:18px;box-shadow:0 7px 20px rgba(35,29,18,.05)}
 .prediction-head{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:14px;align-items:center}
 .prediction-rank{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#171717;color:#f1c40f;font-size:18px;font-weight:950}
-.prediction-match b{display:block;font-size:18px;color:#111827}.prediction-match span{display:block;margin-top:4px;color:#6b7280;font-size:13px}
+.prediction-match b{display:block;font-size:18px;color:#111827}.prediction-match span{display:block;margin-top:4px;color:#6b7280;font-size:13px}.prediction-pick{color:#7a5900!important;font-weight:900}
 .prediction-prob{text-align:right}.prediction-prob small{display:block;color:#6b7280;font-size:12px}.prediction-prob strong{display:block;color:#9a7200;font-size:28px;line-height:1.1}
 .prediction-bar{height:9px;margin:14px 0;background:#e8e3d9;border-radius:999px;overflow:hidden}.prediction-bar i{display:block;height:100%;background:linear-gradient(90deg,#d9a900,#f1c40f);border-radius:999px}
-.prediction-detail{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}.prediction-item{background:#f7f4ed;border-radius:10px;padding:10px}.prediction-item small{display:block;color:#6b7280;font-size:11px}.prediction-item b{display:block;margin-top:4px;font-size:14px;color:#1f2937}.prediction-item b.ok{color:#217043}.prediction-item b.wait{color:#9a6700}
+.prediction-detail{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.prediction-item{background:#f7f4ed;border-radius:10px;padding:10px}.prediction-item small{display:block;color:#6b7280;font-size:11px}.prediction-item b{display:block;margin-top:4px;font-size:14px;color:#1f2937}.prediction-item b.ok{color:#217043}.prediction-item b.wait{color:#9a6700}.prediction-tech{margin-top:9px;color:#777066;font-size:11px}
 .prediction-result{margin-top:12px;padding-top:11px;border-top:1px solid #e5dfd4;color:#4b5563;font-size:13px}
 @media(max-width:700px){.prediction-card{padding:14px}.prediction-head{grid-template-columns:40px minmax(0,1fr)}.prediction-rank{width:38px;height:38px}.prediction-prob{grid-column:1/-1;display:flex;justify-content:space-between;align-items:end;text-align:left}.prediction-prob strong{font-size:25px}.prediction-detail{grid-template-columns:1fr 1fr}.prediction-item:last-child{grid-column:1/-1}}
 </style>
@@ -204,7 +204,8 @@ for game in sorted(games, key=lambda row: row.get("rank") or 999):
     if isinstance(validation_rate, (int, float)) and pick == away:
         validation_rate = 100.0 - float(validation_rate)
     validation_ready = validation_count >= 20 and isinstance(validation_rate, (int, float))
-    validation_status = "検証反映済み" if validation_ready else f"データ不足 {validation_count}/20"
+    validation_status = f"検証済み {validation_count}試合" if validation_ready else f"検証中 {validation_count}/20試合"
+    validation_evidence = f"実勝率 {validation_rate:.1f}%" if validation_ready else "20試合で補正開始"
     confidence_labels = {"HIGH":"高", "MEDIUM":"中", "LOW":"標準", "A":"高", "A-":"やや高", "B":"標準", "C+":"参考"}
     result_text = "試合結果は未確定です。"
     if result != "未確定":
@@ -213,16 +214,15 @@ for game in sorted(games, key=lambda row: row.get("rank") or 999):
     prob_value = float(prob) if isinstance(prob, (int, float)) else 0.0
     cards.append(f'''<article class="prediction-card">
 <div class="prediction-head"><div class="prediction-rank">{rank if rank is not None else "—"}</div>
-<div class="prediction-match"><b>{html.escape(str(away))} @ {html.escape(str(home))}</b><span>AIの勝利予想：{html.escape(str(pick))}</span></div>
-<div class="prediction-prob"><small>予測勝率</small><strong>{prob_value:.1f}%</strong></div></div>
+<div class="prediction-match"><b>{html.escape(str(away))} @ {html.escape(str(home))}</b><span class="prediction-pick">AI本命：{html.escape(str(pick))}</span></div>
+<div class="prediction-prob"><small>{html.escape(str(pick))}が勝つ予測</small><strong>{prob_value:.1f}%</strong></div></div>
 <div class="prediction-bar"><i style="width:{max(0,min(100,prob_value)):.1f}%"></i></div>
 <div class="prediction-detail">
 <div class="prediction-item"><small>予想スコア</small><b>{html.escape(str(score))}</b></div>
-<div class="prediction-item"><small>予測強度</small><b>{confidence_labels.get(str(confidence), html.escape(str(confidence)))}</b></div>
-<div class="prediction-item"><small>補正前勝率</small><b>{f"{raw_pick:.1f}%" if raw_pick is not None else "--"}</b></div>
-<div class="prediction-item"><small>検証補正</small><b>{f"{adjustment:+.1f}%" if isinstance(adjustment,(int,float)) else "--"}</b></div>
-<div class="prediction-item"><small>同確率帯の実勝率</small><b>{f"{validation_rate:.1f}%" if isinstance(validation_rate,(int,float)) else "--"}</b></div>
-<div class="prediction-item"><small>精度検証</small><b class="{'ok' if validation_ready else 'wait'}">{validation_status}</b></div></div>
+<div class="prediction-item"><small>信頼度</small><b>{confidence_labels.get(str(confidence), html.escape(str(confidence)))}</b></div>
+<div class="prediction-item"><small>過去データ検証</small><b class="{'ok' if validation_ready else 'wait'}">{validation_status}</b></div>
+<div class="prediction-item"><small>検証根拠</small><b>{validation_evidence}</b></div></div>
+<div class="prediction-tech">補正前 {f"{raw_pick:.1f}%" if raw_pick is not None else "--"} ／ 検証補正 {f"{adjustment:+.1f}%" if isinstance(adjustment,(int,float)) else "--"}</div>
 <div class="prediction-result">{html.escape(result_text)}</div></article>''')
 
 st.markdown(f'<div class="prediction-list">{"".join(cards)}</div>', unsafe_allow_html=True)
