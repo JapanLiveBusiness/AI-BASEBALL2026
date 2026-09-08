@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 from prediction_metrics import build_prediction_metrics
-from prediction_results import archive_predictions, build_performance, merge_prediction_archives, settle_predictions
+from prediction_results import archive_predictions, backfill_season_predictions, build_performance, merge_prediction_archives, settle_predictions
 from result_sources import load_final_results
 from studio_theme import apply_studio_theme, render_hero, render_nav_links, render_section, render_topbar
 
@@ -35,6 +35,14 @@ def pct(value):
 
 def brier_label(value):
     return "--" if value is None else f"{float(value):.4f}"
+
+
+def raw_pick_probability(row):
+    value = row.get("raw_home_win_probability")
+    if value is None:
+        return None
+    probability = float(value)
+    return probability if row.get("pick") == row.get("home") else 100.0 - probability
 
 
 apply_studio_theme()
@@ -296,6 +304,15 @@ if not isinstance(shared_history, list):
     shared_history = []
 ai_history = merge_prediction_archives(ai_history, shared_history)
 
+backtest_csv = active_data_dir() / "historical_backtest_predictions.csv"
+if not backtest_csv.exists():
+    backtest_csv = REPO_DATA_DIR / "historical_backtest_predictions.csv"
+ai_history, season_backfilled = backfill_season_predictions(
+    ai_history,
+    backtest_csv,
+    season=jst_today.year,
+)
+
 current_predictions = _load_optional_json(active_data_dir() / "today_ai_predictions.json", {})
 current_schedule = _load_optional_json(active_data_dir() / "npb_today.json", {})
 shared_predictions = {}
@@ -312,6 +329,18 @@ ai_history, _ = settle_predictions(
 )
 ai_perf = build_performance(ai_history)
 shared_prediction_count = len(shared_history) + len(shared_predictions.get("games") or [])
+season_dates = sorted(
+    str(row.get("date") or "")[:10]
+    for row in ai_history
+    if isinstance(row, dict)
+    and str(row.get("date") or "").startswith(str(jst_today.year))
+)
+season_start = season_dates[0] if season_dates else "--"
+calibrated_pending = sum(
+    int(row.get("validation_sample_size") or 0) > 0
+    for row in ai_history
+    if isinstance(row, dict) and row.get("status") == "pending"
+)
 
 settled_games = int(
     ai_perf.get("settled_games") or 0
@@ -326,6 +355,7 @@ brier_score = ai_perf.get("brier_score")
 score_mae = ai_perf.get("score_mae")
 
 with st.container(horizontal=True):
+    st.metric("シーズン開始", season_start, border=True)
     st.metric("固定予測", f"{len(ai_history)}試合", border=True)
     st.metric("8502共有", f"{shared_prediction_count}試合", border=True)
     st.metric("確定試合", f"{settled_games}試合", border=True)
@@ -338,6 +368,14 @@ if score_mae is not None:
         "平均スコア誤差: "
         f"{float(score_mae):.2f}点"
     )
+
+st.info(
+    f"{jst_today.year}年の全NPB予測履歴を開幕日から表示しています。"
+    f"バックテスト補完 {season_backfilled}試合。"
+    "勝敗確率は、対象試合より前に確定した同一確率帯の検証結果だけで補正します。"
+    f"現在の未確定予測のうち検証反映済みは {calibrated_pending}試合です。",
+    icon=":material/analytics:",
+)
 
 confidence = ai_perf.get("confidence") or {}
 
@@ -414,6 +452,10 @@ if pending:
                 "予想": row.get("pick"),
                 "勝率":
                     row.get("win_probability"),
+                "補正前":
+                    raw_pick_probability(row),
+                "検証数":
+                    row.get("validation_sample_size"),
                 "予想スコア":
                     row.get("predicted_score"),
                 "信頼度":
@@ -431,7 +473,11 @@ if pending:
             "勝率":
                 st.column_config.NumberColumn(
                     format="%.1f%%"
-                )
+                ),
+            "補正前":
+                st.column_config.NumberColumn(
+                    format="%.1f%%"
+                ),
         },
     )
 
@@ -470,12 +516,14 @@ if final_rows:
                 "予想": row.get("pick"),
                 "勝率":
                     row.get("win_probability"),
+                "補正前":
+                    raw_pick_probability(row),
                 "予想スコア":
                     row.get("predicted_score"),
                 "実スコア":
-                    f'{row.get("actual_home_score", "-")}'
+                    f'{row.get("actual_home_score") if row.get("actual_home_score") is not None else "-"}'
                     f'-'
-                    f'{row.get("actual_away_score", "-")}',
+                    f'{row.get("actual_away_score") if row.get("actual_away_score") is not None else "-"}',
                 "結果": result_text,
                 "Brier":
                     row.get("brier"),
