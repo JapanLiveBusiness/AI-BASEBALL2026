@@ -371,8 +371,6 @@ def sync_prediction_results(
     if not isinstance(archive, list):
         archive = []
     backtest_path = data_dir / "historical_backtest_predictions.csv"
-    if not backtest_path.exists():
-        backtest_path = Path(__file__).resolve().parent / "data" / "historical_backtest_predictions.csv"
     archive, backfilled = backfill_season_predictions(archive, backtest_path)
     shared_count = 0
     shared_added = 0
