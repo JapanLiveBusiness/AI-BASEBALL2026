@@ -78,6 +78,20 @@ PREVIOUS_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev
 echo "[deploy] building $NEW_IMAGE"
 docker build -t "$NEW_IMAGE" .
 
+# Recompute leakage-safe, out-of-sample model metrics in an isolated one-shot
+# container. The generated artifacts land in the persistent production data
+# volume before the running application is replaced.
+echo "[deploy] regenerating historical model and profitability validation"
+docker run --rm --network none \
+  --security-opt no-new-privileges:true \
+  --cap-drop ALL --cap-add DAC_OVERRIDE \
+  -v "$DATA_DIR:/app/output" \
+  "$NEW_IMAGE" python scripts/backtest_historical_models.py \
+    --games /app/data/historical_games_2017_2026.json \
+    --official-ranges /app/data/hawks_games_context.json \
+    --report /app/output/historical_backtest_report.json \
+    --predictions /app/output/historical_backtest_predictions.csv
+
 # Validate configuration before stopping the currently running service.
 if [ ! -f "$AUTH_SECRETS_FILE" ]; then
   echo "[deploy] Auth0 configuration required; existing container retained"

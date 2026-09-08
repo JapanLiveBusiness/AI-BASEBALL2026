@@ -1,6 +1,6 @@
 import json
 
-from scripts.backtest_historical_models import build_point_in_time_features, load_games, run
+from scripts.backtest_historical_models import build_point_in_time_features, load_games, metrics, run
 
 
 def test_walk_forward_uses_only_earlier_seasons(tmp_path):
@@ -26,3 +26,11 @@ def test_walk_forward_uses_only_earlier_seasons(tmp_path):
     assert {row["season"] for row in summaries} == {2021, 2022}
     assert all(row["train_through"] == row["season"] - 1 for row in summaries)
     assert len(predictions) == 24 * 3
+
+
+def test_profit_metrics_use_equal_units_and_track_drawdown():
+    result = metrics([1, 0, 1, 0], [0.8, 0.7, 0.6, 0.4])
+    assert result["accuracy"] == 75.0
+    assert result["unit_profit"] == 2.0
+    assert result["roi"] == 50.0
+    assert result["max_drawdown"] == 1.0
