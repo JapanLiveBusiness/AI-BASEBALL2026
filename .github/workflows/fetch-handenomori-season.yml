@@ -1,0 +1,90 @@
+name: Fetch authenticated Handenomori season
+
+on:
+  push:
+    branches: [main-AI-BASEBALL]
+    paths:
+      - "scripts/fetch_handenomori_season.py"
+      - ".github/workflows/fetch-handenomori-season.yml"
+  workflow_dispatch:
+    inputs:
+      year:
+        description: Season year
+        required: true
+        default: "2026"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fetch-handenomori-season
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      TARGET_YEAR: ${{ inputs.year || '2026' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ env.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ env.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          timeout: 1m
+      - name: Resolve server-01
+        shell: bash
+        run: |
+          set -euo pipefail
+          resolved=""
+          for attempt in $(seq 1 12); do
+            resolved="$(tailscale status --json | jq -r '[.Peer[] | select(.HostName == "server-01" and .Online == true) | (.TailscaleIPs // [])[0]] | map(select(. != null)) | .[0] // empty')"
+            [ -n "$resolved" ] && break
+            sleep 5
+          done
+          [ -n "$resolved" ] || { echo "::error::server-01 is not online"; exit 1; }
+          echo "DEPLOY_HOST_RESOLVED=$resolved" >> "$GITHUB_ENV"
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+      - name: Fetch authenticated season data
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$HOME/.ssh/deploy_key" -o ConnectTimeout=15 -o IdentitiesOnly=yes -o BatchMode=yes -o PasswordAuthentication=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          scp -P "$DEPLOY_PORT" "${opts[@]}" scripts/fetch_handenomori_season.py "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/fetch_handenomori_season.py"
+          ssh -p "$DEPLOY_PORT" "${opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" "TARGET_YEAR='$TARGET_YEAR' bash -s" <<'REMOTE'
+          set -euo pipefail
+          docker cp /tmp/fetch_handenomori_season.py hawks-app:/tmp/fetch_handenomori_season.py
+          rm -f /tmp/fetch_handenomori_season.py
+          docker exec hawks-app python /tmp/fetch_handenomori_season.py \
+            --year "$TARGET_YEAR" \
+            --output "/app/data/handenomori_${TARGET_YEAR}.json" \
+            --retry-failed
+          docker exec -i -e TARGET_YEAR="$TARGET_YEAR" hawks-app python - <<'PY'
+          import json, os
+          from pathlib import Path
+          year = os.environ.get("TARGET_YEAR", "2026")
+          path = Path(f"/app/data/handenomori_{year}.json")
+          data = json.loads(path.read_text(encoding="utf-8"))
+          games = data.get("games") or []
+          failed = data.get("failed_dates") or []
+          if not games:
+              raise SystemExit("authenticated season fetch produced no games")
+          if failed:
+              raise SystemExit(f"authenticated season fetch incomplete: failed_dates={len(failed)}")
+          print(f"verified year={data.get('year')} games={len(games)} completed_dates={len(data.get('completed_dates') or [])} failed_dates=0")
+          PY
+          docker exec hawks-app rm -f /tmp/fetch_handenomori_season.py
+          REMOTE
