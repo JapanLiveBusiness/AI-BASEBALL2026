@@ -1,9 +1,15 @@
 import html
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
 from daily_data import load_current_daily_json
 from daily_board import coverage, merge_daily_board
+from prediction_results import merge_prediction_archives
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_section, render_nav_links
 
 st.set_page_config(page_title="AI予測 | MY AI BASEBALL", page_icon="⚾", layout="wide")
@@ -24,10 +30,63 @@ def load_json(name, fallback):
 
 payload = load_json("today_ai_predictions.json", {"games": []})
 schedule = load_json("npb_today.json", {"games": []})
-games = merge_daily_board(schedule, payload)
+today_games = merge_daily_board(schedule, payload)
+
+
+@st.cache_data(ttl="1m", max_entries=2)
+def load_prediction_history():
+    archives = []
+    for directory in (
+        Path(os.getenv("AI_BASEBALL_SHARED_DATA_DIR", "/app/shared-data")),
+        Path("/app/data"),
+        Path(__file__).resolve().parents[1] / "data",
+    ):
+        try:
+            value = json.loads((directory / "ai_prediction_history.json").read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            continue
+        if isinstance(value, list):
+            archives.append(value)
+    return merge_prediction_archives(*archives)
+
+
+history = load_prediction_history()
+today_jst = datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()
+current_date = str(schedule.get("date") or payload.get("date") or today_jst)[:10]
+available_dates = sorted(
+    {str(row.get("date") or "")[:10] for row in history if row.get("date")} | {current_date},
+    reverse=True,
+)
+selected_date = st.selectbox(
+    "表示する試合日",
+    available_dates,
+    format_func=lambda value: f"{value}（本日）" if value == today_jst else value,
+    key="ai_prediction_display_date",
+)
+
+if selected_date == current_date:
+    games = today_games
+else:
+    games = []
+    selected_history = [row for row in history if str(row.get("date") or "")[:10] == selected_date]
+    for rank, archived in enumerate(
+        sorted(selected_history, key=lambda row: float(row.get("win_probability") or 0), reverse=True),
+        start=1,
+    ):
+        row = dict(archived)
+        row.update(
+            rank=rank,
+            home_score=archived.get("actual_home_score"),
+            away_score=archived.get("actual_away_score"),
+            actual_result=(
+                archived.get("actual_winner")
+                or ("引分" if archived.get("status") == "draw" else "未確定")
+            ),
+            verified=archived.get("hit"),
+        )
+        games.append(row)
 status = coverage(games)
-display_date = schedule.get("date") or payload.get("date") or ""
-render_section("WIN / LOSS RANKING", f"{display_date} NPB 勝敗予測ランキング")
+render_section("WIN / LOSS RANKING", f"{selected_date} NPB 勝敗予測ランキング")
 
 st.info(
     "予測強度は補正後勝率で分類します（高：65%以上、中：58%以上、標準：58%未満）。"
@@ -53,11 +112,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-source_url = next((row.get("source_url") for row in schedule.get("games") or [] if row.get("source_url")), "https://handenomori.com/jpb/")
-st.markdown(f"ハンデ情報: [ハンデの森]({source_url})（各試合の開始100分前までに一度取得し、取得値を固定）")
+if selected_date == current_date:
+    source_url = next((row.get("source_url") for row in schedule.get("games") or [] if row.get("source_url")), "https://handenomori.com/jpb/")
+    st.markdown(f"ハンデ情報: [ハンデの森]({source_url})（各試合の開始100分前までに一度取得し、取得値を固定）")
+else:
+    st.caption("試合前に固定保存したAI予想を表示しています。試合後の情報で予測値は書き換えていません。")
 
 if not games:
-    st.info("本日の試合データを同期中です。")
+    st.info(f"{selected_date} の保存済みAI予想はありません。")
     st.stop()
 
 if not status["complete"]:
