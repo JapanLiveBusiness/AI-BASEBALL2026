@@ -1,9 +1,15 @@
 import html
+import json
+import os
+from datetime import datetime, timedelta
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
 from daily_data import load_current_daily_json
 from daily_board import coverage, merge_daily_board
+from prediction_results import merge_prediction_archives
 from studio_theme import apply_studio_theme, render_topbar, render_hero, render_section, render_nav_links
 
 st.set_page_config(page_title="AI予測 | MY AI BASEBALL", page_icon="⚾", layout="wide")
@@ -24,10 +30,116 @@ def load_json(name, fallback):
 
 payload = load_json("today_ai_predictions.json", {"games": []})
 schedule = load_json("npb_today.json", {"games": []})
-games = merge_daily_board(schedule, payload)
+today_games = merge_daily_board(schedule, payload)
+
+
+@st.cache_data(ttl="5m", max_entries=2)
+def load_prediction_history():
+    archives = []
+    for directory in (
+        Path(os.getenv("AI_BASEBALL_SHARED_DATA_DIR", "/app/shared-data")),
+        Path("/app/data"),
+        Path(__file__).resolve().parents[1] / "data",
+    ):
+        try:
+            value = json.loads((directory / "ai_prediction_history.json").read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            continue
+        if isinstance(value, list):
+            archives.append(value)
+    merged = merge_prediction_archives(*archives)
+    by_date = {}
+    for row in merged:
+        game_date = str(row.get("date") or "")[:10]
+        if game_date:
+            by_date.setdefault(game_date, []).append(row)
+    settled = [row for row in merged if row.get("hit") is not None]
+    hits = sum(row.get("hit") is True for row in settled)
+    return {
+        "by_date": by_date,
+        "dates": sorted(by_date, reverse=True),
+        "games": len(merged),
+        "settled": len(settled),
+        "hits": hits,
+        "hit_rate": (hits / len(settled) * 100.0) if settled else None,
+    }
+
+
+history_summary = load_prediction_history()
+history_by_date = history_summary["by_date"]
+today_jst = datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()
+yesterday_jst = (datetime.now(ZoneInfo("Asia/Tokyo")).date() - timedelta(days=1)).isoformat()
+current_date = str(schedule.get("date") or payload.get("date") or today_jst)[:10]
+available_dates = sorted(
+    set(history_summary["dates"]) | {current_date, yesterday_jst},
+    reverse=True,
+)
+if st.button("前日の結果を表示", icon=":material/history:", use_container_width=True):
+    st.session_state["ai_prediction_display_mode"] = "全NPB AI予測履歴"
+    st.session_state["ai_prediction_display_date"] = yesterday_jst
+    st.rerun()
+display_mode = st.radio(
+    "表示内容",
+    ("本日の予想と公式結果", "全NPB AI予測履歴"),
+    horizontal=True,
+    key="ai_prediction_display_mode",
+)
+if display_mode == "本日の予想と公式結果":
+    selected_date = current_date
+else:
+    selected_date = st.selectbox(
+        "履歴の試合日",
+        available_dates,
+        format_func=lambda value: f"{value}（本日）" if value == today_jst else value,
+        key="ai_prediction_display_date",
+    )
+
+if selected_date == current_date:
+    games = today_games
+else:
+    games = []
+    selected_history = history_by_date.get(selected_date, [])
+    for rank, archived in enumerate(
+        sorted(selected_history, key=lambda row: float(row.get("win_probability") or 0), reverse=True),
+        start=1,
+    ):
+        row = dict(archived)
+        row.update(
+            rank=rank,
+            home_score=archived.get("actual_home_score"),
+            away_score=archived.get("actual_away_score"),
+            actual_result=(
+                archived.get("actual_winner")
+                or ("引分" if archived.get("status") == "draw" else "未確定")
+            ),
+            verified=archived.get("hit"),
+        )
+        games.append(row)
 status = coverage(games)
-display_date = schedule.get("date") or payload.get("date") or ""
-render_section("WIN / LOSS RANKING", f"{display_date} NPB 勝敗予測ランキング")
+section_kicker = "TODAY / OFFICIAL RESULT" if display_mode == "本日の予想と公式結果" else "ALL NPB / AI HISTORY"
+render_section(section_kicker, f"{display_mode}｜{selected_date}")
+
+if display_mode == "本日の予想と公式結果":
+    settled_games = [row for row in games if row.get("verified") is not None]
+    hit_games = sum(row.get("verified") is True for row in settled_games)
+    miss_games = len(settled_games) - hit_games
+    today_hit_rate = (hit_games / len(settled_games) * 100.0) if settled_games else None
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    kpi1.metric("終了試合", f"{len(settled_games)}試合")
+    kpi2.metric("的中", f"{hit_games}試合")
+    kpi3.metric("外れ", f"{miss_games}試合")
+    kpi4.metric("本日の的中率", f"{today_hit_rate:.1f}%" if today_hit_rate is not None else "集計待ち")
+    if not settled_games:
+        st.caption("公式結果の確定後、引き分けを除いて本日の的中率を自動集計します。")
+else:
+    all1, all2, all3, all4 = st.columns(4)
+    all1.metric("保存済み予想", f"{history_summary['games']}試合")
+    all2.metric("結果確定", f"{history_summary['settled']}試合")
+    all3.metric("的中", f"{history_summary['hits']}試合")
+    all4.metric(
+        "通算的中率",
+        f"{history_summary['hit_rate']:.1f}%" if history_summary["hit_rate"] is not None else "集計待ち",
+    )
 
 st.info(
     "予測強度は補正後勝率で分類します（高：65%以上、中：58%以上、標準：58%未満）。"
@@ -53,11 +165,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-source_url = next((row.get("source_url") for row in schedule.get("games") or [] if row.get("source_url")), "https://handenomori.com/jpb/")
-st.markdown(f"ハンデ情報: [ハンデの森]({source_url})（各試合の開始100分前までに一度取得し、取得値を固定）")
+if selected_date == current_date:
+    source_url = next((row.get("source_url") for row in schedule.get("games") or [] if row.get("source_url")), "https://handenomori.com/jpb/")
+    st.markdown(f"ハンデ情報: [ハンデの森]({source_url})（各試合の開始100分前までに一度取得し、取得値を固定）")
+else:
+    st.caption("試合前に固定保存したAI予想を表示しています。試合後の情報で予測値は書き換えていません。")
 
 if not games:
-    st.info("本日の試合データを同期中です。")
+    st.info(f"{selected_date} の保存済みAI予想はありません。")
     st.stop()
 
 if not status["complete"]:
