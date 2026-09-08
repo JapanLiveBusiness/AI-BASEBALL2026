@@ -33,7 +33,7 @@ schedule = load_json("npb_today.json", {"games": []})
 today_games = merge_daily_board(schedule, payload)
 
 
-@st.cache_data(ttl="1m", max_entries=2)
+@st.cache_data(ttl="5m", max_entries=2)
 def load_prediction_history():
     archives = []
     for directory in (
@@ -47,15 +47,31 @@ def load_prediction_history():
             continue
         if isinstance(value, list):
             archives.append(value)
-    return merge_prediction_archives(*archives)
+    merged = merge_prediction_archives(*archives)
+    by_date = {}
+    for row in merged:
+        game_date = str(row.get("date") or "")[:10]
+        if game_date:
+            by_date.setdefault(game_date, []).append(row)
+    settled = [row for row in merged if row.get("hit") is not None]
+    hits = sum(row.get("hit") is True for row in settled)
+    return {
+        "by_date": by_date,
+        "dates": sorted(by_date, reverse=True),
+        "games": len(merged),
+        "settled": len(settled),
+        "hits": hits,
+        "hit_rate": (hits / len(settled) * 100.0) if settled else None,
+    }
 
 
-history = load_prediction_history()
+history_summary = load_prediction_history()
+history_by_date = history_summary["by_date"]
 today_jst = datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()
 yesterday_jst = (datetime.now(ZoneInfo("Asia/Tokyo")).date() - timedelta(days=1)).isoformat()
 current_date = str(schedule.get("date") or payload.get("date") or today_jst)[:10]
 available_dates = sorted(
-    {str(row.get("date") or "")[:10] for row in history if row.get("date")} | {current_date, yesterday_jst},
+    set(history_summary["dates"]) | {current_date, yesterday_jst},
     reverse=True,
 )
 if st.button("前日の結果を表示", icon=":material/history:", use_container_width=True):
@@ -82,7 +98,7 @@ if selected_date == current_date:
     games = today_games
 else:
     games = []
-    selected_history = [row for row in history if str(row.get("date") or "")[:10] == selected_date]
+    selected_history = history_by_date.get(selected_date, [])
     for rank, archived in enumerate(
         sorted(selected_history, key=lambda row: float(row.get("win_probability") or 0), reverse=True),
         start=1,
@@ -115,6 +131,15 @@ if display_mode == "本日の予想と公式結果":
     kpi4.metric("本日の的中率", f"{today_hit_rate:.1f}%" if today_hit_rate is not None else "集計待ち")
     if not settled_games:
         st.caption("公式結果の確定後、引き分けを除いて本日の的中率を自動集計します。")
+else:
+    all1, all2, all3, all4 = st.columns(4)
+    all1.metric("保存済み予想", f"{history_summary['games']}試合")
+    all2.metric("結果確定", f"{history_summary['settled']}試合")
+    all3.metric("的中", f"{history_summary['hits']}試合")
+    all4.metric(
+        "通算的中率",
+        f"{history_summary['hit_rate']:.1f}%" if history_summary["hit_rate"] is not None else "集計待ち",
+    )
 
 st.info(
     "予測強度は補正後勝率で分類します（高：65%以上、中：58%以上、標準：58%未満）。"
