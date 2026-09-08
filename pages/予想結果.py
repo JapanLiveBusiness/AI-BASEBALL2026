@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
@@ -103,6 +105,29 @@ st.markdown(
 
 render_section("VERIFIED RESULTS", "試合別の予想結果")
 
+jst_today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+result_period = st.radio(
+    "表示する試合日",
+    options=("今日", "前日", "すべて"),
+    horizontal=True,
+    key="prediction_result_period",
+)
+target_result_date = {
+    "今日": jst_today.isoformat(),
+    "前日": (jst_today - timedelta(days=1)).isoformat(),
+}.get(result_period)
+display_games = (
+    [
+        game
+        for game in games
+        if str(game.get("date") or "")[:10] == target_result_date
+    ]
+    if target_result_date
+    else games
+)
+if target_result_date:
+    st.caption(f"{target_result_date} の確定済み予想結果を表示しています。")
+
 if shared_available:
     shared_games = int(metrics.get("shared_count") or 0)
     st.success(
@@ -113,14 +138,19 @@ if shared_available:
 else:
     st.caption("研究環境（8502）の共有データが未接続のため、本番保存データを表示しています。")
 
-if not games:
+if not display_games:
+    empty_message = (
+        f"{target_result_date} の検証可能な終了試合はありません。"
+        if target_result_date
+        else "検証可能な終了試合がまだありません。試合結果が保存されると自動的に集計されます。"
+    )
     st.markdown(
-        '<div class="empty-results">検証可能な終了試合がまだありません。試合結果が保存されると自動的に集計されます。</div>',
+        f'<div class="empty-results">{empty_message}</div>',
         unsafe_allow_html=True,
     )
 else:
     rows = []
-    for game in sorted(games, key=lambda x: str(x.get("date") or ""), reverse=True):
+    for game in sorted(display_games, key=lambda x: str(x.get("date") or ""), reverse=True):
         hit = bool(game.get("hit"))
         cls = "hit" if hit else "miss"
         badge = "的中" if hit else "外れ"

@@ -24,6 +24,23 @@ STUDIO_CSS = r'''
 [data-testid="stSidebar"] a:hover, [data-testid="stSidebar"] a:hover span,
 [data-testid="stSidebar"] a[aria-current="page"], [data-testid="stSidebar"] a[aria-current="page"] span {color:var(--studio-gold) !important;}
 [data-testid="stSidebar"] a:focus-visible {outline:2px solid var(--studio-gold);outline-offset:2px;}
+[data-testid="stSidebarNavItems"] li a::before,
+[data-testid="stSidebarNav"] li a::before {
+  content:"⚾"; display:inline-flex; width:1.6em; margin-right:.55em;
+  align-items:center; justify-content:center; font-size:1rem; line-height:1;
+}
+[data-testid="stSidebarNavItems"] li:nth-child(1) a::before,
+[data-testid="stSidebarNav"] li:nth-child(1) a::before {content:"🏠";}
+[data-testid="stSidebarNavItems"] li:nth-child(2) a::before,
+[data-testid="stSidebarNav"] li:nth-child(2) a::before {content:"📅";}
+[data-testid="stSidebarNavItems"] li:nth-child(3) a::before,
+[data-testid="stSidebarNav"] li:nth-child(3) a::before {content:"🧠";}
+[data-testid="stSidebarNavItems"] li:nth-child(4) a::before,
+[data-testid="stSidebarNav"] li:nth-child(4) a::before {content:"✅";}
+[data-testid="stSidebarNavItems"] li:nth-child(5) a::before,
+[data-testid="stSidebarNav"] li:nth-child(5) a::before {content:"📝";}
+[data-testid="stSidebarNavItems"] li:nth-child(6) a::before,
+[data-testid="stSidebarNav"] li:nth-child(6) a::before {content:"📈";}
 h1,h2,h3,h4,p,label,span {font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;}
 h1,h2,h3 {color:var(--studio-ink) !important;}
 
