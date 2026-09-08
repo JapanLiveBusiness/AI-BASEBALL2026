@@ -48,7 +48,7 @@ apply_studio_theme()
 render_topbar("AI DETAIL")
 render_hero(
     "AI詳細ダッシュボード",
-    "試合情報・AI予測・公開ハンデ・検証成績を軽量な1画面に集約しました。",
+    "AIがどちらを勝利予想したか、その確率と検証補正の根拠を順番に確認できます。",
     kicker="AI BASEBALL STUDIO / DEEP ANALYTICS",
     accent="AI詳細",
 )
@@ -193,7 +193,7 @@ probability_label = (
     if isinstance(probability, (int, float))
     else "--"
 )
-cards.metric("AI PICK", pick, probability_label, border=True)
+cards.metric("AIの勝利予想", pick, probability_label, border=True)
 cards.metric(
     "予想スコア",
     str(game.get("predicted_score") or "--") if game else "--",
@@ -210,6 +210,65 @@ if handicap_matches_game:
         f"{handicap.get('favored_team') or ''} {handicap.get('token') or ''}"
     ).strip()
 cards.metric("公開ハンデ", handicap_label, border=True)
+
+if game:
+    raw_home_probability = game.get("raw_home_win_probability")
+    raw_pick_probability = None
+    if isinstance(raw_home_probability, (int, float)):
+        raw_pick_probability = (
+            float(raw_home_probability)
+            if pick == game.get("home")
+            else 100.0 - float(raw_home_probability)
+        )
+    calibration_adjustment = game.get("calibration_adjustment")
+    if isinstance(calibration_adjustment, (int, float)) and pick == game.get("away"):
+        calibration_adjustment = -float(calibration_adjustment)
+    validation_sample_size = int(game.get("validation_sample_size") or 0)
+    validation_home_win_rate = game.get("validation_home_win_rate")
+    validation_pick_win_rate = None
+    if isinstance(validation_home_win_rate, (int, float)):
+        validation_pick_win_rate = (
+            float(validation_home_win_rate)
+            if pick == game.get("home")
+            else 100.0 - float(validation_home_win_rate)
+        )
+    st.markdown("#### 勝率の計算内容")
+    detail_cards = st.container(horizontal=True)
+    detail_cards.metric(
+        "AIモデル算出値",
+        f"{raw_pick_probability:.1f}%" if raw_pick_probability is not None else "--",
+        border=True,
+    )
+    detail_cards.metric(
+        "過去検証による補正",
+        f"{calibration_adjustment:+.1f}%" if isinstance(calibration_adjustment, (int, float)) else "--",
+        border=True,
+    )
+    detail_cards.metric("補正後の勝敗予測", probability_label, border=True)
+    detail_cards.metric("参照した検証", f"{validation_sample_size}試合", border=True)
+    validation_summary = st.container(horizontal=True)
+    validation_summary.metric(
+        "同じ確率帯での実勝率",
+        f"{validation_pick_win_rate:.1f}%" if validation_pick_win_rate is not None else "--",
+        border=True,
+    )
+    validation_summary.metric(
+        "精度検証の状態",
+        "検証反映済み" if validation_sample_size >= 20 else f"データ不足 {validation_sample_size}/20",
+        border=True,
+    )
+    st.caption(
+        "補正後の勝敗予測 ＝ AIモデル算出値 ＋ 同じ確率帯における過去の検証結果。"
+        "対象試合より前に終了した試合だけを使用します。"
+    )
+    with st.expander("信頼度と精度検証の判定基準"):
+        st.markdown(
+            "- **予測強度 高**：補正後の勝率が65%以上\n"
+            "- **予測強度 中**：補正後の勝率が58%以上65%未満\n"
+            "- **予測強度 標準**：補正後の勝率が58%未満\n"
+            "- **精度検証反映済み**：同じ10ポイント確率帯の過去確定試合が20試合以上\n"
+            "- 確率の品質は、実勝率との差とBrier Score（0に近いほど良い）で確認します。"
+        )
 
 render_section("MODEL PERFORMANCE", "HAWKS AI検証成績")
 performance = st.container(horizontal=True)
