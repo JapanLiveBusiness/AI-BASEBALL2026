@@ -16,6 +16,7 @@ from backtest_historical_models import (
     load_games,
     logistic_model,
 )
+from prediction_results import calibrate_home_probability, load_historical_validation
 
 MODEL = "logistic_rolling_v1"
 
@@ -85,12 +86,18 @@ def main():
         default="/app/data/today_ai_predictions.json",
     )
 
+    parser.add_argument(
+        "--validation",
+        default="/app/data/historical_backtest_predictions.csv",
+    )
+
     args = parser.parse_args()
 
     schedule_path = Path(args.schedule)
     history_path = Path(args.history)
     ranges_path = Path(args.official_ranges)
     output_path = Path(args.output)
+    validation_path = Path(args.validation)
 
     today = json.loads(
         schedule_path.read_text(encoding="utf-8")
@@ -463,6 +470,11 @@ def main():
     )
 
     predictions = []
+    validation = load_historical_validation(
+        validation_path,
+        season=int(target_date.year),
+        model="logistic_rolling",
+    )
 
     for row, home_probability in zip(
         rows_for_prediction,
@@ -472,13 +484,20 @@ def main():
             home_probability
         )
 
-        away_probability = (
-            1.0 - home_probability
+        calibration = calibrate_home_probability(
+            home_probability * 100.0,
+            validation,
+            target_date_text,
         )
+        calibrated_home_probability = (
+            float(calibration["home_win_probability"])
+            / 100.0
+        )
+        away_probability = 1.0 - calibrated_home_probability
 
-        if home_probability >= away_probability:
+        if calibrated_home_probability >= away_probability:
             pick = row["home"]
-            probability = home_probability * 100
+            probability = calibrated_home_probability * 100
         else:
             pick = row["away"]
             probability = away_probability * 100
@@ -498,9 +517,19 @@ def main():
                     round(probability, 1),
                 "home_win_probability":
                     round(
-                        home_probability * 100,
+                        calibrated_home_probability * 100,
                         1,
                     ),
+                "raw_home_win_probability":
+                    calibration["raw_home_win_probability"],
+                "calibration_adjustment":
+                    calibration["calibration_adjustment"],
+                "validation_sample_size":
+                    calibration["validation_sample_size"],
+                "validation_home_win_rate":
+                    calibration["validation_home_win_rate"],
+                "calibration_method":
+                    calibration["calibration_method"],
                 "predicted_score":
                     score_prediction(
                         home_history,
@@ -541,6 +570,14 @@ def main():
             train["date"]
             .max()
             .strftime("%Y-%m-%d"),
+        "validation_games": len(validation),
+        "validation_start_date": (
+            validation[0]["date"] if validation else None
+        ),
+        "validation_latest_date": (
+            validation[-1]["date"] if validation else None
+        ),
+        "calibration": "season_10point_empirical_bayes",
         "games": predictions,
     }
 
