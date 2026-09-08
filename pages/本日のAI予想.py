@@ -98,6 +98,19 @@ status = coverage(games)
 section_kicker = "TODAY / OFFICIAL RESULT" if display_mode == "本日の予想と公式結果" else "ALL NPB / AI HISTORY"
 render_section(section_kicker, f"{display_mode}｜{selected_date}")
 
+if display_mode == "本日の予想と公式結果":
+    settled_games = [row for row in games if row.get("verified") is not None]
+    hit_games = sum(row.get("verified") is True for row in settled_games)
+    miss_games = len(settled_games) - hit_games
+    today_hit_rate = (hit_games / len(settled_games) * 100.0) if settled_games else None
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    kpi1.metric("終了試合", f"{len(settled_games)}試合")
+    kpi2.metric("的中", f"{hit_games}試合")
+    kpi3.metric("外れ", f"{miss_games}試合")
+    kpi4.metric("本日の的中率", f"{today_hit_rate:.1f}%" if today_hit_rate is not None else "集計待ち")
+    if not settled_games:
+        st.caption("公式結果の確定後、引き分けを除いて本日の的中率を自動集計します。")
+
 st.info(
     "予測強度は補正後勝率で分類します（高：65%以上、中：58%以上、標準：58%未満）。"
     "精度検証は同じ10ポイント確率帯の過去確定試合を使い、20試合以上で勝率補正へ反映します。",
