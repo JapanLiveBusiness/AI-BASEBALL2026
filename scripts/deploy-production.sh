@@ -178,6 +178,7 @@ verify_internal_pages() {
   local path
   for path in "${PAGE_PATHS[@]}"; do
     if ! curl -k -fsS \
+      --noproxy "*" \
       --max-time 15 \
       --resolve "$host:443:$TRAEFIK_IP" \
       "https://$host$path" >/dev/null; then
@@ -186,6 +187,22 @@ verify_internal_pages() {
     fi
     echo "[deploy] page route healthy: https://$host$path"
   done
+}
+
+wait_for_traefik_route() {
+  local host="$1"
+  local attempt
+  for attempt in $(seq 1 15); do
+    if curl -k -fsSI \
+      --noproxy "*" \
+      --max-time 15 \
+      --resolve "$host:443:$TRAEFIK_IP" \
+      "https://$host/_stcore/health" | grep -Fqi "x-ai-baseball-deploy: $SHORT_SHA"; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
 }
 
 for attempt in $(seq 1 30); do
@@ -197,18 +214,14 @@ for attempt in $(seq 1 30); do
       echo "[deploy] production data validation failed"
       rollback
     fi
-    if curl -k -fsSI \
-      --resolve "$TRAEFIK_HOST:443:$TRAEFIK_IP" \
-      "https://$TRAEFIK_HOST/_stcore/health" | grep -Fqi "x-ai-baseball-deploy: $SHORT_SHA"; then
+    if wait_for_traefik_route "$TRAEFIK_HOST"; then
       echo "[deploy] primary Traefik route healthy: https://$TRAEFIK_HOST/ -> $CONTAINER_NAME:8501"
       verify_internal_pages "$TRAEFIK_HOST" || rollback
     else
       echo "[deploy] primary Traefik route health check failed for https://$TRAEFIK_HOST/"
       rollback
     fi
-    if curl -k -fsSI \
-      --resolve "$TRAEFIK_LEGACY_HOST:443:$TRAEFIK_IP" \
-      "https://$TRAEFIK_LEGACY_HOST/_stcore/health" | grep -Fqi "x-ai-baseball-deploy: $SHORT_SHA"; then
+    if wait_for_traefik_route "$TRAEFIK_LEGACY_HOST"; then
       echo "[deploy] legacy Traefik route healthy: https://$TRAEFIK_LEGACY_HOST/ -> $CONTAINER_NAME:8501"
       verify_internal_pages "$TRAEFIK_LEGACY_HOST" || rollback
       docker tag "$NEW_IMAGE" "$IMAGE_NAME:latest"
