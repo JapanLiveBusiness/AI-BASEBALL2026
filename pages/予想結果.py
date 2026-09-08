@@ -201,17 +201,36 @@ else:
     }
     overall = historical.get("overall") or []
     recommended = historical.get("recommended_model")
+    profit_recommended = historical.get("recommended_profit_model")
     with st.container(horizontal=True):
         st.metric("元データ", f"{int(historical.get('source_games') or 0):,}試合", border=True)
         st.metric("公式戦評価対象", f"{int(historical.get('evaluated_games') or 0):,}試合", border=True)
         st.metric("検証年度", f"{len(historical.get('evaluated_seasons') or [])}シーズン", border=True)
         st.metric("推奨モデル", model_labels.get(recommended, recommended or "--"), border=True)
 
+    profit_row = next((row for row in overall if row.get("model") == profit_recommended), None)
+    if profit_row:
+        st.success(
+            f"収益性で選定: {model_labels.get(profit_recommended, profit_recommended)} ／ "
+            f"検証外データの等額1単位ROI {float(profit_row.get('roi') or 0):.2f}%、"
+            f"損益 {float(profit_row.get('unit_profit') or 0):+.0f}単位、"
+            f"黒字年度 {int(profit_row.get('profitable_seasons') or 0)}/{int(profit_row.get('evaluated_seasons') or 0)}、"
+            f"最大ドローダウン {float(profit_row.get('max_drawdown') or 0):.0f}単位。"
+        )
+        st.caption(
+            "選定順は、未使用年度でのROI → 黒字年度率 → 最大ドローダウン → Brier Scoreです。"
+            "全予想へ同額を賭け、的中 +1・外れ -1 とするモデル比較用の仮想損益で、実際のオッズ・手数料は含みません。"
+        )
+
     overall_rows = [
         {
             "モデル": model_labels.get(row.get("model"), row.get("model")),
             "検証試合": int(row.get("games") or 0),
             "的中率": float(row.get("accuracy") or 0),
+            "仮想損益": float(row.get("unit_profit") or 0),
+            "仮想ROI": float(row.get("roi") or 0),
+            "最大DD": float(row.get("max_drawdown") or 0),
+            "黒字年度": f"{int(row.get('profitable_seasons') or 0)}/{int(row.get('evaluated_seasons') or 0)}",
             "Brier Score": float(row.get("brier") or 0),
             "LogLoss": float(row.get("log_loss") or 0),
         }
@@ -222,6 +241,9 @@ else:
         hide_index=True,
         column_config={
             "的中率": st.column_config.NumberColumn(format="%.2f%%"),
+            "仮想損益": st.column_config.NumberColumn(format="%+.0f単位"),
+            "仮想ROI": st.column_config.NumberColumn(format="%.2f%%"),
+            "最大DD": st.column_config.NumberColumn(format="%.0f単位"),
             "Brier Score": st.column_config.NumberColumn(format="%.4f"),
             "LogLoss": st.column_config.NumberColumn(format="%.4f"),
         },
@@ -235,6 +257,9 @@ else:
             "学習期間": f"〜{int(row.get('train_through') or 0)}",
             "試合数": int(row.get("games") or 0),
             "的中率": float(row.get("accuracy") or 0),
+            "仮想損益": float(row.get("unit_profit") or 0),
+            "仮想ROI": float(row.get("roi") or 0),
+            "最大DD": float(row.get("max_drawdown") or 0),
             "Brier Score": float(row.get("brier") or 0),
             "LogLoss": float(row.get("log_loss") or 0),
         }
@@ -245,6 +270,9 @@ else:
         hide_index=True,
         column_config={
             "的中率": st.column_config.NumberColumn(format="%.2f%%"),
+            "仮想損益": st.column_config.NumberColumn(format="%+.0f単位"),
+            "仮想ROI": st.column_config.NumberColumn(format="%.2f%%"),
+            "最大DD": st.column_config.NumberColumn(format="%.0f単位"),
             "Brier Score": st.column_config.NumberColumn(format="%.4f"),
             "LogLoss": st.column_config.NumberColumn(format="%.4f"),
         },
