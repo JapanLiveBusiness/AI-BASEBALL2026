@@ -1,7 +1,7 @@
 import html
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -52,11 +52,16 @@ def load_prediction_history():
 
 history = load_prediction_history()
 today_jst = datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()
+yesterday_jst = (datetime.now(ZoneInfo("Asia/Tokyo")).date() - timedelta(days=1)).isoformat()
 current_date = str(schedule.get("date") or payload.get("date") or today_jst)[:10]
 available_dates = sorted(
-    {str(row.get("date") or "")[:10] for row in history if row.get("date")} | {current_date},
+    {str(row.get("date") or "")[:10] for row in history if row.get("date")} | {current_date, yesterday_jst},
     reverse=True,
 )
+if st.button("前日の結果を表示", icon=":material/history:", use_container_width=True):
+    st.session_state["ai_prediction_display_mode"] = "全NPB AI予測履歴"
+    st.session_state["ai_prediction_display_date"] = yesterday_jst
+    st.rerun()
 display_mode = st.radio(
     "表示内容",
     ("本日の予想と公式結果", "全NPB AI予測履歴"),
