@@ -200,12 +200,19 @@ def gradient_model():
 
 def metrics(target, probability):
     probability = np.asarray(probability, dtype=float)
+    actual = np.asarray(target, dtype=int)
     prediction = (probability >= 0.5).astype(int)
+    unit_returns = np.where(prediction == actual, 1.0, -1.0)
+    equity = np.concatenate(([0.0], np.cumsum(unit_returns)))
+    drawdown = np.maximum.accumulate(equity) - equity
     return {
-        "games": int(len(target)),
-        "accuracy": round(float(accuracy_score(target, prediction) * 100), 2),
-        "brier": round(float(brier_score_loss(target, probability)), 4),
-        "log_loss": round(float(log_loss(target, probability, labels=[0, 1])), 4),
+        "games": int(len(actual)),
+        "accuracy": round(float(accuracy_score(actual, prediction) * 100), 2),
+        "brier": round(float(brier_score_loss(actual, probability)), 4),
+        "log_loss": round(float(log_loss(actual, probability, labels=[0, 1])), 4),
+        "unit_profit": round(float(unit_returns.sum()), 2),
+        "roi": round(float(unit_returns.mean() * 100), 2),
+        "max_drawdown": round(float(drawdown.max()), 2),
     }
 
 
@@ -267,9 +274,23 @@ def main():
                 "accuracy": round(float(np.average(rows["accuracy"], weights=weights)), 2),
                 "brier": round(float(np.average(rows["brier"], weights=weights)), 4),
                 "log_loss": round(float(np.average(rows["log_loss"], weights=weights)), 4),
+                "unit_profit": round(float(rows["unit_profit"].sum()), 2),
+                "roi": round(float(rows["unit_profit"].sum() / weights.sum() * 100), 2),
+                "max_drawdown": round(float(rows["max_drawdown"].max()), 2),
+                "profitable_seasons": int((rows["unit_profit"] > 0).sum()),
+                "evaluated_seasons": int(len(rows)),
             }
         )
     recommended = min(overall, key=lambda row: (row["brier"], -row["accuracy"]))["model"]
+    recommended_profit = max(
+        overall,
+        key=lambda row: (
+            row["roi"],
+            row["profitable_seasons"] / max(row["evaluated_seasons"], 1),
+            -row["max_drawdown"],
+            -row["brier"],
+        ),
+    )["model"]
     payload = {
         "method": "season_walk_forward",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -280,12 +301,16 @@ def main():
         "source_end": games["date"].max().strftime("%Y-%m-%d"),
         "evaluated_seasons": sorted(summary_frame["season"].unique().astype(int).tolist()),
         "recommended_model": recommended,
+        "recommended_profit_model": recommended_profit,
+        "profit_assumption": "Every out-of-sample pick is staked at one equal unit; win +1, loss -1, draw excluded. Actual bookmaker odds and fees are not included.",
         "overall": sorted(overall, key=lambda row: row["model"]),
         "by_season": summaries,
         "notes": [
             "Each season is tested using only earlier seasons for training.",
             "Draws are excluded from binary win/loss metrics.",
             "Future-season and final-season aggregate features are not used.",
+            "Profitability is a model-comparison proxy using equal one-unit stakes, not a guarantee of cash profit.",
+            "The profit model is selected by out-of-sample ROI, then profitable-season ratio, drawdown, and Brier Score.",
         ],
     }
     report_path = Path(args.report)
