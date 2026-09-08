@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import textwrap
 import streamlit as st
 import streamlit.components.v1 as components
@@ -22,7 +23,7 @@ from storage.game_history import (
 )
 from display_games import select_display_games
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR = Path(os.environ.get("DATA_DIR", "/app/data")).expanduser().resolve()
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 HISTORY_PATH = DATA_DIR / "game_history.json"
 
@@ -4584,14 +4585,58 @@ def _npb_logo_slug(team_name):
             return slug
     return "generic"
 
+_TEAM_BADGE_STYLES = {
+    "hanshin": ("#FFE100", "#111111", "#D4B900", "阪神"),
+    "giants": ("#F15A24", "#FFFFFF", "#C94717", "巨人"),
+    "dragons": ("#003E8F", "#FFFFFF", "#002B66", "中日"),
+    "carp": ("#E60012", "#FFFFFF", "#B8000E", "広島"),
+    "baystars": ("#0075C2", "#FFFFFF", "#005B98", "DeNA"),
+    "swallows": ("#003087", "#FFFFFF", "#002261", "ヤクルト"),
+    "hawks": ("#F5C400", "#111111", "#C9A000", "ソフトバンク"),
+    "marines": ("#111827", "#FFFFFF", "#000000", "ロッテ"),
+    "eagles": ("#870010", "#FFFFFF", "#65000C", "楽天"),
+    "fighters": ("#006298", "#FFFFFF", "#004A73", "日本ハム"),
+    "lions": ("#143D8D", "#FFFFFF", "#0E2C67", "西武"),
+    "buffaloes": ("#7A0019", "#FFFFFF", "#560012", "オリックス"),
+    "generic": ("#64748B", "#FFFFFF", "#475569", "球団"),
+}
+
+
+def _team_text_badge(team_name, slug=None, badge_class="npb-result-logo"):
+    team_slug = slug or _npb_logo_slug(team_name)
+    background, color, border, label = _TEAM_BADGE_STYLES.get(
+        team_slug,
+        _TEAM_BADGE_STYLES["generic"],
+    )
+    if team_slug == "generic":
+        label = str(team_name)
+    return (
+        f'<div class="{badge_class} team-text-badge" '
+        f'role="img" aria-label="{team_name}" '
+        f'style="display:flex!important;align-items:center!important;'
+        f'justify-content:center!important;text-align:center!important;'
+        f'box-sizing:border-box!important;padding:6px!important;'
+        f'border:2px solid {border}!important;border-radius:14px!important;'
+        f'background:{background}!important;color:{color}!important;'
+        f'font-size:clamp(.58rem,1vw,.82rem)!important;'
+        f'font-weight:950!important;line-height:1.15!important;">'
+        f'{label}</div>'
+    )
+
+
 _premium_opp_logo = _npb_logo_slug(_premium_opponent)
 
-# ===== Individual NPB team logo files / Static Serving =====
-def _team_logo_static_url(slug):
-    return f"app/static/team-logos/{slug}.png"
-
-_premium_opp_logo_src = _team_logo_static_url(_premium_opp_logo)
-_premium_hawks_logo_src = _team_logo_static_url("hawks")
+# Lightweight team-name badges replace logo image requests.
+_premium_opp_badge = _team_text_badge(
+    _premium_opponent,
+    _premium_opp_logo,
+    "hawks-premium-team-logo",
+)
+_premium_hawks_badge = _team_text_badge(
+    "福岡ソフトバンクホークス",
+    "hawks",
+    "hawks-premium-team-logo",
+)
 
 _premium_stadium = str(npb.get("stadium", "-"))
 _premium_time = str(npb.get("time", "-"))
@@ -4662,7 +4707,7 @@ premium_top_slot.markdown(
         <div class="hawks-premium-score">
           <div class="hawks-premium-team">
             <div class="hawks-premium-team-visual">
-              <img class="hawks-premium-team-logo" src="{_premium_opp_logo_src}" alt="{_premium_opponent} ロゴ">
+              {_premium_opp_badge}
               <div class="hawks-premium-handicap-box {'is-active' if (premium_opp_handicap or 0) > 0 else 'is-zero'}">
                 <small>ハンデの森</small>
                 <strong>{format_premium_handicap(premium_opp_handicap) + ("点" if premium_opp_handicap is not None else "")}</strong>
@@ -4693,7 +4738,7 @@ premium_top_slot.markdown(
             </div>
 
             <div class="hawks-premium-team-visual">
-              <img class="hawks-premium-team-logo" src="{_premium_hawks_logo_src}" alt="福岡ソフトバンクホークス ロゴ">
+              {_premium_hawks_badge}
               <div class="hawks-premium-handicap-box right {'is-active' if (premium_hawks_handicap or 0) > 0 else 'is-zero'}">
                 <small>ハンデの森</small>
                 <strong>{format_premium_handicap(premium_hawks_handicap) + ("点" if premium_hawks_handicap is not None else "")}</strong>
@@ -4977,13 +5022,13 @@ try:
                 _home_slug = _npb_logo_slug(_home)
                 _away_slug = _npb_logo_slug(_away)
 
-                _home_logo = _team_logo_static_url(_home_slug)
-                _away_logo = _team_logo_static_url(_away_slug)
+                _home_badge = _team_text_badge(_home, _home_slug)
+                _away_badge = _team_text_badge(_away, _away_slug)
 
                 _npb_cards.append(
                     f'<div class="npb-result-card">'
                     f'<div class="npb-result-team">'
-                    f'<img src="{_away_logo}" class="npb-result-logo">'
+                    f'{_away_badge}'
                     f'<div class="npb-result-name">{_away}</div>'
                     f'</div>'
                     f'<div class="npb-result-center">'
@@ -4992,7 +5037,7 @@ try:
                     f'<div class="npb-result-venue">{_venue}</div>'
                     f'</div>'
                     f'<div class="npb-result-team">'
-                    f'<img src="{_home_logo}" class="npb-result-logo">'
+                    f'{_home_badge}'
                     f'<div class="npb-result-name">{_home}</div>'
                     f'</div>'
                     f'</div>'
@@ -8030,12 +8075,11 @@ st.markdown(
 from pathlib import Path as BetPath
 import json as bet_json
 
+from bet_analytics import SORT_OPTIONS, calculate_hit_rate, sort_bets
+
 
 def _bet_data_dir():
-    p = BetPath("/app/data")
-    if p.exists():
-        return p
-    return BetPath("/opt/hawks-ai/data")
+    return BetPath(DATA_DIR)
 
 
 def _bet_data_file(filename):
@@ -8076,6 +8120,23 @@ st.markdown("## 💰 ベット収支管理")
 
 _bet_summary = _load_bet_json("bet_summary.json", {})
 _bet_records = _load_bet_json("bet_records.json", [])
+
+_wins, _decided_bets, _hit_rate = calculate_hit_rate(_bet_records)
+_metric_col, _sort_col = st.columns([1, 2])
+with _metric_col:
+    st.metric(
+        "的中率",
+        f"{_hit_rate:.1f}%" if _hit_rate is not None else "-",
+        help="確定したWIN／LOSSのみで計算（PUSH・未確定は除外）",
+    )
+with _sort_col:
+    _bet_sort_option = st.selectbox(
+        "履歴の並び順",
+        SORT_OPTIONS,
+        key="bet_management_sort",
+    )
+
+_display_bet_records = sort_bets(_bet_records, _bet_sort_option)
 
 _week_profit = int(
     _bet_summary.get("weekly_unsettled_profit", 0) or 0
@@ -8128,7 +8189,7 @@ _result_label = {
 }
 
 
-for idx, bet in enumerate(_bet_records):
+for idx, bet in enumerate(_display_bet_records):
 
     date = bet.get("date", "")
     time = bet.get("time", "")
@@ -8195,7 +8256,7 @@ for idx, bet in enumerate(_bet_records):
                     "未精算へ戻す",
                     key=f"bet_unsettle_{idx}"
                 ):
-                    _bet_records[idx]["settled"] = False
+                    bet["settled"] = False
                     _save_bet_json(
                         "bet_records.json",
                         _bet_records
@@ -8208,7 +8269,7 @@ for idx, bet in enumerate(_bet_records):
                     key=f"bet_settle_{idx}",
                     type="primary"
                 ):
-                    _bet_records[idx]["settled"] = True
+                    bet["settled"] = True
                     _save_bet_json(
                         "bet_records.json",
                         _bet_records
