@@ -1,6 +1,6 @@
 {
   "date": "2026-09-09",
-  "updated_at": "2026-09-09T08:11:34+09:00",
+  "updated_at": "2026-09-09T19:53:08+09:00",
   "count": 6,
   "games": [
     {
@@ -14,11 +14,7 @@
       "venue": "横 浜",
       "league": "セ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
-      "home_starter": "石田 裕太郎",
-      "away_starter": "山野 太一",
-      "starter_source": "NPB公式 予告先発",
-      "starter_source_url": "https://npb.jp/announcement/starter/"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
     },
     {
       "date": "2026-09-09",
@@ -31,11 +27,7 @@
       "venue": "ほっと神戸",
       "league": "パ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
-      "home_starter": "九里 亜蓮",
-      "away_starter": "菅井 信也",
-      "starter_source": "NPB公式 予告先発",
-      "starter_source_url": "https://npb.jp/announcement/starter/"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
     },
     {
       "date": "2026-09-09",
@@ -48,11 +40,7 @@
       "venue": "みずほPayPay",
       "league": "パ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
-      "home_starter": "上沢 直之",
-      "away_starter": "達 孝太",
-      "starter_source": "NPB公式 予告先発",
-      "starter_source_url": "https://npb.jp/announcement/starter/"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
     },
     {
       "date": "2026-09-09",
@@ -65,11 +53,7 @@
       "venue": "ZOZOマリン",
       "league": "パ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
-      "home_starter": "毛利 海大",
-      "away_starter": "荘司 康誠",
-      "starter_source": "NPB公式 予告先発",
-      "starter_source_url": "https://npb.jp/announcement/starter/"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
     },
     {
       "date": "2026-09-09",
@@ -82,11 +66,7 @@
       "venue": "東京ドーム",
       "league": "セ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
-      "home_starter": "Ｂ．マタ",
-      "away_starter": "大野 雄大",
-      "starter_source": "NPB公式 予告先発",
-      "starter_source_url": "https://npb.jp/announcement/starter/"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
     },
     {
       "date": "2026-09-09",
@@ -99,11 +79,7 @@
       "venue": "甲子園",
       "league": "セ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
-      "home_starter": "髙橋 遥人",
-      "away_starter": "床田 寛樹",
-      "starter_source": "NPB公式 予告先発",
-      "starter_source_url": "https://npb.jp/announcement/starter/"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
     }
   ],
   "source": "NPB公式",
@@ -112,6 +88,6 @@
     "https://npb.jp/games/2026/schedule_10_detail.html"
   ],
   "selection": "today_or_next_scheduled_slate",
-  "starter_updated_at": "2026-09-09T08:11:35+09:00",
-  "starter_count": 12
+  "starter_updated_at": "2026-09-09T19:53:09+09:00",
+  "starter_count": 0
 }
