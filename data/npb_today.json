@@ -1,6 +1,6 @@
 {
   "date": "2026-09-10",
-  "updated_at": "2026-09-10T07:56:20+09:00",
+  "updated_at": "2026-09-10T15:04:49+09:00",
   "count": 6,
   "games": [
     {
@@ -112,6 +112,6 @@
     "https://npb.jp/games/2026/schedule_10_detail.html"
   ],
   "selection": "today_or_next_scheduled_slate",
-  "starter_updated_at": "2026-09-10T07:56:22+09:00",
+  "starter_updated_at": "2026-09-10T15:04:51+09:00",
   "starter_count": 12
 }
