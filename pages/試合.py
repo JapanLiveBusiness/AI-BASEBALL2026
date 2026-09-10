@@ -385,11 +385,11 @@ st.markdown(
 .team-score{font-size:31px;font-weight:950;line-height:1;margin-top:6px}
 .vs{text-align:center;color:#9b9387;font-size:10px;font-weight:900}
 .game-meta{border-top:1px solid #e4ddd2;margin-top:14px;padding-top:12px;display:flex;justify-content:space-between;gap:12px;font-size:9px;color:#746f66}
-.prediction,.handicap{margin-top:11px;padding:10px 12px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:12px}
-.prediction{background:#191919;color:#fff}.prediction span{font-size:9px;color:#bbb}
-.prediction strong{font-size:14px;color:#f1c40f}
-.handicap{background:#fff4c7;border:1px solid #ead276;color:#342b13}
-.handicap span{font-size:8px;letter-spacing:.14em;color:#8b7018;font-weight:900}.handicap strong{font-size:12px}
+/* Match the dark, yellow-accent summary panel in the studio. Scope these
+   rules to match cards so embedded studio themes cannot wash out the values. */
+.game-card .prediction,.game-card .handicap{box-sizing:border-box;margin-top:12px;padding:16px 18px;min-height:76px;border:1px solid #3b3e43!important;border-left:4px solid #f1c40f!important;border-radius:15px;display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:10px 20px;background:#191b1f!important;color:#f8fafc!important;box-shadow:none!important}
+.game-card .prediction span,.game-card .handicap span{flex:0 0 auto;font-size:11px;line-height:1.5;letter-spacing:.06em;color:#f8fafc!important;font-weight:800}
+.game-card .prediction strong,.game-card .handicap strong{min-width:0;font-size:clamp(18px,2.2vw,26px);line-height:1.4;color:#f1c40f!important;font-weight:900;overflow-wrap:anywhere}
 .empty-games{padding:28px;background:#fffdf8;border:1px dashed #d8d0c3;border-radius:14px;color:#746f66;text-align:center;font-size:12px}
 .sync-note{margin:10px 0 16px;padding:10px 12px;border-radius:10px;background:#fff7d4;border:1px solid #e6cd69;font-size:10px;color:#65551b}
 @media(max-width:850px){.gamecast-content{grid-template-columns:1fr}.gamecast-side{display:grid;grid-template-columns:1fr 1fr}.lineup-panel{grid-column:1/-1}.gamecast-scoreboard{padding:0 14px;grid-template-columns:1fr 68px 1fr}.gamecast-state{position:static;grid-column:1/-1;justify-self:center;margin-top:8px}.score-team{gap:10px}.score-team b{font-size:14px}.score-team strong{font-size:25px}.ballpark{height:270px}.game-summary{grid-template-columns:repeat(2,1fr)}.game-grid{grid-template-columns:1fr}}
