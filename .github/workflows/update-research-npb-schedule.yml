@@ -216,13 +216,14 @@ jobs:
             "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/"
           ssh -p "$DEPLOY_PORT" "${COMMON_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" 'bash -s' <<'REMOTE'
           set -euo pipefail
-          DATA_DIR="/opt/hawks-ai/research-data"
-          mkdir -p "$DATA_DIR"
-          for name in npb_today.json npb_starters.json today_ai_predictions.json; do
-            install -m 0644 "/tmp/$name" "$DATA_DIR/$name.tmp"
-            mv "$DATA_DIR/$name.tmp" "$DATA_DIR/$name"
-            rm -f "/tmp/$name"
+          for DATA_DIR in /opt/hawks-ai/research-data /opt/hawks-ai/data; do
+            mkdir -p "$DATA_DIR"
+            for name in npb_today.json npb_starters.json today_ai_predictions.json; do
+              install -m 0644 "/tmp/$name" "$DATA_DIR/$name.tmp"
+              mv "$DATA_DIR/$name.tmp" "$DATA_DIR/$name"
+            done
           done
+          rm -f /tmp/npb_today.json /tmp/npb_starters.json /tmp/today_ai_predictions.json
           python3 - <<'PY'
           import json
           from pathlib import Path
