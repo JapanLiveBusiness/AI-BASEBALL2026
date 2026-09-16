@@ -3,42 +3,22 @@ import re
 
 from handenomori_client import fetch_member_page
 from bs4 import BeautifulSoup
+from handicap_notation import parse_japanese_handicap
 
 
 SOURCE_BASE = "https://handenomori.com/jpb"
 
 
 def handicap_token_to_value(token):
-    """Convert Handenomori notation to an approximate run-line value.
+    """Convert Handenomori notation to the numeric run-line used by the app.
 
-    The source uses private-handicap notation such as 0.3, 1.5, 1半,
-    1半3, 1半5 and 1半7.  The fractional '半' steps are mapped to the
-    corresponding quarter-run line only for the prediction adjustment.
-    The original token is preserved separately for display.
+    Examples follow the current business rule:
+    1半5 / 1半後 -> 1.5
+    1半4 -> 1.4
+    1半6 -> 1.6
+    1半 -> 1.5
     """
-    if token is None:
-        return None
-
-    text = str(token).strip().replace(" ", "")
-    if not text:
-        return None
-
-    half_match = re.fullmatch(r"(\d+)半([357])?", text)
-    if half_match:
-        base = float(half_match.group(1)) + 0.5
-        suffix = half_match.group(2)
-        if suffix == "3":
-            return base + 0.15
-        if suffix == "5":
-            return base + 0.25
-        if suffix == "7":
-            return base + 0.35
-        return base
-
-    try:
-        return float(text)
-    except ValueError:
-        return None
+    return parse_japanese_handicap(token)
 
 
 def _game_blocks(soup):
@@ -65,7 +45,10 @@ def _parse_from_text(text, team_name="ソフトバンク"):
         return None
 
     # Extract source handicap tokens while excluding scores/times/years.
-    tokens = re.findall(r"(?<!\d)(?:\d+半[357]?|\d+(?:\.[357])?)(?![\d:])", compact)
+    tokens = re.findall(
+        r"(?<!\d)(?:\d+半(?:後|[0-9])?|\d+(?:\.[0-9]+)?)(?![\d:])",
+        compact,
+    )
     parsed = [(token, handicap_token_to_value(token)) for token in tokens]
     parsed = [(token, value) for token, value in parsed if value is not None and 0 <= value <= 5]
     if not parsed:
@@ -132,9 +115,12 @@ def fetch_hawks_handicap(target_date=None, timeout=10):
                     continue
                 favored = game[side]
                 result.update({
-                    "published": True, "team": "ソフトバンク",
+                    "published": True,
+                    "team": "ソフトバンク",
                     "opponent": game["away"] if game["home"] == "ソフトバンク" else game["home"],
-                    "favored_team": favored, "token": token, "value": value,
+                    "favored_team": favored,
+                    "token": token,
+                    "value": value,
                     "handicap_score": -value if favored == "ソフトバンク" else value,
                 })
                 return result
