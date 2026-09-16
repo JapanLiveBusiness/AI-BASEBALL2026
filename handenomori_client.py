@@ -9,6 +9,8 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 import requests
 from bs4 import BeautifulSoup
 
+from handicap_notation import parse_japanese_handicap
+
 LOGIN_URL = "https://handenomori.com/membership-login/"
 DEFAULT_CREDENTIALS_FILE = "/run/handenomori/credentials.json"
 
@@ -67,6 +69,33 @@ def _authenticated(content):
     )
 
 
+def _normalize_handicap_cells(content):
+    """Normalize only Handenomori handicap cells for downstream consumers.
+
+    The live app historically parses these cells with ``float()``. Converting
+    Japanese notation at this boundary means every existing consumer sees one
+    consistent numeric value without duplicating notation rules.
+    """
+    soup = BeautifulSoup(content, "html.parser")
+    changed = False
+
+    for cell in soup.select("td.single-handi-handi"):
+        raw = cell.get_text(" ", strip=True)
+        if not raw:
+            continue
+        value = parse_japanese_handicap(raw)
+        if value is None:
+            continue
+        display = str(int(value)) if float(value).is_integer() else f"{value:g}"
+        cell.clear()
+        cell.append(display)
+        changed = True
+
+    if not changed:
+        return content
+    return str(soup).encode("utf-8")
+
+
 def fetch_member_page(url, timeout=12):
     """Log in anew, verify membership, fetch one page, then discard the session."""
     if not _trusted(url):
@@ -95,7 +124,7 @@ def fetch_member_page(url, timeout=12):
             page = _request(session, "GET", url, timeout)
             if not _authenticated(page.content):
                 raise HandenomoriError("ハンデの森のログイン状態を確認できません")
-            return page.content
+            return _normalize_handicap_cells(page.content)
     except HandenomoriError:
         raise
     except Exception:
