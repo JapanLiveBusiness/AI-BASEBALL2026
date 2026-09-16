@@ -29,9 +29,6 @@ fi
 git checkout "$BRANCH"
 git reset --hard "origin/$BRANCH"
 
-# Publish the versioned historical audit artifacts into the mounted production
-# data directory without replacing any live schedule, prediction, BET, or
-# result files maintained by the running service.
 mkdir -p "$DATA_DIR"
 for artifact in \
   historical_backtest_report.json \
@@ -39,9 +36,6 @@ for artifact in \
   install -m 0644 "$APP_DIR/data/$artifact" "$DATA_DIR/$artifact"
 done
 
-# Refresh the live schedule and predictions before validating the new release.
-# The server timer normally runs this every two minutes; deployment also runs it
-# so the first page load after a release cannot use a stale daily slate.
 if [ -x /usr/local/bin/hawks-data-sync ]; then
   echo "[deploy] refreshing live baseball data"
   if ! /usr/local/bin/hawks-data-sync; then
@@ -62,12 +56,30 @@ if ! docker network inspect "$TRAEFIK_NETWORK" >/dev/null 2>&1; then
   exit 1
 fi
 
-TRAEFIK_IP="$(docker inspect "$TRAEFIK_CONTAINER" --format "{{with index .NetworkSettings.Networks \"$TRAEFIK_NETWORK\"}}{{.IPAddress}}{{end}}" 2>/dev/null || true)"
-if [ -z "$TRAEFIK_IP" ]; then
-  echo "[deploy] Traefik container is not attached to $TRAEFIK_NETWORK: $TRAEFIK_CONTAINER"
+if ! docker inspect "$TRAEFIK_CONTAINER" >/dev/null 2>&1; then
+  echo "[deploy] required Traefik container not found: $TRAEFIK_CONTAINER"
   exit 1
 fi
 
+TRAEFIK_RUNNING="$(docker inspect -f '{{.State.Running}}' "$TRAEFIK_CONTAINER" 2>/dev/null || true)"
+if [ "$TRAEFIK_RUNNING" != "true" ]; then
+  echo "[deploy] Traefik container is not running: $TRAEFIK_CONTAINER"
+  exit 1
+fi
+
+TRAEFIK_IP="$(docker inspect "$TRAEFIK_CONTAINER" --format "{{with index .NetworkSettings.Networks \"$TRAEFIK_NETWORK\"}}{{.IPAddress}}{{end}}" 2>/dev/null || true)"
+if [ -z "$TRAEFIK_IP" ]; then
+  echo "[deploy] Traefik is not attached to $TRAEFIK_NETWORK; attempting safe network attachment"
+  docker network connect "$TRAEFIK_NETWORK" "$TRAEFIK_CONTAINER"
+  TRAEFIK_IP="$(docker inspect "$TRAEFIK_CONTAINER" --format "{{with index .NetworkSettings.Networks \"$TRAEFIK_NETWORK\"}}{{.IPAddress}}{{end}}" 2>/dev/null || true)"
+fi
+
+if [ -z "$TRAEFIK_IP" ]; then
+  echo "[deploy] Traefik network attachment verification failed: $TRAEFIK_CONTAINER -> $TRAEFIK_NETWORK"
+  exit 1
+fi
+
+echo "[deploy] Traefik network attachment verified: $TRAEFIK_NETWORK"
 echo "[deploy] primary route: $TRAEFIK_HOST"
 echo "[deploy] legacy route: $TRAEFIK_LEGACY_HOST"
 
@@ -78,9 +90,6 @@ PREVIOUS_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$CONTAINER_NAME" 2>/dev
 echo "[deploy] building $NEW_IMAGE"
 docker build -t "$NEW_IMAGE" .
 
-# Recompute leakage-safe, out-of-sample model metrics in an isolated one-shot
-# container. The generated artifacts land in the persistent production data
-# volume before the running application is replaced.
 echo "[deploy] regenerating historical model and profitability validation"
 docker run --rm --network none \
   --security-opt no-new-privileges:true \
@@ -92,7 +101,6 @@ docker run --rm --network none \
     --report /app/output/historical_backtest_report.json \
     --predictions /app/output/historical_backtest_predictions.csv
 
-# Validate configuration before stopping the currently running service.
 if [ ! -f "$AUTH_SECRETS_FILE" ]; then
   echo "[deploy] Auth0 configuration required; existing container retained"
   exit 1
