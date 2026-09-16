@@ -1,0 +1,160 @@
+name: Deploy information-only production
+
+on:
+  push:
+    branches:
+      - main-AI-BASEBALL
+  workflow_dispatch:
+
+concurrency:
+  group: production-ai-baseball-info-only
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-info:
+    runs-on: ubuntu-latest
+    env:
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
+      AUTH0_CLIENT_ID: ${{ secrets.AUTH0_CLIENT_ID }}
+      AUTH0_CLIENT_SECRET: ${{ secrets.AUTH0_CLIENT_SECRET }}
+      AUTH0_COOKIE_SECRET: ${{ secrets.AUTH0_COOKIE_SECRET }}
+
+    steps:
+      - name: Validate deploy secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET DEPLOY_HOST DEPLOY_USER DEPLOY_PORT DEPLOY_SSH_KEY AUTH0_DOMAIN AUTH0_CLIENT_ID AUTH0_CLIENT_SECRET AUTH0_COOKIE_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not available to this workflow"
+              exit 1
+            fi
+          done
+
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ env.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ env.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          timeout: 1m
+
+      - name: Resolve production host
+        shell: bash
+        run: |
+          set -euo pipefail
+          resolved="$(tailscale status --json | jq -r '[.Peer[] | select(.HostName == "server-01" and .Online == true) | (.TailscaleIPs // [])[0]] | map(select(. != null)) | .[0] // empty')"
+          if [ -z "$resolved" ]; then
+            echo "::error::server-01 is not visible as an online Tailscale peer"
+            exit 1
+          fi
+          nc -vz -w 10 "$resolved" "$DEPLOY_PORT"
+          echo "DEPLOY_HOST_RESOLVED=$resolved" >> "$GITHUB_ENV"
+
+      - name: Configure SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+          ssh-keygen -y -f "$HOME/.ssh/deploy_key" >/dev/null
+
+      - name: Provision Auth0 configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH_FILE="$RUNNER_TEMP/auth0-secrets.toml"
+          export AUTH_FILE
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          domain = os.environ["AUTH0_DOMAIN"].strip().removeprefix("https://").removeprefix("http://").rstrip("/")
+          cookie_secret = os.environ["AUTH0_COOKIE_SECRET"]
+          if not domain or "/" in domain or any(ch.isspace() for ch in domain):
+              raise SystemExit("invalid AUTH0_DOMAIN")
+          if len(cookie_secret) < 32:
+              raise SystemExit("AUTH0_COOKIE_SECRET must contain at least 32 characters")
+          q = json.dumps
+          content = "\n".join([
+              "[auth]",
+              f"redirect_uri = {q('https://ai-baseball-studio.f-polaris.jp/oauth2callback')}",
+              f"cookie_secret = {q(cookie_secret)}",
+              "",
+              "[auth.auth0]",
+              f"client_id = {q(os.environ['AUTH0_CLIENT_ID'])}",
+              f"client_secret = {q(os.environ['AUTH0_CLIENT_SECRET'])}",
+              f"server_metadata_url = {q(f'https://{domain}/.well-known/openid-configuration')}",
+              'client_kwargs = { "prompt" = "login" }',
+              "",
+              "[security]",
+              'access_mode = "all_verified"',
+              "session_max_age_seconds = 28800",
+              "",
+          ])
+          Path(os.environ["AUTH_FILE"]).write_text(content, encoding="utf-8")
+          PY
+          chmod 600 "$AUTH_FILE"
+          COMMON_SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o BatchMode=yes -o PreferredAuthentications=publickey -o PasswordAuthentication=no -o ConnectTimeout=15 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          scp -P "$DEPLOY_PORT" "${COMMON_SSH_OPTS[@]}" "$AUTH_FILE" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/ai-baseball-auth0.toml"
+          ssh -p "$DEPLOY_PORT" "${COMMON_SSH_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" 'install -d -m 700 /opt/hawks-ai/auth0 && install -m 600 /tmp/ai-baseball-auth0.toml /opt/hawks-ai/auth0/secrets.toml && rm -f /tmp/ai-baseball-auth0.toml'
+
+      - name: Deploy information-only dashboard
+        shell: bash
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          BUNDLE_PATH="$RUNNER_TEMP/ai-baseball-info.bundle"
+          git bundle create "$BUNDLE_PATH" "refs/heads/$GITHUB_REF_NAME"
+          COMMON_SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o BatchMode=yes -o PreferredAuthentications=publickey -o PasswordAuthentication=no -o ConnectTimeout=15 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          scp -P "$DEPLOY_PORT" "${COMMON_SSH_OPTS[@]}" "$BUNDLE_PATH" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED:/tmp/ai-baseball-info.bundle"
+          ssh -p "$DEPLOY_PORT" "${COMMON_SSH_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" "DEPLOY_SHA='$DEPLOY_SHA' SKIP_GIT_FETCH=1 bash -s" <<'REMOTE'
+          set -euo pipefail
+          export APP_DIR="/home/user/apps/AI-BASEBALL2026"
+          export DATA_DIR="/opt/hawks-ai/data"
+          export SHARED_DATA_DIR="/opt/hawks-ai/research-data"
+          export BRANCH="main-AI-BASEBALL"
+          export CONTAINER_NAME="hawks-app"
+          export IMAGE_NAME="hawks-app"
+          export PORT="8501"
+          export REPO_URL="https://github.com/JapanLiveBusiness/AI-BASEBALL2026.git"
+
+          cd "$APP_DIR"
+          git fetch /tmp/ai-baseball-info.bundle "refs/heads/$BRANCH"
+          git update-ref "refs/remotes/origin/$BRANCH" FETCH_HEAD
+          rm -f /tmp/ai-baseball-info.bundle
+          git show "origin/$BRANCH:scripts/deploy-info-only.sh" > /tmp/ai-baseball-deploy-info.sh
+          chmod +x /tmp/ai-baseball-deploy-info.sh
+          /tmp/ai-baseball-deploy-info.sh
+          REMOTE
+
+      - name: Verify server-local health through SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMON_SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o BatchMode=yes -o PreferredAuthentications=publickey -o PasswordAuthentication=no -o ConnectTimeout=15 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          ssh -p "$DEPLOY_PORT" "${COMMON_SSH_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST_RESOLVED" 'curl -fsS http://127.0.0.1:8501/_stcore/health && docker ps --filter name=hawks-app --format "{{.Names}} {{.Image}} {{.Status}}"'
+
+      - name: Verify public site
+        shell: bash
+        env:
+          SITE_URL: https://ai-baseball-studio.f-polaris.jp/
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: bash scripts/verify-protected-site.sh
