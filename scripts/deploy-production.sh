@@ -51,11 +51,6 @@ if [ -n "$DEPLOY_SHA" ]; then
   fi
 fi
 
-if ! docker network inspect "$TRAEFIK_NETWORK" >/dev/null 2>&1; then
-  echo "[deploy] required Traefik network not found: $TRAEFIK_NETWORK"
-  exit 1
-fi
-
 if ! docker inspect "$TRAEFIK_CONTAINER" >/dev/null 2>&1; then
   echo "[deploy] required Traefik container not found: $TRAEFIK_CONTAINER"
   exit 1
@@ -69,17 +64,22 @@ fi
 
 TRAEFIK_IP="$(docker inspect "$TRAEFIK_CONTAINER" --format "{{with index .NetworkSettings.Networks \"$TRAEFIK_NETWORK\"}}{{.IPAddress}}{{end}}" 2>/dev/null || true)"
 if [ -z "$TRAEFIK_IP" ]; then
-  echo "[deploy] Traefik is not attached to $TRAEFIK_NETWORK; attempting safe network attachment"
-  docker network connect "$TRAEFIK_NETWORK" "$TRAEFIK_CONTAINER"
+  ACTIVE_NETWORK="$(docker inspect "$TRAEFIK_CONTAINER" --format '{{range $name, $cfg := .NetworkSettings.Networks}}{{println $name}}{{end}}' 2>/dev/null | awk 'NF{print; exit}')"
+  if [ -z "$ACTIVE_NETWORK" ]; then
+    echo "[deploy] Traefik has no active Docker network"
+    exit 1
+  fi
+  echo "[deploy] configured network $TRAEFIK_NETWORK is not attached to Traefik; using active network $ACTIVE_NETWORK"
+  TRAEFIK_NETWORK="$ACTIVE_NETWORK"
   TRAEFIK_IP="$(docker inspect "$TRAEFIK_CONTAINER" --format "{{with index .NetworkSettings.Networks \"$TRAEFIK_NETWORK\"}}{{.IPAddress}}{{end}}" 2>/dev/null || true)"
 fi
 
 if [ -z "$TRAEFIK_IP" ]; then
-  echo "[deploy] Traefik network attachment verification failed: $TRAEFIK_CONTAINER -> $TRAEFIK_NETWORK"
+  echo "[deploy] unable to resolve Traefik IP on active network: $TRAEFIK_NETWORK"
   exit 1
 fi
 
-echo "[deploy] Traefik network attachment verified: $TRAEFIK_NETWORK"
+echo "[deploy] using Traefik network: $TRAEFIK_NETWORK"
 echo "[deploy] primary route: $TRAEFIK_HOST"
 echo "[deploy] legacy route: $TRAEFIK_LEGACY_HOST"
 
