@@ -1,3 +1,4 @@
+# Production sync: information-only baseball dashboard
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
