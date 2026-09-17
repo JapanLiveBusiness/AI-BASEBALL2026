@@ -3,11 +3,14 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 import html
+import re
 
 import streamlit as st
 
 from auth_session import render_account_controls, require_auth0
 from daily_data import load_current_daily_json
+from handicap_notation import handicap_table_result
+from handicap_source import fetch_hawks_handicap
 
 JST = ZoneInfo("Asia/Tokyo")
 REPO_DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -49,12 +52,76 @@ def first_value(game, *keys, fallback="--"):
     return fallback
 
 
+def parse_projected_score(game):
+    """Return (pick_score, opponent_score) from the daily prediction record."""
+    raw = game.get("predicted_score")
+    if raw in (None, ""):
+        return None
+    match = re.search(r"(\d+)\s*[-:：]\s*(\d+)", str(raw))
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def hawks_handicap_prediction(game, handicap_info):
+    """Apply the uploaded table to the projected Hawks game score."""
+    if not handicap_info or not handicap_info.get("published"):
+        return None
+
+    home = str(first_value(game, "home", "home_team", fallback=""))
+    away = str(first_value(game, "away", "away_team", fallback=""))
+    if "ソフトバンク" not in (home, away):
+        return None
+
+    token = handicap_info.get("token")
+    favored_team = handicap_info.get("favored_team")
+    if not token or not favored_team:
+        return None
+
+    # Prefer explicit home/away projected-score fields when the daily model
+    # provides them. Otherwise today's prediction format is pick-opponent.
+    home_score = game.get("predicted_home_score")
+    away_score = game.get("predicted_away_score")
+    if home_score is not None and away_score is not None:
+        if favored_team == home:
+            favored_score, other_score = home_score, away_score
+        elif favored_team == away:
+            favored_score, other_score = away_score, home_score
+        else:
+            return None
+    else:
+        pair = parse_projected_score(game)
+        if pair is None:
+            return None
+        pick_score, other_pick_score = pair
+        pick = str(first_value(game, "pick", fallback=""))
+        if favored_team == pick:
+            favored_score, other_score = pick_score, other_pick_score
+        elif favored_team in (home, away):
+            favored_score, other_score = other_pick_score, pick_score
+        else:
+            return None
+
+    judgement = handicap_table_result(favored_score, other_score, token)
+    return {
+        "favored_team": favored_team,
+        "token": token,
+        "judgement": judgement,
+        "margin": int(float(favored_score) - float(other_score)),
+    }
+
+
 npb_today = load_current_daily_json("npb_today.json", {"games": []})
 predictions = load_current_daily_json("today_ai_predictions.json", {"games": []})
 today_games = npb_today.get("games") or []
 ai_games = predictions.get("games") or []
 updated_at = fmt_time(npb_today.get("updated_at") or predictions.get("updated_at"))
 now = datetime.now(JST)
+
+try:
+    hawks_handicap = fetch_hawks_handicap(now.date())
+except Exception:
+    hawks_handicap = {"published": False}
 
 st.markdown(
     """
@@ -70,7 +137,7 @@ st.markdown(
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:18px}.panel h2{margin:0 0 14px!important;font-size:21px!important}
 .game{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;border-top:1px solid var(--line);padding:14px 0}.game:first-of-type{border-top:0}.team{font-size:18px;font-weight:900}.team.away{text-align:right}.score{font-size:22px;font-weight:950;min-width:96px;text-align:center}.meta{font-size:11px;color:var(--muted);margin-top:4px}.starter{font-size:12px;color:#374151;margin-top:4px}.empty{padding:18px;border:1px dashed var(--line);border-radius:12px;color:var(--muted)}
-.ai-card{border-top:1px solid var(--line);padding:13px 0}.ai-card:first-of-type{border-top:0}.ai-title{font-weight:900}.ai-meta{font-size:12px;color:var(--muted);margin-top:4px}.badge{display:inline-block;background:#171717;color:var(--gold);border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900;margin-right:6px}
+.ai-card{border-top:1px solid var(--line);padding:13px 0}.ai-card:first-of-type{border-top:0}.ai-title{font-weight:900}.ai-meta{font-size:12px;color:var(--muted);margin-top:4px}.badge{display:inline-block;background:#171717;color:var(--gold);border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900;margin-right:6px}.handicap-result{margin-top:7px;padding:7px 9px;border-radius:9px;background:#fff8d8;border:1px solid #ead06b;font-size:12px;font-weight:850;color:#4a3b00}.handicap-result strong{color:#111827}
 .note{margin-top:14px;font-size:11px;color:var(--muted)}
 @media(max-width:760px){.block-container{padding:0 14px 30px!important}.topbar{margin:0 -14px;padding:14px}.grid{grid-template-columns:1fr}.hero{padding:22px}.hero h1{font-size:31px!important}.game{grid-template-columns:1fr}.team.away{text-align:left}.score{text-align:left}}
 </style>
@@ -132,15 +199,27 @@ with right:
             confidence = first_value(game, "confidence", fallback="--")
             predicted_score = first_value(game, "predicted_score", fallback="--")
             sample = first_value(game, "validation_sample_size", fallback="--")
+            handicap_prediction = hawks_handicap_prediction(game, hawks_handicap)
+            handicap_html = ""
+            if handicap_prediction:
+                handicap_html = (
+                    '<div class="handicap-result">'
+                    f'ハンデ込み予想：{safe(handicap_prediction["favored_team"])} '
+                    f'{safe(handicap_prediction["token"])} / '
+                    f'予想点差 {safe(handicap_prediction["margin"])} → '
+                    f'<strong>{safe(handicap_prediction["judgement"])}</strong>'
+                    '</div>'
+                )
             st.markdown(
                 f"""
 <div class="ai-card">
   <div class="ai-title">{safe(away)} @ {safe(home)}</div>
   <div class="ai-meta"><span class="badge">AI</span>予測スコア {safe(predicted_score)} / 信頼度 {safe(confidence)} / 検証試合数 {safe(sample)}</div>
+  {handicap_html}
 </div>
 """,
                 unsafe_allow_html=True,
             )
     st.markdown(f'<div class="note">最終データ更新: {safe(updated_at)}</div></div>', unsafe_allow_html=True)
 
-st.caption("情報表示専用モード：BET・収支・ハンデ判定機能は使用しません。")
+st.caption("ハンデ込み予想はアップロードされた判定表を使用し、AI予測スコアの点差に照合して参考表示します。")
