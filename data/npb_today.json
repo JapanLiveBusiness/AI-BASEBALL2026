@@ -1,10 +1,61 @@
 {
-  "date": "2026-09-18",
-  "updated_at": "2026-09-18T19:42:55+09:00",
-  "count": 3,
+  "date": "2026-09-19",
+  "updated_at": "2026-09-19T08:00:57+09:00",
+  "count": 6,
   "games": [
     {
-      "date": "2026-09-18",
+      "date": "2026-09-19",
+      "time": "14:00",
+      "status": "scheduled",
+      "home": "巨人",
+      "away": "中日",
+      "home_score": null,
+      "away_score": null,
+      "venue": "東京ドーム",
+      "league": "セ・リーグ",
+      "result_source": "NPB公式",
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
+      "home_starter": "田中 将大",
+      "away_starter": "中西 聖輝",
+      "starter_source": "NPB公式 予告先発",
+      "starter_source_url": "https://npb.jp/announcement/starter/"
+    },
+    {
+      "date": "2026-09-19",
+      "time": "14:00",
+      "status": "scheduled",
+      "home": "日本ハム",
+      "away": "オリックス",
+      "home_score": null,
+      "away_score": null,
+      "venue": "エスコンＦ",
+      "league": "パ・リーグ",
+      "result_source": "NPB公式",
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
+      "home_starter": "伊藤 大海",
+      "away_starter": "Ａ．エスピノーザ",
+      "starter_source": "NPB公式 予告先発",
+      "starter_source_url": "https://npb.jp/announcement/starter/"
+    },
+    {
+      "date": "2026-09-19",
+      "time": "14:00",
+      "status": "scheduled",
+      "home": "楽天",
+      "away": "ソフトバンク",
+      "home_score": null,
+      "away_score": null,
+      "venue": "楽天モバイル",
+      "league": "パ・リーグ",
+      "result_source": "NPB公式",
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
+      "home_starter": "早川 隆久",
+      "away_starter": "前田 悠伍",
+      "starter_source": "NPB公式 予告先発",
+      "starter_source_url": "https://npb.jp/announcement/starter/"
+    },
+    {
+      "date": "2026-09-19",
       "time": "18:00",
       "status": "scheduled",
       "home": "DeNA",
@@ -14,23 +65,31 @@
       "venue": "横 浜",
       "league": "セ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
+      "home_starter": "尾形 崇斗",
+      "away_starter": "高梨 裕稔",
+      "starter_source": "NPB公式 予告先発",
+      "starter_source_url": "https://npb.jp/announcement/starter/"
     },
     {
-      "date": "2026-09-18",
+      "date": "2026-09-19",
       "time": "18:00",
       "status": "scheduled",
-      "home": "巨人",
-      "away": "中日",
+      "home": "ロッテ",
+      "away": "西武",
       "home_score": null,
       "away_score": null,
-      "venue": "東京ドーム",
-      "league": "セ・リーグ",
+      "venue": "ZOZOマリン",
+      "league": "パ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
+      "home_starter": "高野 脩汰",
+      "away_starter": "隅田 知一郎",
+      "starter_source": "NPB公式 予告先発",
+      "starter_source_url": "https://npb.jp/announcement/starter/"
     },
     {
-      "date": "2026-09-18",
+      "date": "2026-09-19",
       "time": "18:00",
       "status": "scheduled",
       "home": "阪神",
@@ -40,7 +99,11 @@
       "venue": "甲子園",
       "league": "セ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html"
+      "official_url": "https://npb.jp/games/2026/schedule_09_detail.html",
+      "home_starter": "村上 頌樹",
+      "away_starter": "栗林 良吏",
+      "starter_source": "NPB公式 予告先発",
+      "starter_source_url": "https://npb.jp/announcement/starter/"
     }
   ],
   "source": "NPB公式",
@@ -49,6 +112,6 @@
     "https://npb.jp/games/2026/schedule_10_detail.html"
   ],
   "selection": "today_or_next_scheduled_slate",
-  "starter_updated_at": "2026-09-18T19:42:57+09:00",
-  "starter_count": 0
+  "starter_updated_at": "2026-09-19T08:00:59+09:00",
+  "starter_count": 12
 }
