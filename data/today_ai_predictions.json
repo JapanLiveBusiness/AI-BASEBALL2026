@@ -1,127 +1,51 @@
 {
-  "date": "2026-09-23",
-  "updated_at": "2026-09-23T19:56:27+09:00",
+  "date": "2026-09-24",
+  "updated_at": "2026-09-24T08:25:56+09:00",
   "model": "NPB Official Standings Baseline v1",
   "model_type": "transparent standings baseline",
   "method": "70% overall win rate + 30% home/road split, Log5 matchup, 28-72% clamp",
   "games": [
     {
-      "home": "ソフトバンク",
-      "away": "西武",
-      "league": "パ・リーグ",
-      "pick": "ソフトバンク",
-      "win_probability": 56.8,
-      "home_win_probability": 56.8,
-      "predicted_score": "4-3",
-      "predicted_score_order": "winner-loser illustrative scenario",
-      "confidence": "B",
-      "status": "ready",
-      "inputs": {
-        "home_overall_pct": 0.644,
-        "home_home_pct": 0.667,
-        "away_overall_pct": 0.565,
-        "away_road_pct": 0.545
-      },
-      "rank": 5
-    },
-    {
-      "home": "ヤクルト",
-      "away": "阪神",
-      "league": "セ・リーグ",
-      "pick": "阪神",
-      "win_probability": 60.4,
-      "home_win_probability": 39.6,
-      "predicted_score": "4-2",
-      "predicted_score_order": "winner-loser illustrative scenario",
-      "confidence": "A-",
-      "status": "ready",
-      "inputs": {
-        "home_overall_pct": 0.432,
-        "home_home_pct": 0.413,
-        "away_overall_pct": 0.561,
-        "away_road_pct": 0.606
-      },
-      "rank": 2
-    },
-    {
       "home": "広島",
       "away": "巨人",
       "league": "セ・リーグ",
       "pick": "巨人",
-      "win_probability": 58.1,
-      "home_win_probability": 41.9,
+      "win_probability": 58.7,
+      "home_win_probability": 41.3,
       "predicted_score": "4-3",
       "predicted_score_order": "winner-loser illustrative scenario",
       "confidence": "B+",
       "status": "ready",
       "inputs": {
-        "home_overall_pct": 0.422,
-        "home_home_pct": 0.462,
-        "away_overall_pct": 0.549,
-        "away_road_pct": 0.545
+        "home_overall_pct": 0.419,
+        "home_home_pct": 0.455,
+        "away_overall_pct": 0.552,
+        "away_road_pct": 0.552
       },
-      "rank": 4
-    },
-    {
-      "home": "ロッテ",
-      "away": "オリックス",
-      "league": "パ・リーグ",
-      "pick": "ロッテ",
-      "win_probability": 53.8,
-      "home_win_probability": 53.8,
-      "predicted_score": "3-2",
-      "predicted_score_order": "winner-loser illustrative scenario",
-      "confidence": "C+",
-      "status": "ready",
-      "inputs": {
-        "home_overall_pct": 0.457,
-        "home_home_pct": 0.557,
-        "away_overall_pct": 0.474,
-        "away_road_pct": 0.343
-      },
-      "rank": 6
-    },
-    {
-      "home": "DeNA",
-      "away": "中日",
-      "league": "セ・リーグ",
-      "pick": "DeNA",
-      "win_probability": 58.8,
-      "home_win_probability": 58.8,
-      "predicted_score": "4-3",
-      "predicted_score_order": "winner-loser illustrative scenario",
-      "confidence": "B+",
-      "status": "ready",
-      "inputs": {
-        "home_overall_pct": 0.504,
-        "home_home_pct": 0.571,
-        "away_overall_pct": 0.434,
-        "away_road_pct": 0.323
-      },
-      "rank": 3
+      "rank": 2
     },
     {
       "home": "日本ハム",
       "away": "楽天",
       "league": "パ・リーグ",
       "pick": "日本ハム",
-      "win_probability": 64.0,
-      "home_win_probability": 64.0,
+      "win_probability": 63.3,
+      "home_win_probability": 63.3,
       "predicted_score": "4-2",
       "predicted_score_order": "winner-loser illustrative scenario",
-      "confidence": "A",
+      "confidence": "A-",
       "status": "ready",
       "inputs": {
-        "home_overall_pct": 0.56,
-        "home_home_pct": 0.618,
-        "away_overall_pct": 0.397,
-        "away_road_pct": 0.323
+        "home_overall_pct": 0.556,
+        "home_home_pct": 0.609,
+        "away_overall_pct": 0.402,
+        "away_road_pct": 0.333
       },
       "rank": 1
     }
   ],
-  "count": 6,
-  "ready_count": 6,
+  "count": 2,
+  "ready_count": 2,
   "source": "NPB公式",
   "source_urls": [
     "https://npb.jp/bis/2026/stats/std_c.html",
