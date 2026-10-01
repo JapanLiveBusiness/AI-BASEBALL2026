@@ -1,6 +1,6 @@
 {
   "date": "2026-10-01",
-  "updated_at": "2026-10-01T09:21:22+09:00",
+  "updated_at": "2026-10-01T21:36:29+09:00",
   "count": 4,
   "games": [
     {
@@ -14,11 +14,7 @@
       "venue": "ZOZOマリン",
       "league": "パ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html",
-      "home_starter": "Ｓ．ロング",
-      "away_starter": "北山 亘基",
-      "starter_source": "NPB公式 予告先発",
-      "starter_source_url": "https://npb.jp/announcement/starter/"
+      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html"
     },
     {
       "date": "2026-10-01",
@@ -31,11 +27,7 @@
       "venue": "マツダスタジアム",
       "league": "セ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html",
-      "home_starter": "床田 寛樹",
-      "away_starter": "大野 雄大",
-      "starter_source": "NPB公式 予告先発",
-      "starter_source_url": "https://npb.jp/announcement/starter/"
+      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html"
     },
     {
       "date": "2026-10-01",
@@ -48,11 +40,7 @@
       "venue": "楽天モバイル",
       "league": "パ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html",
-      "home_starter": "瀧中 瞭太",
-      "away_starter": "上沢 直之",
-      "starter_source": "NPB公式 予告先発",
-      "starter_source_url": "https://npb.jp/announcement/starter/"
+      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html"
     },
     {
       "date": "2026-10-01",
@@ -65,11 +53,7 @@
       "venue": "甲子園",
       "league": "セ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html",
-      "home_starter": "村上 頌樹",
-      "away_starter": "竹丸 和幸",
-      "starter_source": "NPB公式 予告先発",
-      "starter_source_url": "https://npb.jp/announcement/starter/"
+      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html"
     }
   ],
   "source": "NPB公式",
@@ -78,6 +62,6 @@
     "https://npb.jp/games/2026/schedule_11_detail.html"
   ],
   "selection": "today_or_next_scheduled_slate",
-  "starter_updated_at": "2026-10-01T09:21:24+09:00",
-  "starter_count": 8
+  "starter_updated_at": "2026-10-01T21:36:30+09:00",
+  "starter_count": 0
 }
