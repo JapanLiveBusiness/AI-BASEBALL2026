@@ -1,10 +1,10 @@
 {
-  "date": "2026-10-05",
-  "updated_at": "2026-10-05T22:50:40+09:00",
+  "date": "2026-10-06",
+  "updated_at": "2026-10-06T10:39:50+09:00",
   "count": 2,
   "games": [
     {
-      "date": "2026-10-05",
+      "date": "2026-10-06",
       "time": "18:00",
       "status": "scheduled",
       "home": "ロッテ",
@@ -14,20 +14,28 @@
       "venue": "ZOZOマリン",
       "league": "パ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html"
+      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html",
+      "home_starter": "Ｊ．ルケーシー",
+      "away_starter": "武内 夏暉",
+      "starter_source": "NPB公式 予告先発",
+      "starter_source_url": "https://npb.jp/announcement/starter/"
     },
     {
-      "date": "2026-10-05",
+      "date": "2026-10-06",
       "time": "18:00",
       "status": "scheduled",
-      "home": "楽天",
-      "away": "ソフトバンク",
+      "home": "阪神",
+      "away": "広島",
       "home_score": null,
       "away_score": null,
-      "venue": "楽天モバイル",
-      "league": "パ・リーグ",
+      "venue": "甲子園",
+      "league": "セ・リーグ",
       "result_source": "NPB公式",
-      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html"
+      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html",
+      "home_starter": "大竹 耕太郎",
+      "away_starter": "工藤 泰己",
+      "starter_source": "NPB公式 予告先発",
+      "starter_source_url": "https://npb.jp/announcement/starter/"
     }
   ],
   "source": "NPB公式",
@@ -36,6 +44,6 @@
     "https://npb.jp/games/2026/schedule_11_detail.html"
   ],
   "selection": "today_or_next_scheduled_slate",
-  "starter_updated_at": "2026-10-05T22:50:42+09:00",
-  "starter_count": 0
+  "starter_updated_at": "2026-10-06T10:39:52+09:00",
+  "starter_count": 4
 }
