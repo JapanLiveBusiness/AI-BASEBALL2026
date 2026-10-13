@@ -1,18 +1,31 @@
 {
-  "date": "2026-10-12",
-  "updated_at": "2026-10-12T23:39:04+09:00",
-  "count": 1,
+  "date": "2026-10-14",
+  "updated_at": "2026-10-13T11:25:06+09:00",
+  "count": 2,
   "games": [
     {
-      "date": "2026-10-12",
-      "time": "14:00",
+      "date": "2026-10-14",
+      "time": "18:00",
       "status": "scheduled",
-      "home": "西武",
+      "home": "ソフトバンク",
       "away": "日本ハム",
       "home_score": null,
       "away_score": null,
-      "venue": "ベルーナドーム",
+      "venue": "みずほPayPay",
       "league": "パ・リーグ",
+      "result_source": "NPB公式",
+      "official_url": "https://npb.jp/games/2026/schedule_10_detail.html"
+    },
+    {
+      "date": "2026-10-14",
+      "time": "18:00",
+      "status": "scheduled",
+      "home": "阪神",
+      "away": "DeNA",
+      "home_score": null,
+      "away_score": null,
+      "venue": "甲子園",
+      "league": "セ・リーグ",
       "result_source": "NPB公式",
       "official_url": "https://npb.jp/games/2026/schedule_10_detail.html"
     }
