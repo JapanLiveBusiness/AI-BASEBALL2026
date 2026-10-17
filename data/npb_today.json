@@ -1,18 +1,18 @@
 {
-  "date": "2026-10-17",
-  "updated_at": "2026-10-17T19:16:14+09:00",
+  "date": "2026-10-24",
+  "updated_at": "2026-10-18T07:53:48+09:00",
   "count": 1,
   "games": [
     {
-      "date": "2026-10-17",
-      "time": "14:00",
+      "date": "2026-10-24",
+      "time": "18:30",
       "status": "scheduled",
-      "home": "阪神",
-      "away": "DeNA",
+      "home": "DeNA",
+      "away": "ソフトバンク",
       "home_score": null,
       "away_score": null,
-      "venue": "甲子園",
-      "league": "セ・リーグ",
+      "venue": "横 浜",
+      "league": "交流戦",
       "result_source": "NPB公式",
       "official_url": "https://npb.jp/games/2026/schedule_10_detail.html"
     }
