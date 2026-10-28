@@ -1,17 +1,17 @@
 {
-  "date": "2026-10-24",
-  "updated_at": "2026-10-21T20:18:57+09:00",
+  "date": "2026-10-28",
+  "updated_at": "2026-10-28T21:16:25+09:00",
   "count": 1,
   "games": [
     {
-      "date": "2026-10-24",
-      "time": "18:30",
+      "date": "2026-10-28",
+      "time": "18:00",
       "status": "scheduled",
-      "home": "DeNA",
-      "away": "ソフトバンク",
+      "home": "ソフトバンク",
+      "away": "DeNA",
       "home_score": null,
       "away_score": null,
-      "venue": "横 浜",
+      "venue": "みずほPayPay",
       "league": "交流戦",
       "result_source": "NPB公式",
       "official_url": "https://npb.jp/games/2026/schedule_10_detail.html"
