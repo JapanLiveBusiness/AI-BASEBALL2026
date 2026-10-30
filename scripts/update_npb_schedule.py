@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 JST = ZoneInfo("Asia/Tokyo")
 BASE_URL = "https://npb.jp/games/{year}/schedule_{month:02d}_detail.html"
@@ -166,10 +168,18 @@ def fetch_month(year: int, month: int) -> tuple[str, str]:
         "User-Agent": "AI-BASEBALL-STUDIO/1.0 (+schedule sync; contact via JapanLiveBusiness)",
         "Accept-Language": "ja,en;q=0.8",
     }
-    response = requests.get(url, timeout=25, headers=headers)
-    response.raise_for_status()
-    response.encoding = response.apparent_encoding or response.encoding
-    return url, response.text
+    # Retry transient network and upstream failures, but keep the total bounded.
+    retry = Retry(
+        total=2, connect=2, read=2, status=2,
+        backoff_factor=1, status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset({"GET"}), respect_retry_after_header=False,
+    )
+    with requests.Session() as session:
+        session.mount("https://", HTTPAdapter(max_retries=retry))
+        response = session.get(url, timeout=(10, 25), headers=headers)
+        response.raise_for_status()
+        response.encoding = response.apparent_encoding or response.encoding
+        return url, response.text
 
 
 def choose_slate(by_date: dict[str, list[dict]], today: date) -> tuple[str, list[dict]]:
@@ -196,6 +206,10 @@ def build_payload(today: date | None = None) -> dict:
             parsed = rows_from_html(html_text, year, url)
             for game_date, games in parsed.items():
                 combined[game_date] = games
+            # Months are visited in order; any current/future slate in this
+            # month precedes next month's games. Avoid an unnecessary request.
+            if any(key >= today.isoformat() and games for key, games in combined.items()):
+                break
         except Exception as exc:
             errors.append(f"{year}-{month:02d}: {exc}")
 
