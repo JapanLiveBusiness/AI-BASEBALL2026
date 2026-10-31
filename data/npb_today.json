@@ -1,6 +1,6 @@
 {
   "date": "2026-11-01",
-  "updated_at": "2026-10-31T20:49:12+09:00",
+  "updated_at": "2026-11-01T08:56:41+09:00",
   "count": 1,
   "games": [
     {
@@ -19,7 +19,6 @@
   ],
   "source": "NPB公式",
   "source_urls": [
-    "https://npb.jp/games/2026/schedule_10_detail.html",
     "https://npb.jp/games/2026/schedule_11_detail.html"
   ],
   "selection": "today_or_next_scheduled_slate",
